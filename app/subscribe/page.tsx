@@ -12,8 +12,9 @@ export default function SubscribePage() {
       setLoading(true);
       setError("");
 
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("/api/create-checkout-session", {
         method: "POST",
+        credentials: "include",
       });
 
       const data = await res.json();

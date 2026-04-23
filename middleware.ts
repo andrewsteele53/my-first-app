@@ -64,7 +64,7 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (userError) {
-      console.error("Proxy auth error:", userError);
+      console.error("Middleware auth error:", userError);
       return NextResponse.next();
     }
 
@@ -84,7 +84,7 @@ export async function middleware(request: NextRequest) {
         .single();
 
       if (profileError) {
-        console.error("Proxy subscription check error:", profileError);
+        console.error("Middleware subscription check error:", profileError);
         return NextResponse.next();
       }
 
@@ -97,13 +97,13 @@ export async function middleware(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Proxy error:", error);
+    console.error("Middleware error:", error);
     return NextResponse.next();
   }
 }
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.[^/]+$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.[^/]+$).*)",
   ],
 };
