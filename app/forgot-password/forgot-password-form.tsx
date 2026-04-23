@@ -90,7 +90,9 @@ export default function ForgotPasswordForm() {
           <div className="us-notice-success mt-4 text-sm">{success}</div>
         ) : null}
 
-        {error ? <div className="us-notice-danger mt-4 text-sm">{error}</div> : null}
+        {error ? (
+          <div className="us-notice-danger mt-4 text-sm">{error}</div>
+        ) : null}
 
         <div className="mt-6 text-center text-sm text-[var(--color-text-secondary)]">
           <Link href="/login" className="us-link">
