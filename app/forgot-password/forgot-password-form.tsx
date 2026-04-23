@@ -32,9 +32,7 @@ export default function ForgotPasswordForm() {
         }
       );
 
-      if (resetError) {
-        throw resetError;
-      }
+      if (resetError) throw resetError;
 
       setSuccess("Check your email for reset link");
     } catch (err) {
