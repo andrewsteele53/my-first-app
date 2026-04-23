@@ -2,18 +2,19 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setError("");
+    setSuccess("");
 
     if (!email || !password) {
       setError("Please fill in both email and password.");
@@ -22,21 +23,24 @@ export default function LoginPage() {
 
     try {
       setLoading(true);
+
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error: signupError } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (error) {
-        setError(error.message);
-      } else {
-        window.location.href = "/";
+      if (signupError) {
+        setError(signupError.message);
+        return;
       }
+
+      setSuccess("Account created. Check your email to confirm your account.");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Unable to log in right now."
+        err instanceof Error ? err.message : "Unable to create your account."
       );
     } finally {
       setLoading(false);
@@ -48,10 +52,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-[1.8rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-9 shadow-[var(--shadow-card)]">
         <p className="us-kicker text-center">Unified Steele</p>
         <h1 className="mb-6 mt-4 text-center text-3xl font-bold text-[var(--color-text)]">
-          Login
+          Create Account
         </h1>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSignup} className="space-y-4">
           <input
             type="email"
             placeholder="Email"
@@ -64,35 +68,33 @@ export default function LoginPage() {
           <input
             type="password"
             placeholder="Password"
-            autoComplete="current-password"
+            autoComplete="new-password"
             className="us-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-
-          <div className="text-right">
-            <Link href="/forgot-password" className="us-link text-sm">
-              Forgot Password?
-            </Link>
-          </div>
 
           <button
             type="submit"
             disabled={loading}
             className="us-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Logging In..." : "Login"}
+            {loading ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
+
+        {success ? (
+          <div className="us-notice-success mt-4 text-sm">{success}</div>
+        ) : null}
 
         {error ? (
           <div className="us-notice-danger mt-4 text-sm">{error}</div>
         ) : null}
 
         <p className="mt-6 text-center text-sm text-[var(--color-text-secondary)]">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="us-link">
-            Sign up
+          Already have an account?{" "}
+          <Link href="/login" className="us-link">
+            Login
           </Link>
         </p>
       </div>
