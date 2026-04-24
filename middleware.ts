@@ -16,6 +16,10 @@ function requiresSubscription(pathname: string) {
   return pathname.startsWith("/leads") || pathname.startsWith("/mapping");
 }
 
+function isAuthPage(pathname: string) {
+  return pathname === "/login" || pathname === "/auth/signup";
+}
+
 function redirectTo(request: NextRequest, pathname: string) {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
@@ -72,7 +76,7 @@ export async function middleware(request: NextRequest) {
       return redirectTo(request, "/login");
     }
 
-    if (user && pathname === "/login") {
+    if (user && isAuthPage(pathname)) {
       return redirectTo(request, "/");
     }
 

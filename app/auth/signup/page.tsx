@@ -5,13 +5,15 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -28,7 +30,7 @@ export default function LoginPage() {
           return;
         }
       } catch {
-        // Ignore session check failures and allow the user to sign in manually.
+        // Ignore session check failures and allow manual sign up.
       } finally {
         if (isMounted) {
           setCheckingSession(false);
@@ -46,9 +48,15 @@ export default function LoginPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setSuccess("");
 
-    if (!email.trim() || !password) {
-      setError("Please enter both your email and password.");
+    if (!email.trim() || !password || !confirmPassword) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
 
@@ -56,21 +64,22 @@ export default function LoginPage() {
       setLoading(true);
       const supabase = createClient();
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
       });
 
-      if (signInError) {
-        setError(signInError.message);
+      if (signUpError) {
+        setError(signUpError.message);
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      setSuccess("Check your email to confirm your account");
+      setPassword("");
+      setConfirmPassword("");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Unable to sign in right now."
+        err instanceof Error ? err.message : "Unable to create your account."
       );
     } finally {
       setLoading(false);
@@ -85,11 +94,11 @@ export default function LoginPage() {
             Unified Steele
           </p>
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900">
-            Sign In
+            Create Account
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Access your dashboard, invoices, and subscription tools from one
-            secure workspace.
+            Set up your account to access the dashboard, billing, and business
+            tools.
           </p>
         </div>
 
@@ -123,22 +132,32 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
-              placeholder="Enter your password"
+              placeholder="Create a password"
               disabled={loading || checkingSession}
             />
           </div>
 
-          <div className="flex justify-end">
-            <Link
-              href="/forgot-password"
-              className="text-sm font-medium text-slate-600 transition hover:text-slate-900"
+          <div>
+            <label
+              htmlFor="confirm-password"
+              className="mb-2 block text-sm font-medium text-slate-700"
             >
-              Forgot password?
-            </Link>
+              Confirm Password
+            </label>
+            <input
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+              placeholder="Confirm your password"
+              disabled={loading || checkingSession}
+            />
           </div>
 
           <button
@@ -146,7 +165,7 @@ export default function LoginPage() {
             disabled={loading || checkingSession}
             className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            {checkingSession ? "Checking Session..." : loading ? "Signing In..." : "Sign In"}
+            {checkingSession ? "Checking Session..." : loading ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
 
@@ -156,13 +175,19 @@ export default function LoginPage() {
           </div>
         ) : null}
 
+        {success ? (
+          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {success}
+          </div>
+        ) : null}
+
         <p className="mt-6 text-center text-sm text-slate-600">
-          Don&apos;t have an account?{" "}
+          Already have an account?{" "}
           <Link
-            href="/auth/signup"
+            href="/login"
             className="font-semibold text-slate-900 transition hover:text-slate-700"
           >
-            Sign up
+            Back to Login
           </Link>
         </p>
       </div>
