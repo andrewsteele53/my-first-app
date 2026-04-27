@@ -57,6 +57,25 @@ async function updateProfileById(userId: string, update: ProfileUpdate) {
   }
 }
 
+async function updateProfileByEmail(email: string, update: ProfileUpdate) {
+  const supabaseAdmin = createSupabaseAdminClient();
+  const result = await supabaseAdmin
+    .from("profiles")
+    .update(update)
+    .eq("email", email);
+
+  if (!result.error) return;
+
+  const fallback = await supabaseAdmin
+    .from("profiles")
+    .update(withoutStripeColumns(update))
+    .eq("email", email);
+
+  if (fallback.error) {
+    throw fallback.error;
+  }
+}
+
 async function updateProfileByStripeId(
   column: "stripe_subscription_id" | "stripe_customer_id",
   value: string,
@@ -104,11 +123,6 @@ async function handleCheckoutSessionCompleted(
     session.metadata?.supabase_user_id ||
     session.client_reference_id;
 
-  if (!userId) {
-    console.warn("Stripe checkout session completed without user_id metadata.");
-    return;
-  }
-
   const customerId = getCustomerId(session.customer);
   const subscriptionId = getSubscriptionId(session.subscription);
   let subscriptionStatus = "active";
@@ -118,12 +132,29 @@ async function handleCheckoutSessionCompleted(
     subscriptionStatus = subscription.status;
   }
 
-  await updateProfileById(userId, {
+  const update: ProfileUpdate = {
     is_subscribed: isActiveStatus(subscriptionStatus),
     subscription_status: subscriptionStatus,
     stripe_customer_id: customerId,
     stripe_subscription_id: subscriptionId,
-  });
+  };
+
+  if (userId) {
+    await updateProfileById(userId, update);
+    return;
+  }
+
+  const email =
+    session.customer_details?.email || session.customer_email || session.metadata?.email;
+
+  if (email) {
+    await updateProfileByEmail(email, update);
+    return;
+  }
+
+  console.warn(
+    "Stripe checkout session completed without user_id metadata or customer email."
+  );
 }
 
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {

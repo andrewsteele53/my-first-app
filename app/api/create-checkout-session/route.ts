@@ -35,13 +35,33 @@ export async function POST(req: Request) {
 
     await ensureProfile(supabase, user);
 
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      return NextResponse.json(
+        { error: "Could not load billing profile." },
+        { status: 500 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const origin =
       req.headers.get("origin") || body?.origin || "http://localhost:3000";
+    const existingCustomerId =
+      typeof profile?.stripe_customer_id === "string" &&
+      profile.stripe_customer_id.trim()
+        ? profile.stripe_customer_id
+        : null;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      customer_email: user.email,
+      ...(existingCustomerId
+        ? { customer: existingCustomerId }
+        : { customer_email: user.email }),
       client_reference_id: user.id,
       metadata: {
         user_id: user.id,
