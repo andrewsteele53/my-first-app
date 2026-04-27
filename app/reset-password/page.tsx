@@ -5,6 +5,12 @@ import { FormEvent, useEffect, useState } from "react";
 
 const RECOVERY_FLAG_KEY = "unified-steele-password-recovery";
 
+function getRecoveryCode() {
+  if (typeof window === "undefined") return null;
+
+  return new URLSearchParams(window.location.search).get("code");
+}
+
 function hasRecoveryType() {
   if (typeof window === "undefined") return false;
 
@@ -36,10 +42,32 @@ export default function ResetPasswordPage() {
     async function checkRecoverySession() {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
+      const recoveryCode = getRecoveryCode();
       const recoveryHint = hasRecoveryType();
       const hasStoredRecoveryFlag =
         typeof window !== "undefined" &&
         window.sessionStorage.getItem(RECOVERY_FLAG_KEY) === "true";
+
+      if (recoveryCode) {
+        const { error: exchangeError } =
+          await supabase.auth.exchangeCodeForSession(recoveryCode);
+
+        if (!isMounted) return;
+
+        if (exchangeError) {
+          setRecoveryReady(false);
+          setError(exchangeError.message || "This reset link is invalid or has expired.");
+        } else {
+          window.sessionStorage.setItem(RECOVERY_FLAG_KEY, "true");
+          setRecoveryReady(true);
+          setError("");
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+
+        setLoading(false);
+        return;
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();

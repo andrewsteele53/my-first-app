@@ -44,8 +44,16 @@ export async function POST(req: Request) {
       customer_email: user.email,
       client_reference_id: user.id,
       metadata: {
+        user_id: user.id,
         supabase_user_id: user.id,
         email: user.email || "",
+      },
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          supabase_user_id: user.id,
+          email: user.email || "",
+        },
       },
       line_items: [
         {
