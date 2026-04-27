@@ -14,17 +14,45 @@ export default async function Dashboard() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isLoggedIn = Boolean(user);
-  let isSubscribed = false;
-  let subscriptionStatus = "inactive";
-  let freeInvoicesUsed = 0;
-
-  if (user) {
-    const access = await getProfileAccess(supabase, user);
-    isSubscribed = access.isSubscribed;
-    subscriptionStatus = access.subscriptionStatus;
-    freeInvoicesUsed = access.freeInvoicesUsed;
+  if (!user) {
+    return (
+      <main className="us-page">
+        <div className="us-shell">
+          <section className="us-hero">
+            <div className="mx-auto flex max-w-3xl flex-col items-center py-8 text-center">
+              <p className="us-kicker">Unified Steele</p>
+              <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-[var(--color-text)] md:text-6xl">
+                Your Business. Unified.
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">
+                Invoices, leads, and sales mapping built for service pros. Try free — 5 invoices on us. No credit card required.
+              </p>
+              <div className="mt-8 flex w-full max-w-sm flex-col items-center gap-4">
+                <Link href="/auth/signup" className="us-btn-primary w-full">
+                  Get Started Free
+                </Link>
+                <Link href="/login" className="us-link text-sm">
+                  Log In
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
   }
+
+  const metadataName =
+    typeof user.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : typeof user.user_metadata?.name === "string"
+        ? user.user_metadata.name
+        : "";
+  const displayName = metadataName.trim() || user.email?.split("@")[0] || "Your";
+  const access = await getProfileAccess(supabase, user);
+  const isSubscribed = access.isSubscribed;
+  const subscriptionStatus = access.subscriptionStatus;
+  const freeInvoicesUsed = access.freeInvoicesUsed;
 
   const freeInvoicesRemaining = Math.max(
     FREE_INVOICE_LIMIT - freeInvoicesUsed,
@@ -58,7 +86,7 @@ export default async function Dashboard() {
           <div className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
             <div>
               <p className="us-kicker">Unified Steele</p>
-              <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-[var(--color-text)] md:text-6xl">Business Workspace</h1>
+              <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-[var(--color-text)] md:text-6xl">{displayName}&apos;s Business Dashboard</h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">A cleaner operating view for invoices, leads, mapping, and business follow-up.</p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">{isSubscribed ? "Active Plan" : "Starter Plan"}</span>
@@ -70,24 +98,11 @@ export default async function Dashboard() {
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">Account Snapshot</p>
               <p className="mt-3 text-2xl font-bold text-[var(--color-text)]">{isSubscribed ? "$14.99/month" : "5 Free Invoices"}</p>
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                {isLoggedIn ? (
-                  <>
-                    <BillingActions isSubscribed={isSubscribed} />
-                    <Link href="/settings" className="us-btn-secondary min-w-36 text-sm">
-                      Settings
-                    </Link>
-                    <LogoutButton />
-                  </>
-                ) : (
-                  <>
-                    <Link href="/login" className="us-btn-primary min-w-36 text-sm">
-                      Login
-                    </Link>
-                    <Link href="/auth/signup" className="us-btn-secondary min-w-36 text-sm">
-                      Create Account
-                    </Link>
-                  </>
-                )}
+                <BillingActions isSubscribed={isSubscribed} />
+                <Link href="/settings" className="us-btn-secondary min-w-36 text-sm">
+                  Settings
+                </Link>
+                <LogoutButton />
               </div>
             </div>
           </div>
