@@ -44,14 +44,14 @@ export default function BillingActions({ isSubscribed }: Props) {
         <button
           onClick={handleManageBilling}
           disabled={loading}
-          className="us-btn-primary disabled:opacity-50"
+          className="us-btn-primary min-w-36 text-sm disabled:opacity-50"
         >
           {loading ? "Opening Portal..." : "Manage Billing"}
         </button>
       ) : (
         <Link
           href="/subscribe"
-          className="us-btn-primary"
+          className="us-btn-primary min-w-36 text-sm"
         >
           Subscribe Now
         </Link>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import BillingActions from "./billing-actions";
 import LogoutButton from "@/components/logout-button";
@@ -15,14 +14,17 @@ export default async function Dashboard() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  const isLoggedIn = Boolean(user);
+  let isSubscribed = false;
+  let subscriptionStatus = "inactive";
+  let freeInvoicesUsed = 0;
 
-  const access = await getProfileAccess(supabase, user);
-  const isSubscribed = access.isSubscribed;
-  const subscriptionStatus = access.subscriptionStatus;
-  const freeInvoicesUsed = access.freeInvoicesUsed;
+  if (user) {
+    const access = await getProfileAccess(supabase, user);
+    isSubscribed = access.isSubscribed;
+    subscriptionStatus = access.subscriptionStatus;
+    freeInvoicesUsed = access.freeInvoicesUsed;
+  }
 
   const freeInvoicesRemaining = Math.max(
     FREE_INVOICE_LIMIT - freeInvoicesUsed,
@@ -64,21 +66,53 @@ export default async function Dashboard() {
                 {!isSubscribed ? <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">{freeInvoicesRemaining} of {FREE_INVOICE_LIMIT} free invoices left</span> : null}
               </div>
             </div>
-            <div className="rounded-xl border p-6">
-              <p>Account Snapshot</p>
-              <p className="text-2xl font-bold">{isSubscribed ? "$14.99/month" : "5 Free Invoices"}</p>
-              <div className="mt-4 flex gap-2">
-                <BillingActions isSubscribed={isSubscribed} />
-                <LogoutButton />
+            <div className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">Account Snapshot</p>
+              <p className="mt-3 text-2xl font-bold text-[var(--color-text)]">{isSubscribed ? "$14.99/month" : "5 Free Invoices"}</p>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                {isLoggedIn ? (
+                  <>
+                    <BillingActions isSubscribed={isSubscribed} />
+                    <Link href="/settings" className="us-btn-secondary min-w-36 text-sm">
+                      Settings
+                    </Link>
+                    <LogoutButton />
+                  </>
+                ) : (
+                  <>
+                    <Link href="/login" className="us-btn-primary min-w-36 text-sm">
+                      Login
+                    </Link>
+                    <Link href="/auth/signup" className="us-btn-secondary min-w-36 text-sm">
+                      Create Account
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </section>
-        <section className="grid grid-cols-2 gap-4">
-          {stats.map((item) => (<div key={item.label} className="border p-4"><p>{item.label}</p><p className="text-2xl font-bold">{item.value}</p></div>))}
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((item) => (
+            <div key={item.label} className="rounded-[1.3rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]">
+              <p className="text-sm font-semibold text-[var(--color-text-secondary)]">{item.label}</p>
+              <p className="mt-2 text-2xl font-bold text-[var(--color-text)]">{item.value}</p>
+            </div>
+          ))}
         </section>
-        <section className="grid grid-cols-2 gap-4">
-          {sections.map((section) => (<div key={section.title} className="border p-4"><h3>{section.title}</h3><p>{section.description}</p><Link href={section.href}>{section.cta}</Link></div>))}
+        <section className="grid gap-4 md:grid-cols-2">
+          {sections.map((section) => (
+            <div key={section.title} className="flex min-h-56 flex-col rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+              <h3 className="text-xl font-bold text-[var(--color-text)]">{section.title}</h3>
+              <p className="mt-3 flex-1 text-sm leading-6 text-[var(--color-text-secondary)]">{section.description}</p>
+              <Link
+                href={section.href}
+                className={`${section.tone === "primary" ? "us-btn-primary" : "us-btn-secondary"} mt-6 w-full text-sm`}
+              >
+                {section.cta}
+              </Link>
+            </div>
+          ))}
         </section>
         <DashboardInsights isSubscribed={isSubscribed} />
         <DashboardAIWidget context={{ isSubscribed, subscriptionStatus, freeInvoicesRemaining, stats, sections }} />

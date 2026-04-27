@@ -3,7 +3,6 @@ import { createServerClient } from "@supabase/ssr";
 
 function requiresAuth(pathname: string) {
   return (
-    pathname === "/" ||
     pathname.startsWith("/invoices") ||
     pathname.startsWith("/leads") ||
     pathname.startsWith("/mapping") ||

@@ -106,9 +106,13 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 3rem;
   border-radius: 1rem;
-  padding: 0.95rem 1.35rem;
+  padding: 0.75rem 1.5rem;
   font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
   transition:
     transform 0.16s ease,
     background-color 0.16s ease,
@@ -130,6 +134,7 @@ button {
 
 .us-btn-primary {
   background: var(--color-primary);
+  border: 1px solid transparent;
   color: #ffffff;
   box-shadow: var(--shadow-button);
 }
@@ -193,6 +198,15 @@ button {
 .us-btn-success:active {
   background: #20573f;
   transform: translateY(0);
+}
+
+.us-btn-primary:disabled,
+.us-btn-secondary:disabled,
+.us-btn-danger:disabled,
+.us-btn-success:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .us-input,

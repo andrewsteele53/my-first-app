@@ -12,7 +12,7 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="us-btn-secondary text-sm"
+      className="us-btn-secondary min-w-36 text-sm"
     >
       Log Out
     </button>
