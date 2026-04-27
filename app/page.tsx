@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import BillingActions from "./billing-actions";
 import LogoutButton from "@/components/logout-button";
@@ -14,16 +15,14 @@ export default async function Dashboard() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let isSubscribed = false;
-  let subscriptionStatus = "inactive";
-  let freeInvoicesUsed = 0;
-
-  if (user) {
-    const access = await getProfileAccess(supabase, user);
-    isSubscribed = access.isSubscribed;
-    subscriptionStatus = access.subscriptionStatus;
-    freeInvoicesUsed = access.freeInvoicesUsed;
+  if (!user) {
+    redirect("/login");
   }
+
+  const access = await getProfileAccess(supabase, user);
+  const isSubscribed = access.isSubscribed;
+  const subscriptionStatus = access.subscriptionStatus;
+  const freeInvoicesUsed = access.freeInvoicesUsed;
 
   const freeInvoicesRemaining = Math.max(
     FREE_INVOICE_LIMIT - freeInvoicesUsed,
