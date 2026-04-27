@@ -7,12 +7,17 @@ function requiresAuth(pathname: string) {
     pathname.startsWith("/leads") ||
     pathname.startsWith("/mapping") ||
     pathname.startsWith("/settings") ||
-    pathname.startsWith("/subscribe")
+    pathname.startsWith("/subscribe") ||
+    pathname.startsWith("/ai")
   );
 }
 
 function requiresSubscription(pathname: string) {
-  return pathname.startsWith("/leads") || pathname.startsWith("/mapping");
+  return (
+    pathname.startsWith("/leads") ||
+    pathname.startsWith("/mapping") ||
+    pathname.startsWith("/ai")
+  );
 }
 
 function isAuthPage(pathname: string) {

@@ -1,8 +1,50 @@
 import { NextResponse } from "next/server";
+import OpenAI from "openai";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { generateAIAssistance } from "@/lib/ai/assistant";
 import { validateAIAssistRequest } from "@/lib/ai/schemas";
 import { getProfileAccess } from "@/lib/billing";
+
+function isSimpleAssistRequest(body: unknown): body is { message: string } {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "message" in body &&
+    typeof (body as { message?: unknown }).message === "string"
+  );
+}
+
+async function generateSimpleAnswer(message: string) {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("AI is not configured.");
+  }
+
+  const client = new OpenAI({ apiKey });
+  const response = await client.responses.create({
+    model: process.env.OPENAI_MODEL || "gpt-5.4-mini",
+    input: [
+      {
+        role: "system",
+        content: [
+          {
+            type: "input_text",
+            text:
+              "You are the Unified Steele AI Assistant for a service-business dashboard. Help service pros with practical, concise guidance for invoices, leads, follow-ups, sales mapping, route planning, customer communication, and daily priorities. Avoid legal, tax, or financial advice beyond general business organization. Keep answers actionable and easy to use.",
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [{ type: "input_text", text: message }],
+      },
+    ],
+    max_output_tokens: 900,
+  });
+
+  return response.output_text?.trim() || "I couldn't generate an answer.";
+}
 
 export async function POST(req: Request) {
   try {
@@ -32,7 +74,41 @@ export async function POST(req: Request) {
       );
     }
 
+    const { data: allowed, error: usageError } = await supabase.rpc(
+      "use_ai_request",
+      { user_id: user.id }
+    );
+
+    if (usageError) {
+      return NextResponse.json(
+        { error: "Usage check failed." },
+        { status: 500 }
+      );
+    }
+
+    if (allowed === false) {
+      return NextResponse.json(
+        { error: "AI usage limit reached. Try again next month." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json().catch(() => null);
+
+    if (isSimpleAssistRequest(body)) {
+      const message = body.message.trim().slice(0, 2000);
+
+      if (!message) {
+        return NextResponse.json(
+          { error: "Message is required." },
+          { status: 400 }
+        );
+      }
+
+      const answer = await generateSimpleAnswer(message);
+      return NextResponse.json({ answer });
+    }
+
     const validated = validateAIAssistRequest(body);
 
     if (!validated.ok) {
