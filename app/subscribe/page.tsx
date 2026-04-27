@@ -1,36 +1,21 @@
-"use client";
-
 import Link from "next/link";
-import { useState } from "react";
+import BillingActions from "../billing-actions";
+import { getProfileAccess } from "@/lib/billing";
+import { createClient } from "@/lib/supabase/server";
 
-export default function SubscribePage() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+export default async function SubscribePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  async function handleSubscribe() {
-    try {
-      setLoading(true);
-      setError("");
+  let isSubscribed = false;
+  let subscriptionStatus = "inactive";
 
-      const res = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to start checkout.");
-      }
-
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
+  if (user) {
+    const access = await getProfileAccess(supabase, user);
+    isSubscribed = access.isSubscribed;
+    subscriptionStatus = access.subscriptionStatus;
   }
 
   return (
@@ -86,15 +71,15 @@ export default function SubscribePage() {
             per month
           </p>
 
-          <button
-            onClick={handleSubscribe}
-            disabled={loading}
-            className="us-btn-primary mt-8 w-full disabled:opacity-50"
-          >
-            {loading ? "Redirecting..." : "Upgrade Now"}
-          </button>
+          {isSubscribed ? (
+            <div className="mt-8 rounded-[1.25rem] border border-[rgba(46,125,90,0.18)] bg-[rgba(46,125,90,0.1)] px-4 py-3 text-sm font-semibold text-[var(--color-success)]">
+              Pro Active · Status: {subscriptionStatus}
+            </div>
+          ) : null}
 
-          {error ? <p className="mt-4 text-sm text-[var(--color-danger)]">{error}</p> : null}
+          <div className="mt-8">
+            <BillingActions isSubscribed={isSubscribed} />
+          </div>
 
           <div className="us-notice-warning mt-8 p-5 text-sm">
             Invoice saves are limited to 5 total on the free plan. Once you hit
