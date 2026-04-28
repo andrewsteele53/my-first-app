@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { invoiceUi } from "@/lib/invoice-ui";
 import {
@@ -17,6 +18,7 @@ function getQuoteTitle(quote: QuoteRecord, index: number) {
 }
 
 export default function SavedQuotesPage() {
+  const router = useRouter();
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [message, setMessage] = useState("");
 
@@ -35,11 +37,21 @@ export default function SavedQuotesPage() {
     setQuotes(next.saved);
   }
 
-  function convertAndRefresh(id: string) {
-    const result = convertQuoteToInvoice(id);
+  function convertAndRefresh(quote: QuoteRecord) {
+    const isAlreadyConverted = quote.status === "Converted" || Boolean(quote.convertedInvoiceId);
+    const allowDuplicate =
+      !isAlreadyConverted ||
+      window.confirm(
+        "This quote has already been converted to an invoice. Create another invoice from it?"
+      );
+
+    if (!allowDuplicate) return;
+
+    const result = convertQuoteToInvoice(quote.id, { allowDuplicate: isAlreadyConverted });
     if (!result) return;
     setQuotes(getSavedQuotes());
     setMessage(`Converted ${result.quote.quoteNumber} to invoice ${result.invoice.invoiceNumber}.`);
+    router.push(`/invoices/saved#${encodeURIComponent(result.invoice.id)}`);
   }
 
   return (
@@ -99,7 +111,14 @@ export default function SavedQuotesPage() {
               <div key={quote.id} className={invoiceUi.heroCard}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold">{getQuoteTitle(quote, index)}</h2>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="text-2xl font-bold">{getQuoteTitle(quote, index)}</h2>
+                      {quote.status === "Converted" || quote.convertedInvoiceId ? (
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-700">
+                          Converted to Invoice
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="mt-3 space-y-1 text-sm text-[var(--color-text-secondary)]">
                       <p>Quote Type: {quote.quoteType}</p>
                       <p>Status: {quote.status}</p>
@@ -112,15 +131,15 @@ export default function SavedQuotesPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    {quote.status !== "Converted" ? (
-                      <button
-                        type="button"
-                        onClick={() => convertAndRefresh(quote.id)}
-                        className="us-btn-primary px-4 py-2"
-                      >
-                        Convert to Invoice
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => convertAndRefresh(quote)}
+                      className="us-btn-primary px-4 py-2"
+                    >
+                      {quote.status === "Converted" || quote.convertedInvoiceId
+                        ? "Convert Again"
+                        : "Convert to Invoice"}
+                    </button>
                     <button
                       type="button"
                       onClick={() => moveToTrashAndRefresh(quote.id)}

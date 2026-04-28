@@ -190,7 +190,7 @@ export default function SavedInvoicesPage() {
         ) : (
           <section className="mt-8 space-y-4">
             {savedInvoices.map((invoice, index) => (
-              <div key={invoice.id} className={invoiceUi.heroCard}>
+              <div key={invoice.id} id={invoice.id} className={invoiceUi.heroCard}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <h2 className="text-2xl font-bold">{getInvoiceTitle(invoice, index)}</h2>
@@ -201,6 +201,12 @@ export default function SavedInvoicesPage() {
                       <p>Total: {formatInvoiceCurrency(invoice.total || 0)}</p>
                       <p>Payment Status: {invoice.paymentStatus}</p>
                       <p>Payment Method: {invoice.paymentMethod || "Not recorded"}</p>
+                      {invoice.convertedFromQuoteId || invoice.converted_from_quote_id ? (
+                        <p>
+                          Converted From Quote ID:{" "}
+                          {invoice.convertedFromQuoteId || invoice.converted_from_quote_id}
+                        </p>
+                      ) : null}
                       {invoice.paidDate ? (
                         <p>
                           Paid Date: {new Date(invoice.paidDate).toLocaleDateString()}

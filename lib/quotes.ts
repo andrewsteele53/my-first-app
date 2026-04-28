@@ -268,10 +268,17 @@ export function emptyQuoteTrash() {
   return [];
 }
 
-export function convertQuoteToInvoice(quoteId: string) {
+type ConvertQuoteOptions = {
+  allowDuplicate?: boolean;
+};
+
+export function convertQuoteToInvoice(quoteId: string, options: ConvertQuoteOptions = {}) {
   const saved = getSavedQuotes();
   const quote = saved.find((item) => item.id === quoteId);
   if (!quote) return null;
+  if (quote.status === "Converted" && quote.convertedInvoiceId && !options.allowDuplicate) {
+    return null;
+  }
 
   const invoice: InvoiceRecord = {
     id: crypto.randomUUID(),
@@ -295,6 +302,8 @@ export function convertQuoteToInvoice(quoteId: string) {
     paymentMethod: "",
     paymentNotes: `Converted from quote ${quote.quoteNumber}`,
     createdAt: new Date().toISOString(),
+    convertedFromQuoteId: quote.id,
+    converted_from_quote_id: quote.id,
     details: {
       convertedFromQuoteId: quote.id,
       convertedFromQuoteNumber: quote.quoteNumber,

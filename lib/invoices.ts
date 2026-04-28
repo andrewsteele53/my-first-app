@@ -29,6 +29,8 @@ export type InvoiceRecord = {
   paymentMethod: PaymentMethod | "";
   paymentNotes: string;
   createdAt: string;
+  convertedFromQuoteId?: string;
+  converted_from_quote_id?: string;
   details?: Record<string, string>;
   moveToTrashAfter?: string;
   trashedAt?: string;
@@ -214,6 +216,18 @@ function normalizeInvoiceRecord(
     paymentNotes:
       typeof record.paymentNotes === "string" ? record.paymentNotes : "",
     createdAt,
+    convertedFromQuoteId:
+      typeof record.convertedFromQuoteId === "string"
+        ? record.convertedFromQuoteId
+        : typeof record.converted_from_quote_id === "string"
+        ? record.converted_from_quote_id
+        : undefined,
+    converted_from_quote_id:
+      typeof record.converted_from_quote_id === "string"
+        ? record.converted_from_quote_id
+        : typeof record.convertedFromQuoteId === "string"
+        ? record.convertedFromQuoteId
+        : undefined,
     details: normalizeDetails(record.details),
     moveToTrashAfter: kind === "saved" ? moveToTrashAfter : undefined,
     trashedAt: kind === "trash" ? trashedAt ?? new Date().toISOString() : undefined,
