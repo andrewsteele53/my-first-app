@@ -23,25 +23,124 @@ export default async function Dashboard() {
   if (!user) {
     return (
       <main className="us-page">
-        <div className="us-shell">
+        <div className="us-shell space-y-8">
           <section className="us-hero">
-            <div className="mx-auto flex max-w-3xl flex-col items-center py-8 text-center">
-              <p className="us-kicker">Unified Steele</p>
-              <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-[var(--color-text)] md:text-6xl">
-                Your Business. Unified.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">
-                Invoices, quotes, leads, and sales mapping built for service pros.
-                Start with a 30-day trial. Cancel anytime.
-              </p>
-              <div className="mt-8 flex w-full max-w-sm flex-col items-center gap-4">
-                <Link href="/auth/signup" className="us-btn-primary w-full">
-                  Get Started Free
-                </Link>
-                <Link href="/login" className="us-link text-sm">
+            <div className="grid items-center gap-8 lg:grid-cols-[1.08fr_0.92fr]">
+              <div className="min-w-0">
+                <p className="us-kicker">Unified Steele</p>
+                <h1 className="mt-4 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight text-[var(--color-text)] sm:text-5xl md:text-6xl">
+                  Running a service business shouldn&apos;t be this complicated.
+                </h1>
+                <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)] md:text-lg">
+                  Invoices, quotes, leads, and sales tools built for contractors,
+                  cleaners, landscapers, mechanics, and service pros — all in one
+                  simple dashboard.
+                </p>
+                <div className="mt-7 flex w-full flex-col gap-3 sm:max-w-lg sm:flex-row">
+                  <Link href="/auth/signup" className="us-btn-primary w-full sm:flex-1">
+                    Get Started Free
+                  </Link>
+                  <Link href="#how-it-works" className="us-btn-secondary w-full sm:flex-1">
+                    See How It Works
+                  </Link>
+                </div>
+                <p className="mt-4 text-sm font-semibold text-[var(--color-text-secondary)]">
+                  30-day trial. Cancel anytime. Built for real service businesses.
+                </p>
+                <Link href="/login" className="us-link mt-5 inline-flex text-sm">
                   Log In
                 </Link>
               </div>
+
+              <div className="w-full min-w-0 rounded-[1.6rem] border border-[var(--color-border)] bg-white p-4 shadow-[var(--shadow-card-soft)] sm:p-5">
+                <div className="rounded-[1.2rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">
+                        Dashboard
+                      </p>
+                      <p className="mt-1 text-lg font-bold text-[var(--color-text)]">
+                        Today&apos;s Work
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-[rgba(46,125,90,0.18)] bg-[rgba(46,125,90,0.1)] px-3 py-1 text-xs font-semibold text-[var(--color-success)]">
+                      Organized
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {[
+                      { label: "Invoices", value: "$4,280" },
+                      { label: "Quotes", value: "12 open" },
+                      { label: "Leads", value: "8 new" },
+                      { label: "Sales Mapping", value: "3 areas" },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-[1rem] border border-[var(--color-border)] bg-white p-4 shadow-[var(--shadow-card-soft)]"
+                      >
+                        <p className="text-sm font-semibold text-[var(--color-text-secondary)]">
+                          {item.label}
+                        </p>
+                        <p className="mt-2 text-xl font-bold text-[var(--color-text)]">
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 rounded-[1rem] border border-[var(--color-border)] bg-white p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-sm font-semibold text-[var(--color-text)]">
+                        Follow-up due
+                      </p>
+                      <p className="whitespace-nowrap text-sm font-bold text-[var(--color-primary)]">
+                        2 jobs
+                      </p>
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-[var(--color-section)]">
+                      <div className="h-2 w-2/3 rounded-full bg-[var(--color-primary)]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="how-it-works" className="scroll-mt-8">
+            <div className="mb-5">
+              <p className="us-kicker">How it works</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
+                Built to keep service work moving.
+              </h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {[
+                {
+                  title: "Create quotes and invoices",
+                  text: "Build professional quotes and invoices fast without jumping between tools.",
+                },
+                {
+                  title: "Track leads and jobs",
+                  text: "Keep customer opportunities organized so follow-ups don't get lost.",
+                },
+                {
+                  title: "Manage growth in one place",
+                  text: "Use simple business tools designed for service pros who want to stay organized.",
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]"
+                >
+                  <h3 className="text-xl font-bold text-[var(--color-text)]">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
             </div>
           </section>
         </div>
