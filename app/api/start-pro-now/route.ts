@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/billing";
+import { getOrCreateStripeCustomer } from "@/lib/stripe-customers";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-03-25.dahlia",
@@ -44,31 +45,6 @@ async function saveSubscriptionStatus(
   if (error) {
     throw new Error(error.message);
   }
-}
-
-async function createStripeCustomerForUser(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  user: { id: string; email?: string | null }
-) {
-  const customer = await stripe.customers.create({
-    ...(user.email ? { email: user.email } : {}),
-    metadata: {
-      user_id: user.id,
-      supabase_user_id: user.id,
-      email: user.email || "",
-    },
-  });
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({ stripe_customer_id: customer.id })
-    .eq("id", user.id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return customer.id;
 }
 
 async function findTrialingSubscription(
@@ -138,16 +114,11 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const origin =
       req.headers.get("origin") || body?.origin || "http://localhost:3000";
-
-    let stripeCustomerId =
-      typeof profile?.stripe_customer_id === "string" &&
-      profile.stripe_customer_id.trim()
-        ? profile.stripe_customer_id
-        : null;
-
-    if (!stripeCustomerId) {
-      stripeCustomerId = await createStripeCustomerForUser(supabase, user);
-    }
+    const stripeCustomerId = await getOrCreateStripeCustomer(
+      stripe,
+      supabase,
+      user
+    );
 
     const profileSubscriptionId =
       typeof profile?.stripe_subscription_id === "string" &&
