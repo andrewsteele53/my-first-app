@@ -64,11 +64,11 @@ export async function POST(req: Request) {
 
     const access = await getProfileAccess(supabase, user);
 
-    if (!access.isSubscribed) {
+    if (!access.hasAiAccess) {
       return NextResponse.json(
         {
           ok: false,
-          error: "AI features are available on the paid plan only.",
+          error: "AI Assistant unlocks after your paid subscription begins.",
         },
         { status: 403 }
       );

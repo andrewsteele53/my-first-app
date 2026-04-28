@@ -29,7 +29,7 @@ export const invoiceUi = {
   statusNotice:
     "rounded-2xl border border-[rgba(183,121,31,0.25)] bg-[rgba(183,121,31,0.1)] p-4 text-sm text-[#8b5d15]",
   previewCard:
-    "mx-auto max-w-4xl rounded-[1.75rem] border border-[var(--color-border)] bg-white p-8 text-black shadow-[var(--shadow-card)]",
+    "us-preview-document",
 };
 
 export function createInvoiceNumber(prefix: string) {

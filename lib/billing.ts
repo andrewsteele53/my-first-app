@@ -1,15 +1,35 @@
 import type { AuthUser, SupabaseClient } from "@supabase/supabase-js";
-import { FREE_INVOICE_LIMIT } from "@/lib/free-invoice-limit";
+
+export type BillingAccessState = "trialing" | "active" | "restricted";
 
 export type ProfileAccess = {
+  accessState: BillingAccessState;
   isSubscribed: boolean;
+  isTrialing: boolean;
+  isActive: boolean;
+  hasProAccess: boolean;
+  hasCoreAccess: boolean;
+  hasAiAccess: boolean;
   subscriptionStatus: string;
-  freeInvoicesUsed: number;
-  freeInvoicesRemaining: number | null;
+  trialStart: string | null;
+  trialEnd: string | null;
+  trialDaysRemaining: number | null;
 };
 
 type BillingSupabaseClient = Pick<SupabaseClient, "from">;
 type BillingUser = Pick<AuthUser, "id" | "email">;
+
+export function calculateTrialDaysRemaining(trialEnd?: string | null) {
+  if (!trialEnd) return null;
+
+  const trialEndTime = new Date(trialEnd).getTime();
+  if (Number.isNaN(trialEndTime)) return null;
+
+  const msRemaining = trialEndTime - Date.now();
+  if (msRemaining <= 0) return 0;
+
+  return Math.ceil(msRemaining / (24 * 60 * 60 * 1000));
+}
 
 export async function ensureProfile(
   supabase: BillingSupabaseClient,
@@ -33,7 +53,7 @@ export async function getProfileAccess(
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("is_subscribed, subscription_status, free_invoices_used")
+    .select("subscription_status, trial_start, trial_end")
     .eq("id", user.id)
     .single();
 
@@ -41,15 +61,36 @@ export async function getProfileAccess(
     throw new Error(error?.message || "Profile not found.");
   }
 
-  const isSubscribed = !!profile.is_subscribed;
-  const freeInvoicesUsed = profile.free_invoices_used ?? 0;
+  const subscriptionStatus =
+    typeof profile.subscription_status === "string" && profile.subscription_status
+      ? profile.subscription_status
+      : "inactive";
+
+  const isTrialing = subscriptionStatus === "trialing";
+  const isActive = subscriptionStatus === "active";
+  const hasProAccess = isTrialing || isActive;
+  const accessState: BillingAccessState = isActive
+    ? "active"
+    : isTrialing
+    ? "trialing"
+    : "restricted";
+
+  const trialStart =
+    typeof profile.trial_start === "string" ? profile.trial_start : null;
+  const trialEnd =
+    typeof profile.trial_end === "string" ? profile.trial_end : null;
 
   return {
-    isSubscribed,
-    subscriptionStatus: profile.subscription_status || "inactive",
-    freeInvoicesUsed,
-    freeInvoicesRemaining: isSubscribed
-      ? null
-      : Math.max(FREE_INVOICE_LIMIT - freeInvoicesUsed, 0),
+    accessState,
+    isSubscribed: isActive,
+    isTrialing,
+    isActive,
+    hasProAccess,
+    hasCoreAccess: hasProAccess,
+    hasAiAccess: isActive,
+    subscriptionStatus,
+    trialStart,
+    trialEnd,
+    trialDaysRemaining: calculateTrialDaysRemaining(trialEnd),
   };
 }

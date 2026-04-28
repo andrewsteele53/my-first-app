@@ -316,3 +316,202 @@ button {
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
+
+.us-preview-frame {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 1.75rem;
+  padding: 1rem;
+  box-shadow: var(--shadow-card);
+}
+
+.us-preview-document {
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
+  border: 1px solid #d7e0ea;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 1.5rem;
+  padding: 1rem;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+}
+
+.us-preview-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 1.25rem;
+}
+
+.us-preview-table {
+  width: 100%;
+  min-width: 42rem;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.us-preview-table th,
+.us-preview-table td {
+  padding: 0.85rem 1rem;
+}
+
+.us-preview-table th {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.us-preview-table tbody tr,
+.us-preview-table tfoot tr {
+  border-top: 1px solid #e2e8f0;
+}
+
+.us-preview-money {
+  white-space: nowrap;
+}
+
+.us-preview-total {
+  width: 100%;
+  border: 1px solid rgba(47, 93, 138, 0.22);
+  background: rgba(47, 93, 138, 0.08);
+  color: #1e3c59;
+  border-radius: 1.25rem;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .us-preview-frame {
+    padding: 1.5rem;
+  }
+
+  .us-preview-document {
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .us-preview-table-wrap {
+    overflow-x: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .us-preview-table,
+  .us-preview-table tbody,
+  .us-preview-table tfoot,
+  .us-preview-table tr,
+  .us-preview-table td {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .us-preview-table thead {
+    display: none;
+  }
+
+  .us-preview-table tbody tr {
+    border: 1px solid #e2e8f0;
+    border-radius: 1.1rem;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+    margin-bottom: 0.85rem;
+    overflow: hidden;
+  }
+
+  .us-preview-table tbody td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid #edf2f7;
+    padding: 0.75rem 0.9rem;
+    text-align: right;
+  }
+
+  .us-preview-table tbody td:first-child {
+    border-top: 0;
+    display: block;
+    text-align: left;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .us-preview-table tbody td:first-child::before {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #64748b;
+    content: "Service";
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .us-preview-table tbody td:nth-child(2)::before {
+    color: #64748b;
+    content: "Qty";
+    font-weight: 800;
+  }
+
+  .us-preview-table tbody td:nth-child(3)::before {
+    color: #64748b;
+    content: "Unit price";
+    font-weight: 800;
+  }
+
+  .us-preview-table tbody td:nth-child(4)::before {
+    color: #64748b;
+    content: "Line total";
+    font-weight: 800;
+  }
+
+  .us-preview-table tbody tr:has(td[colspan]) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    box-shadow: none;
+  }
+
+  .us-preview-table tbody tr:has(td[colspan]) td {
+    width: auto;
+    border-top: 0;
+  }
+
+  .us-preview-table tbody tr:has(td[colspan]) td:first-child {
+    font-weight: 700;
+  }
+
+  .us-preview-table tbody tr:has(td[colspan]) td:first-child::before {
+    content: "";
+    display: none;
+  }
+
+  .us-preview-table tfoot tr {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid rgba(47, 93, 138, 0.22);
+    border-radius: 1.1rem;
+    background: rgba(47, 93, 138, 0.08);
+    color: #1e3c59;
+    padding: 0.9rem;
+  }
+
+  .us-preview-table tfoot td {
+    width: auto;
+    padding: 0;
+    text-align: right;
+  }
+}

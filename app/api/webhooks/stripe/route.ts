@@ -11,6 +11,9 @@ type ProfileUpdate = {
   subscription_status: string;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
+  trial_start?: string | null;
+  trial_end?: string | null;
+  current_period_end?: string | null;
 };
 
 function createSupabaseAdminClient() {
@@ -34,6 +37,9 @@ function withoutStripeColumns(update: ProfileUpdate) {
   const baseUpdate: ProfileUpdate = { ...update };
   delete baseUpdate.stripe_customer_id;
   delete baseUpdate.stripe_subscription_id;
+  delete baseUpdate.trial_start;
+  delete baseUpdate.trial_end;
+  delete baseUpdate.current_period_end;
 
   return baseUpdate;
 }
@@ -115,6 +121,33 @@ function getSubscriptionId(
   return typeof value === "string" ? value : value?.id ?? null;
 }
 
+function timestampToIso(value?: number | null) {
+  return typeof value === "number" ? new Date(value * 1000).toISOString() : null;
+}
+
+function getSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
+  const subscriptionWithPeriod = subscription as Stripe.Subscription & {
+    current_period_end?: number | null;
+  };
+
+  return timestampToIso(subscriptionWithPeriod.current_period_end);
+}
+
+function buildSubscriptionProfileUpdate(
+  subscription: Stripe.Subscription,
+  customerId: string | null
+): ProfileUpdate {
+  return {
+    is_subscribed: isActiveStatus(subscription.status),
+    subscription_status: subscription.status,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: subscription.id,
+    trial_start: timestampToIso(subscription.trial_start),
+    trial_end: timestampToIso(subscription.trial_end),
+    current_period_end: getSubscriptionPeriodEnd(subscription),
+  };
+}
+
 async function handleCheckoutSessionCompleted(
   session: Stripe.Checkout.Session
 ) {
@@ -125,19 +158,20 @@ async function handleCheckoutSessionCompleted(
 
   const customerId = getCustomerId(session.customer);
   const subscriptionId = getSubscriptionId(session.subscription);
-  let subscriptionStatus = "active";
+  let update: ProfileUpdate = {
+    is_subscribed: false,
+    subscription_status: "inactive",
+    stripe_customer_id: customerId,
+    stripe_subscription_id: subscriptionId,
+    trial_start: null,
+    trial_end: null,
+    current_period_end: null,
+  };
 
   if (subscriptionId) {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    subscriptionStatus = subscription.status;
+    update = buildSubscriptionProfileUpdate(subscription, customerId);
   }
-
-  const update: ProfileUpdate = {
-    is_subscribed: isActiveStatus(subscriptionStatus),
-    subscription_status: subscriptionStatus,
-    stripe_customer_id: customerId,
-    stripe_subscription_id: subscriptionId,
-  };
 
   if (userId) {
     await updateProfileById(userId, update);
@@ -160,12 +194,7 @@ async function handleCheckoutSessionCompleted(
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   const customerId = getCustomerId(subscription.customer);
   const userId = subscription.metadata?.user_id || subscription.metadata?.supabase_user_id;
-  const update: ProfileUpdate = {
-    is_subscribed: isActiveStatus(subscription.status),
-    subscription_status: subscription.status,
-    stripe_customer_id: customerId,
-    stripe_subscription_id: subscription.id,
-  };
+  const update = buildSubscriptionProfileUpdate(subscription, customerId);
 
   if (userId) {
     await updateProfileById(userId, update);

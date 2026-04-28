@@ -137,16 +137,16 @@ export default function InvoicesPage() {
           <section className="mt-6 rounded-[1.75rem] border border-[rgba(47,93,138,0.22)] bg-[rgba(47,93,138,0.1)] p-7 shadow-[var(--shadow-card)]">
             <p className="text-sm text-[var(--color-primary)]">Invoice Access</p>
             <p className="mt-2 text-2xl font-bold text-[var(--color-text)]">
-              {status.isSubscribed
-                ? "Unlimited invoices"
-                : `${status.remaining} of ${status.limit} free invoices remaining`}
+              {status.hasCoreAccess ? "Unlimited invoices" : "Invoice access locked"}
             </p>
             <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-              {status.isSubscribed
-                ? "Your subscription is active, so you can save unlimited invoices."
-                : "Free users can save 5 invoices total across all invoice types. Upgrade unlocks unlimited saves."}
+              {status.isTrialing
+                ? "Your trial includes full invoice access."
+                : status.isActive
+                ? "Your active plan includes full invoice access."
+                : "Start your trial or subscribe to save invoices."}
             </p>
-            {!status.isSubscribed && status.remaining === 0 ? (
+            {!status.hasCoreAccess ? (
               <Link
                 href="/subscribe"
                 className="us-btn-primary mt-4 px-4 py-2"

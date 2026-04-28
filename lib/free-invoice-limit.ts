@@ -1,1 +1,0 @@
-export const FREE_INVOICE_LIMIT = 5;

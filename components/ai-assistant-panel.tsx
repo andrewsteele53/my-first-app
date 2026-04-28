@@ -91,7 +91,7 @@ export default function AIAssistantPanel({
     );
   }
 
-  if (!accessStatus.isSubscribed) {
+  if (!accessStatus.hasAiAccess) {
     return <AIUpgradeCard />;
   }
 

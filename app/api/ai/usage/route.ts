@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getProfileAccess } from "@/lib/billing";
 
 const AI_MONTHLY_LIMIT = 20;
 
@@ -15,6 +16,15 @@ export async function GET() {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
+      );
+    }
+
+    const access = await getProfileAccess(supabase, user);
+
+    if (!access.hasAiAccess) {
+      return NextResponse.json(
+        { error: "AI Assistant unlocks after your paid subscription begins." },
+        { status: 403 }
       );
     }
 

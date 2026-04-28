@@ -355,6 +355,79 @@ export default function QuoteFormPage({
             </div>
           </aside>
         </div>
+
+        <section className="us-preview-frame mt-8">
+          <div className={invoiceUi.previewCard}>
+            <div className="flex flex-col gap-4 border-b border-slate-300 pb-6 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Quote</p>
+                <h2 className="mt-2 text-3xl font-bold">{quoteType}</h2>
+                <p className="mt-2 text-sm text-slate-600">{projectTitle}</p>
+              </div>
+              <div className="text-left text-sm sm:text-right">
+                <p className="font-semibold">Quote #</p>
+                <p>{quoteNumber}</p>
+                <p className="mt-2 font-semibold">Status</p>
+                <p>{status}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-6 md:grid-cols-2">
+              <div>
+                <p className="text-sm font-semibold text-slate-500">Customer</p>
+                <p className="mt-2 text-lg font-semibold">
+                  {customerName || "Customer name"}
+                </p>
+                <p className="mt-1">{customerPhone || "Phone"}</p>
+                <p className="mt-1">{customerEmail || "Email"}</p>
+                <p className="mt-1">{serviceAddress || "Service address"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-500">Scope</p>
+                <p className="mt-2 text-sm leading-6">
+                  {notes || "Scope details, exclusions, timeline, and approval notes."}
+                </p>
+              </div>
+            </div>
+
+            <div className="us-preview-table-wrap mt-8">
+              <table className="us-preview-table">
+                <thead>
+                  <tr>
+                    <th>Service</th>
+                    <th className="text-right">Qty</th>
+                    <th className="text-right">Unit Price</th>
+                    <th className="text-right">Line Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, index) => (
+                    <tr key={index} className="border-t border-slate-200">
+                      <td className="px-4 py-3">{item.description || "Service item"}</td>
+                      <td className="px-4 py-3 text-right">{item.quantity}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap us-preview-money">
+                        ${item.price.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap us-preview-money">
+                        ${(item.quantity * item.price).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="font-bold">
+                    <td className="px-4 py-4 text-base" colSpan={3}>
+                      Estimated Total
+                    </td>
+                    <td className="px-4 py-4 text-right text-base whitespace-nowrap us-preview-money">
+                      ${total.toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );

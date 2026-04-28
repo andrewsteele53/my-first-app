@@ -15,10 +15,15 @@ function requiresAuth(pathname: string) {
 
 function requiresSubscription(pathname: string) {
   return (
+    pathname.startsWith("/invoices") ||
+    pathname.startsWith("/quotes") ||
     pathname.startsWith("/leads") ||
-    pathname.startsWith("/mapping") ||
-    pathname.startsWith("/ai")
+    pathname.startsWith("/mapping")
   );
+}
+
+function requiresActiveSubscription(pathname: string) {
+  return pathname.startsWith("/ai");
 }
 
 function isAuthPage(pathname: string) {
@@ -31,7 +36,7 @@ function redirectTo(request: NextRequest, pathname: string) {
   return NextResponse.redirect(url);
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   try {
     const pathname = request.nextUrl.pathname;
 
@@ -73,7 +78,7 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (userError && requiresAuth(pathname)) {
-      console.error("Middleware auth error:", userError);
+      console.error("Proxy auth error:", userError);
       return redirectTo(request, "/login");
     }
 
@@ -85,28 +90,35 @@ export async function middleware(request: NextRequest) {
       return redirectTo(request, "/");
     }
 
-    if (user && requiresSubscription(pathname)) {
+    if (user && (requiresSubscription(pathname) || requiresActiveSubscription(pathname))) {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("is_subscribed")
+        .select("subscription_status")
         .eq("id", user.id)
         .single();
 
       if (profileError) {
-        console.error("Middleware subscription check error:", profileError);
+        console.error("Proxy subscription check error:", profileError);
         return NextResponse.next();
       }
 
-      const isSubscribed = Boolean(profile?.is_subscribed);
+      const subscriptionStatus = profile?.subscription_status || "inactive";
+      const hasCoreAccess =
+        subscriptionStatus === "trialing" || subscriptionStatus === "active";
+      const hasAiAccess = subscriptionStatus === "active";
 
-      if (!isSubscribed) {
+      if (requiresActiveSubscription(pathname) && !hasAiAccess) {
+        return redirectTo(request, "/subscribe");
+      }
+
+      if (requiresSubscription(pathname) && !hasCoreAccess) {
         return redirectTo(request, "/subscribe");
       }
     }
 
     return response;
   } catch (error) {
-    console.error("Middleware error:", error);
+    console.error("Proxy error:", error);
     return NextResponse.next();
   }
 }

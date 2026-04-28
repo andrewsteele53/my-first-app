@@ -69,6 +69,7 @@ export async function POST(req: Request) {
         email: user.email || "",
       },
       subscription_data: {
+        trial_period_days: 30,
         metadata: {
           user_id: user.id,
           supabase_user_id: user.id,

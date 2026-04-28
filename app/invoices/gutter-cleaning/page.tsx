@@ -632,12 +632,12 @@ export default function GutterCleaningInvoicePage() {
           </aside>
         </div>
 
-        <section className="mt-8 rounded-[1.9rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-card)]">
+        <section className="us-preview-frame mt-8">
           <div
             ref={invoiceRef}
-            className="mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-8 text-black"
+            className={invoiceUi.previewCard}
           >
-            <div className="flex items-start justify-between border-b border-slate-300 pb-6">
+            <div className="flex flex-col gap-4 border-b border-slate-300 pb-6 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
                   Invoice
@@ -646,7 +646,7 @@ export default function GutterCleaningInvoicePage() {
                 <p className="mt-2 text-sm text-slate-600">{projectTitle}</p>
               </div>
 
-              <div className="text-right text-sm">
+              <div className="text-left text-sm sm:text-right">
                 <p className="font-semibold">Invoice #</p>
                 <p>{invoiceNumber}</p>
                 <p className="mt-2 font-semibold">Date</p>
@@ -687,23 +687,23 @@ export default function GutterCleaningInvoicePage() {
               </div>
             </div>
 
-            <div className="mt-8 overflow-hidden rounded-2xl border border-slate-300">
-              <table className="w-full text-left text-sm">
+            <div className="us-preview-table-wrap mt-8">
+              <table className="us-preview-table">
                 <thead className="bg-slate-100">
                   <tr>
                     <th className="px-4 py-3">Service</th>
-                    <th className="px-4 py-3 text-right">Qty</th>
-                    <th className="px-4 py-3 text-right">Price</th>
-                    <th className="px-4 py-3 text-right">Amount</th>
+                    <th className="px-4 py-3 text-right whitespace-nowrap us-preview-money">Qty</th>
+                    <th className="px-4 py-3 text-right whitespace-nowrap us-preview-money">Price</th>
+                    <th className="px-4 py-3 text-right whitespace-nowrap us-preview-money">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item, index) => (
                     <tr key={index} className="border-t border-slate-200">
                       <td className="px-4 py-3">{item.description || "Service item"}</td>
-                      <td className="px-4 py-3 text-right">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right">${item.price.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap us-preview-money">{item.quantity}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap us-preview-money">${item.price.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap us-preview-money">
                         ${(item.quantity * item.price).toFixed(2)}
                       </td>
                     </tr>
@@ -713,14 +713,14 @@ export default function GutterCleaningInvoicePage() {
                     <td className="px-4 py-3" colSpan={3}>
                       Tax
                     </td>
-                    <td className="px-4 py-3 text-right">${taxAmount.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap us-preview-money">${taxAmount.toFixed(2)}</td>
                   </tr>
 
                   <tr className="border-t border-slate-200">
                     <td className="px-4 py-3" colSpan={3}>
                       Deposit Paid
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap us-preview-money">
                       -${depositAmount.toFixed(2)}
                     </td>
                   </tr>
@@ -730,7 +730,7 @@ export default function GutterCleaningInvoicePage() {
                     <td className="px-4 py-4 text-base font-bold" colSpan={3}>
                       Balance Due
                     </td>
-                    <td className="px-4 py-4 text-right text-base font-bold">
+                    <td className="px-4 py-4 text-right text-base font-bold whitespace-nowrap us-preview-money">
                       ${balanceDue.toFixed(2)}
                     </td>
                   </tr>

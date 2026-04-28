@@ -11,13 +11,22 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
 
   let isSubscribed = false;
+  let isTrialing = false;
   let subscriptionStatus = "inactive";
+  let billingMessage = "Start your 30-day free trial.";
   const userEmail = user?.email || "No email found";
 
   if (user) {
     const access = await getProfileAccess(supabase, user);
     isSubscribed = access.isSubscribed;
+    isTrialing = access.isTrialing;
     subscriptionStatus = access.subscriptionStatus;
+    const trialDaysRemaining = access.trialDaysRemaining ?? 0;
+    billingMessage = access.isTrialing
+      ? `You're on a 30-day free trial. ${trialDaysRemaining} days remaining.`
+      : access.isActive
+      ? "Your Pro subscription is active."
+      : "Start your 30-day free trial.";
   }
 
   return (
@@ -37,12 +46,12 @@ export default async function SettingsPage() {
               <div className="mt-5 flex flex-wrap gap-3">
                 <span
                   className={`inline-flex rounded-full border px-4 py-2 text-sm font-semibold ${
-                    isSubscribed
+                    isSubscribed || isTrialing
                       ? "border-[rgba(46,125,90,0.18)] bg-[rgba(46,125,90,0.1)] text-[var(--color-success)]"
                       : "border-[rgba(183,121,31,0.18)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]"
                   }`}
                 >
-                  {isSubscribed ? "Active Plan" : "No Active Plan"}
+                  {isSubscribed ? "Active Plan" : isTrialing ? "Trial Plan" : "No Active Plan"}
                 </span>
 
                 <span className="inline-flex rounded-full border border-[var(--color-border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] shadow-[var(--shadow-card-soft)]">
@@ -56,15 +65,15 @@ export default async function SettingsPage() {
                 Billing Access
               </p>
               <p className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
-                {isSubscribed ? "$14.99/month" : "Not Subscribed"}
+                {isSubscribed ? "$14.99/month" : isTrialing ? "30-Day Trial" : "Not Subscribed"}
               </p>
               <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
-                Use the billing portal to manage your subscription, payment
-                method, and account billing details.
+                {billingMessage} AI Assistant unlocks after your paid
+                subscription begins.
               </p>
 
               <div className="mt-5">
-                <BillingActions isSubscribed={isSubscribed} />
+                <BillingActions isSubscribed={isSubscribed} isTrialing={isTrialing} />
               </div>
             </div>
           </div>

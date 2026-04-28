@@ -4,8 +4,14 @@ import BillingActions from "./billing-actions";
 import LogoutButton from "@/components/logout-button";
 import DashboardAIWidget from "@/components/dashboard-ai-widget";
 import DashboardInsights from "@/components/dashboard-insights";
-import { FREE_INVOICE_LIMIT } from "@/lib/free-invoice-limit";
 import { getProfileAccess } from "@/lib/billing";
+import { createPageMetadata, siteDescriptionWithTagline, siteTitle } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: siteTitle,
+  description: siteDescriptionWithTagline,
+  path: "/",
+});
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -25,7 +31,8 @@ export default async function Dashboard() {
                 Your Business. Unified.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">
-                Invoices, leads, and sales mapping built for service pros. Try free — 5 invoices on us. No credit card required.
+                Invoices, quotes, leads, and sales mapping built for service pros.
+                Start with a 30-day trial. No credit card required.
               </p>
               <div className="mt-8 flex w-full max-w-sm flex-col items-center gap-4">
                 <Link href="/auth/signup" className="us-btn-primary w-full">
@@ -51,32 +58,39 @@ export default async function Dashboard() {
   const displayName = metadataName.trim() || user.email?.split("@")[0] || "Your";
   const access = await getProfileAccess(supabase, user);
   const isSubscribed = access.isSubscribed;
+  const hasCoreAccess = access.hasCoreAccess;
+  const hasAiAccess = access.hasAiAccess;
   const subscriptionStatus = access.subscriptionStatus;
-  const freeInvoicesUsed = access.freeInvoicesUsed;
-
-  const freeInvoicesRemaining = Math.max(
-    FREE_INVOICE_LIMIT - freeInvoicesUsed,
-    0
-  );
+  const trialDaysRemaining = access.trialDaysRemaining ?? 0;
+  const planLabel = access.isActive
+    ? "Active Plan"
+    : access.isTrialing
+    ? "Trial Plan"
+    : "Restricted";
+  const billingMessage = access.isTrialing
+    ? `You're on a 30-day free trial. ${trialDaysRemaining} days remaining.`
+    : access.isActive
+    ? "Your Pro subscription is active."
+    : "Start your 30-day free trial.";
 
   const stats = [
     { label: "Total Leads", value: "0", note: "Track new opportunities as they come in." },
     { label: "Won Leads", value: "0", note: "Keep an eye on converted jobs and closed work." },
     { label: "Follow Ups", value: "0", note: "Stay on top of callbacks and pending conversations." },
     {
-      label: isSubscribed ? "Invoices" : "Free Invoices Left",
-      value: isSubscribed ? "Unlimited" : String(freeInvoicesRemaining),
-      note: isSubscribed
-        ? "Your plan includes full invoice access."
-        : `${freeInvoicesRemaining} remaining before upgrade is needed.`,
+      label: "Core Access",
+      value: hasCoreAccess ? "Unlocked" : "Locked",
+      note: hasCoreAccess
+        ? "Invoices, quotes, leads, and mapping are available."
+        : "Start your trial or subscribe to unlock core tools.",
     },
   ];
 
   const sections = [
-    { title: "Invoices", description: isSubscribed ? "Create, save, and manage customer-ready invoices for every service type." : `Create up to ${FREE_INVOICE_LIMIT} free invoices before upgrading.`, href: "/invoices", cta: "Open Invoices", tone: "primary" },
+    { title: "Invoices", description: "Create, save, and manage customer-ready invoices for every service type.", href: "/invoices", cta: "Open Invoices", tone: "primary" },
     { title: "Quotes", description: "Create estimates and proposals, manage quote statuses, and convert approved quotes into invoices.", href: "/quotes", cta: "Open Quotes", tone: "primary" },
     { title: "Leads Database", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Open Leads", tone: "primary" },
-    { title: "AI Assistant", description: "Get Pro-only help with customer follow-ups, invoice wording, route planning, and daily business priorities.", href: "/ai", cta: "Open AI Assistant", tone: "secondary" },
+    { title: "AI Assistant", description: "Get paid-plan help with customer follow-ups, invoice wording, route planning, and daily business priorities.", href: "/ai", cta: "Open AI Assistant", tone: "secondary" },
     { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: "Open Mapping", tone: "secondary" },
     { title: "Support", description: "Reach support quickly if you need help with your account, billing, or day-to-day use of the app.", href: "/support", cta: "Contact Support", tone: "secondary" },
   ] as const;
@@ -91,16 +105,17 @@ export default async function Dashboard() {
               <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-[var(--color-text)] md:text-6xl">{displayName}&apos;s Business Dashboard</h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">A cleaner operating view for invoices, leads, mapping, and business follow-up.</p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">{isSubscribed ? "Active Plan" : "Starter Plan"}</span>
+                <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">{planLabel}</span>
                 <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">Status: {subscriptionStatus}</span>
-                {!isSubscribed ? <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">{freeInvoicesRemaining} of {FREE_INVOICE_LIMIT} free invoices left</span> : null}
+                {access.isTrialing ? <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">AI Assistant unlocks after your paid subscription begins.</span> : null}
               </div>
             </div>
             <div className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">Account Snapshot</p>
-              <p className="mt-3 text-2xl font-bold text-[var(--color-text)]">{isSubscribed ? "$14.99/month" : "5 Free Invoices"}</p>
+              <p className="mt-3 text-2xl font-bold text-[var(--color-text)]">{access.isTrialing ? "30-Day Trial" : isSubscribed ? "$14.99/month" : "No Active Access"}</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">{billingMessage}</p>
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                <BillingActions isSubscribed={isSubscribed} />
+                <BillingActions isSubscribed={isSubscribed} isTrialing={access.isTrialing} />
                 <Link href="/settings" className="us-btn-secondary min-w-36 text-sm">
                   Settings
                 </Link>
@@ -131,8 +146,8 @@ export default async function Dashboard() {
             </div>
           ))}
         </section>
-        <DashboardInsights isSubscribed={isSubscribed} />
-        <DashboardAIWidget context={{ isSubscribed, subscriptionStatus, freeInvoicesRemaining, stats, sections }} />
+        <DashboardInsights isSubscribed={hasAiAccess} />
+        <DashboardAIWidget context={{ isSubscribed, hasCoreAccess, hasAiAccess, subscriptionStatus, trialDaysRemaining, stats, sections }} />
       </div>
     </main>
   );

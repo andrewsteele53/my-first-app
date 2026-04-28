@@ -4,10 +4,16 @@ import { useEffect, useState } from "react";
 
 export type InvoiceAccessStatus = {
   isSubscribed: boolean;
+  isTrialing: boolean;
+  isActive: boolean;
+  hasProAccess: boolean;
+  hasCoreAccess: boolean;
+  hasAiAccess: boolean;
+  accessState: "trialing" | "active" | "restricted";
   subscriptionStatus: string;
-  used: number;
-  limit: number;
-  remaining: number | null;
+  trialStart: string | null;
+  trialEnd: string | null;
+  trialDaysRemaining: number | null;
 };
 
 export function useInvoiceAccessStatus() {
@@ -16,7 +22,7 @@ export function useInvoiceAccessStatus() {
 
   async function refresh() {
     try {
-      const res = await fetch("/api/free-invoices/status", {
+      const res = await fetch("/api/billing/access", {
         method: "GET",
         cache: "no-store",
       });

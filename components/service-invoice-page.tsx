@@ -410,18 +410,18 @@ export default function ServiceInvoicePage({ category }: Props) {
           </aside>
         </div>
 
-        <section className="mt-8 rounded-[1.9rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-card)]">
+        <section className="us-preview-frame mt-8">
           <div
             ref={invoiceRef}
-            className="mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-8 text-black"
+            className={invoiceUi.previewCard}
           >
-            <div className="flex justify-between border-b border-slate-300 pb-6">
+            <div className="flex flex-col gap-4 border-b border-slate-300 pb-6 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Invoice</p>
                 <h2 className="mt-2 text-3xl font-bold">{category.name}</h2>
                 <p className="mt-2 text-sm text-slate-600">{projectTitle}</p>
               </div>
-              <div className="text-right text-sm">
+              <div className="text-left text-sm sm:text-right">
                 <p className="font-semibold">Invoice #</p>
                 <p>{invoiceNumber}</p>
                 <p className="mt-2 font-semibold">Date</p>
@@ -447,26 +447,36 @@ export default function ServiceInvoicePage({ category }: Props) {
               </div>
             </div>
 
-            <div className="mt-8 overflow-hidden rounded-2xl border border-slate-300">
-              <table className="w-full text-left text-sm">
+            <div className="us-preview-table-wrap mt-8">
+              <table className="us-preview-table">
+                <thead>
+                  <tr>
+                    <th>Service</th>
+                    <th className="text-right">Qty</th>
+                    <th className="text-right">Unit Price</th>
+                    <th className="text-right">Line Total</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {items.map((item, index) => (
                     <tr key={index} className="border-t border-slate-200">
                       <td className="px-4 py-3">{item.description || "Service item"}</td>
                       <td className="px-4 py-3 text-right">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right">${item.price.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap us-preview-money">${item.price.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap us-preview-money">
                         ${(item.quantity * item.price).toFixed(2)}
                       </td>
                     </tr>
                   ))}
-                  <tr className="border-t-2 border-slate-400 font-bold">
-                    <td className="px-4 py-4" colSpan={3}>
+                </tbody>
+                <tfoot>
+                  <tr className="font-bold">
+                    <td className="px-4 py-4 text-base" colSpan={3}>
                       Balance Due
                     </td>
-                    <td className="px-4 py-4 text-right">${balanceDue.toFixed(2)}</td>
+                    <td className="px-4 py-4 text-right text-base whitespace-nowrap us-preview-money">${balanceDue.toFixed(2)}</td>
                   </tr>
-                </tbody>
+                </tfoot>
               </table>
             </div>
 

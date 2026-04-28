@@ -10,12 +10,20 @@ export default async function SubscribePage() {
   } = await supabase.auth.getUser();
 
   let isSubscribed = false;
+  let isTrialing = false;
   let subscriptionStatus = "inactive";
+  let billingMessage = "Start your 30-day free trial.";
 
   if (user) {
     const access = await getProfileAccess(supabase, user);
     isSubscribed = access.isSubscribed;
+    isTrialing = access.isTrialing;
     subscriptionStatus = access.subscriptionStatus;
+    billingMessage = access.isTrialing
+      ? `You're on a 30-day free trial. ${access.trialDaysRemaining ?? 0} days remaining.`
+      : access.isActive
+      ? "Your Pro subscription is active."
+      : "Start your 30-day free trial.";
   }
 
   return (
@@ -27,17 +35,16 @@ export default async function SubscribePage() {
           </p>
           <h1 className="mt-4 text-4xl font-bold tracking-tight">Upgrade to Pro</h1>
           <p className="mt-4 max-w-2xl text-base text-[var(--color-text-secondary)]">
-            You have reached the free invoice limit or you are ready to unlock the
-            full SaaS toolkit. Upgrade for unlimited invoice saves and premium
-            business tools.
+            {billingMessage} AI Assistant unlocks after your paid subscription
+            begins.
           </p>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <div className="rounded-[1.5rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-5">
               <p className="text-sm font-medium text-[var(--color-text-secondary)]">Starter</p>
-              <p className="mt-2 text-2xl font-bold">5 Free Invoices</p>
+              <p className="mt-2 text-2xl font-bold">30-Day Trial</p>
               <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-                Best for trying the app before upgrading.
+                Full core access to invoices, quotes, leads, and mapping.
               </p>
             </div>
 
@@ -45,7 +52,7 @@ export default async function SubscribePage() {
               <p className="text-sm font-medium text-[var(--color-primary)]">Pro</p>
               <p className="mt-2 text-2xl font-bold">$14.99 / month</p>
               <p className="mt-2 text-sm text-[var(--color-text)]">
-                Unlimited invoice saves plus premium business tools.
+                Full core access plus AI business tools.
               </p>
             </div>
           </div>
@@ -53,11 +60,11 @@ export default async function SubscribePage() {
           <div className="mt-8 rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6">
             <h2 className="text-xl font-bold">What you unlock</h2>
             <ul className="mt-4 space-y-3 text-sm text-[var(--color-text)]">
-              <li>Unlimited invoice saves across every invoice type</li>
+              <li>Invoices and quotes across every service type</li>
               <li>Leads database access</li>
               <li>Sales mapping tools</li>
+              <li>AI assistant access while your paid subscription is active</li>
               <li>Billing management portal</li>
-              <li>Future premium upgrades and features</li>
             </ul>
           </div>
         </section>
@@ -70,20 +77,23 @@ export default async function SubscribePage() {
           <p className="mt-2 text-base text-[var(--color-text-secondary)]">
             per month
           </p>
+          <p className="mt-4 text-sm leading-6 text-[var(--color-text-secondary)]">
+            {billingMessage}
+          </p>
 
-          {isSubscribed ? (
+          {isSubscribed || isTrialing ? (
             <div className="mt-8 rounded-[1.25rem] border border-[rgba(46,125,90,0.18)] bg-[rgba(46,125,90,0.1)] px-4 py-3 text-sm font-semibold text-[var(--color-success)]">
-              Pro Active · Status: {subscriptionStatus}
+              {isSubscribed ? "Pro Active" : "Trial Active"} - Status: {subscriptionStatus}
             </div>
           ) : null}
 
           <div className="mt-8">
-            <BillingActions isSubscribed={isSubscribed} />
+            <BillingActions isSubscribed={isSubscribed} isTrialing={isTrialing} />
           </div>
 
           <div className="us-notice-warning mt-8 p-5 text-sm">
-            Invoice saves are limited to 5 total on the free plan. Once you hit
-            the cap, new saves are locked until you upgrade.
+            Trial users can use core tools, but AI endpoints are available only
+            while a paid subscription is active.
           </div>
 
           <div className="mt-8 flex flex-wrap gap-4">

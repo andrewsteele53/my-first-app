@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("stripe_customer_id, is_subscribed")
+      .select("stripe_customer_id, subscription_status")
       .eq("id", user.id)
       .single();
 

@@ -5,9 +5,10 @@ import { useState } from "react";
 
 type Props = {
   isSubscribed: boolean;
+  isTrialing?: boolean;
 };
 
-export default function BillingActions({ isSubscribed }: Props) {
+export default function BillingActions({ isSubscribed, isTrialing = false }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -40,7 +41,7 @@ export default function BillingActions({ isSubscribed }: Props) {
 
   return (
     <div className="flex flex-col items-start gap-2">
-      {isSubscribed ? (
+      {isSubscribed || isTrialing ? (
         <button
           onClick={handleManageBilling}
           disabled={loading}
@@ -53,7 +54,7 @@ export default function BillingActions({ isSubscribed }: Props) {
           href="/subscribe"
           className="us-btn-primary min-w-36 text-sm"
         >
-          Subscribe Now
+          Start Free Trial
         </Link>
       )}
 
