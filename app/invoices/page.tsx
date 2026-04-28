@@ -6,6 +6,7 @@ import InvoiceStorageNote from "@/components/invoice-storage-note";
 import { useInvoiceAccessStatus } from "@/hooks/use-invoice-access-status";
 import { getSavedInvoices, getTrashedInvoices } from "@/lib/invoices";
 import { invoiceUi } from "@/lib/invoice-ui";
+import { getInvoiceServiceCategories } from "@/lib/service-categories";
 
 type InvoiceCard = {
   title: string;
@@ -17,66 +18,12 @@ type InvoiceCard = {
 const HIDDEN_SECTION_KEY = "unified-steele-hidden-invoice-sections";
 
 const invoiceTypes: InvoiceCard[] = [
-  {
-    title: "Automotive Mechanic Invoices",
-    description: "Diagnostics, repairs, shop labor, parts, and maintenance invoices.",
-    href: "/invoices/automotive-mechanic",
-    key: "automotive-mechanic",
-  },
-  {
-    title: "Airline Mechanic Invoices",
-    description: "Aviation maintenance, inspections, labor, and parts invoices.",
-    href: "/invoices/airline-mechanic",
-    key: "airline-mechanic",
-  },
-  {
-    title: "Power Sports Mechanic Invoices",
-    description: "Motorcycle, ATV, UTV, jet ski, and small engine repair invoices.",
-    href: "/invoices/power-sports-mechanic",
-    key: "power-sports-mechanic",
-  },
-  {
-    title: "Construction Invoices",
-    description: "Larger projects with multiple line items, deposits, and materials.",
-    href: "/invoices/construction",
-    key: "construction",
-  },
-  {
-    title: "Handyman Invoices",
-    description: "Repairs, installs, maintenance tasks, and hourly job work.",
-    href: "/invoices/handyman",
-    key: "handyman",
-  },
-  {
-    title: "Power Washing Invoices",
-    description: "Driveways, siding, patios, decks, fences, and exterior washing.",
-    href: "/invoices/powerwashing",
-    key: "powerwashing",
-  },
-  {
-    title: "Gutter Cleaning Invoices",
-    description: "Gutter cleanings, downspout clearing, minor gutter repairs, and add-ons.",
-    href: "/invoices/gutter-cleaning",
-    key: "gutter-cleaning",
-  },
-  {
-    title: "Cleaning Invoices",
-    description: "Residential and commercial cleaning jobs with supplies, labor, and add-ons.",
-    href: "/invoices/cleaning",
-    key: "cleaning",
-  },
-  {
-    title: "Car Detailing Invoices",
-    description: "Interior, exterior, full details, wash packages, and add-on services.",
-    href: "/invoices/car-detailing",
-    key: "car-detailing",
-  },
-  {
-    title: "Lawn Care Invoices",
-    description: "Mowing, edging, trimming, cleanup, and recurring service visits.",
-    href: "/invoices/lawn-care",
-    key: "lawn-care",
-  },
+  ...getInvoiceServiceCategories().map((category) => ({
+    title: `${category.name} Invoices`,
+    description: category.description,
+    href: `/invoices/${category.slug}`,
+    key: category.slug,
+  })),
   {
     title: "Saved Invoices",
     description: "View and manage all saved invoices.",
@@ -254,7 +201,7 @@ export default function InvoicesPage() {
                       href={type.href}
                       className="us-link mt-6 inline-block text-sm"
                     >
-                      Open section →
+                      Open section -&gt;
                     </Link>
                   </div>
                 );

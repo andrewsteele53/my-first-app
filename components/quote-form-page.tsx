@@ -12,6 +12,7 @@ type Props = {
   description: string;
   prefix: string;
   defaultItem: InvoiceLineItem;
+  defaultItems?: InvoiceLineItem[];
   tips: string[];
 };
 
@@ -21,8 +22,13 @@ export default function QuoteFormPage({
   description,
   prefix,
   defaultItem,
+  defaultItems,
   tips,
 }: Props) {
+  const initialItems = useMemo(
+    () => (defaultItems?.length ? defaultItems : [defaultItem]).map((item) => ({ ...item })),
+    [defaultItem, defaultItems]
+  );
   const [quoteNumber, setQuoteNumber] = useState(() => createInvoiceNumber(prefix));
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -33,7 +39,7 @@ export default function QuoteFormPage({
   const [status, setStatus] = useState<QuoteStatus>("Draft");
   const [taxRate, setTaxRate] = useState("0");
   const [message, setMessage] = useState("");
-  const [items, setItems] = useState<InvoiceLineItem[]>([defaultItem]);
+  const [items, setItems] = useState<InvoiceLineItem[]>(initialItems);
 
   const taxPercent = Number(taxRate) || 0;
   const subtotal = useMemo(
@@ -58,7 +64,7 @@ export default function QuoteFormPage({
 
   function removeItem(index: number) {
     const next = items.filter((_, itemIndex) => itemIndex !== index);
-    setItems(next.length ? next : [defaultItem]);
+    setItems(next.length ? next : initialItems);
   }
 
   function clearForm() {
@@ -71,7 +77,7 @@ export default function QuoteFormPage({
     setNotes("");
     setStatus("Draft");
     setTaxRate("0");
-    setItems([defaultItem]);
+    setItems(initialItems);
     setMessage("");
   }
 

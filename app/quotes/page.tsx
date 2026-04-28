@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { invoiceUi } from "@/lib/invoice-ui";
 import { getSavedQuotes, getTrashedQuotes } from "@/lib/quotes";
+import { getQuoteServiceCategories } from "@/lib/service-categories";
 
 type QuoteCard = {
   title: string;
@@ -15,66 +16,12 @@ type QuoteCard = {
 const HIDDEN_SECTION_KEY = "unified-steele-hidden-quote-sections";
 
 const quoteTypes: QuoteCard[] = [
-  {
-    title: "Automotive Mechanic Quote",
-    description: "Repair, diagnostic, parts, and shop labor estimates.",
-    href: "/quotes/automotive-mechanic",
-    key: "automotive-mechanic",
-  },
-  {
-    title: "Airline Mechanic Quote",
-    description: "Maintenance, inspection, parts, and aviation labor proposals.",
-    href: "/quotes/airline-mechanic",
-    key: "airline-mechanic",
-  },
-  {
-    title: "Power Sports Mechanic Quote",
-    description: "ATV, UTV, motorcycle, jet ski, and small engine quotes.",
-    href: "/quotes/power-sports-mechanic",
-    key: "power-sports-mechanic",
-  },
-  {
-    title: "Construction Quote",
-    description: "Project scope, labor, material, and phase estimates.",
-    href: "/quotes/construction",
-    key: "construction",
-  },
-  {
-    title: "Handyman Quote",
-    description: "Repairs, installs, maintenance, and small project proposals.",
-    href: "/quotes/handyman",
-    key: "handyman",
-  },
-  {
-    title: "Power Washing Quote",
-    description: "Exterior cleaning, concrete, siding, patio, and deck estimates.",
-    href: "/quotes/powerwashing",
-    key: "powerwashing",
-  },
-  {
-    title: "Gutter Cleaning Quote",
-    description: "Gutter cleaning, downspout, and repair estimates.",
-    href: "/quotes/gutter-cleaning",
-    key: "gutter-cleaning",
-  },
-  {
-    title: "Cleaning Quote",
-    description: "Residential and commercial cleaning proposals.",
-    href: "/quotes/cleaning",
-    key: "cleaning",
-  },
-  {
-    title: "Car Detailing Quote",
-    description: "Interior, exterior, full detail, and package estimates.",
-    href: "/quotes/car-detailing",
-    key: "car-detailing",
-  },
-  {
-    title: "Lawn Care Quote",
-    description: "Mowing, edging, cleanup, and recurring service quotes.",
-    href: "/quotes/lawn-care",
-    key: "lawn-care",
-  },
+  ...getQuoteServiceCategories().map((category) => ({
+    title: `${category.name} Quote`,
+    description: category.description,
+    href: `/quotes/${category.slug}`,
+    key: category.slug,
+  })),
   {
     title: "Saved Quotes",
     description: "Review quote statuses and convert approved quotes to invoices.",
