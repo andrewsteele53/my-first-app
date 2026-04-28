@@ -6,6 +6,7 @@ type Props = {
   isSubscribed: boolean;
   isTrialing?: boolean;
   canManageBilling?: boolean;
+  showSetupBilling?: boolean;
   showStartProNow?: boolean;
 };
 
@@ -13,9 +14,11 @@ export default function BillingActions({
   isSubscribed,
   isTrialing = false,
   canManageBilling = true,
+  showSetupBilling = false,
   showStartProNow = false,
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(false);
   const [proLoading, setProLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,8 +47,12 @@ export default function BillingActions({
 
       throw new Error("Billing portal did not return a redirect URL.");
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Something went wrong.";
       setError(
-        err instanceof Error ? err.message : "Something went wrong."
+        message.includes("Stripe customer")
+          ? "Set up billing before opening the billing portal."
+          : message
       );
     } finally {
       if (!didRedirect) {
@@ -88,6 +95,52 @@ export default function BillingActions({
     } finally {
       if (!didRedirect) {
         setLoading(false);
+      }
+    }
+  }
+
+  async function handleSetupBilling() {
+    let didRedirect = false;
+
+    try {
+      setSetupLoading(true);
+      setError("");
+
+      const customerRes = await fetch("/api/billing/create-customer", {
+        method: "POST",
+      });
+
+      const customerData = await customerRes.json().catch(() => ({}));
+
+      if (!customerRes.ok) {
+        throw new Error(customerData.error || "Could not set up billing.");
+      }
+
+      const portalRes = await fetch("/api/billing-portal", {
+        method: "POST",
+      });
+
+      const portalData = await portalRes.json().catch(() => ({}));
+
+      if (!portalRes.ok) {
+        throw new Error(
+          portalData.error || "Billing was set up, but the portal could not open."
+        );
+      }
+
+      if (!portalData.url) {
+        throw new Error("Billing portal did not return a redirect URL.");
+      }
+
+      didRedirect = true;
+      window.location.href = portalData.url;
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Something went wrong."
+      );
+    } finally {
+      if (!didRedirect) {
+        setSetupLoading(false);
       }
     }
   }
@@ -138,10 +191,21 @@ export default function BillingActions({
             <button
               type="button"
               onClick={handleManageBilling}
-              disabled={loading || proLoading}
+              disabled={loading || setupLoading || proLoading}
               className="us-btn-primary min-w-36 text-sm disabled:opacity-50"
             >
               {loading ? "Opening Portal..." : "Manage Billing"}
+            </button>
+          ) : null}
+
+          {showSetupBilling ? (
+            <button
+              type="button"
+              onClick={handleSetupBilling}
+              disabled={loading || setupLoading || proLoading}
+              className="us-btn-primary min-w-36 text-sm disabled:opacity-50"
+            >
+              {setupLoading ? "Setting Up..." : "Set Up Billing"}
             </button>
           ) : null}
 
@@ -149,7 +213,7 @@ export default function BillingActions({
             <button
               type="button"
               onClick={handleStartProNow}
-              disabled={loading || proLoading}
+              disabled={loading || setupLoading || proLoading}
               className="us-btn-secondary min-w-36 text-sm disabled:opacity-50"
             >
               {proLoading ? "Starting Pro..." : "Start Pro Now"}
@@ -160,7 +224,7 @@ export default function BillingActions({
         <button
           type="button"
           onClick={handleStartTrial}
-          disabled={loading || proLoading}
+          disabled={loading || setupLoading || proLoading}
           className="us-btn-primary min-w-36 text-sm disabled:opacity-50"
         >
           {loading ? "Starting Trial..." : "Start Free Trial"}

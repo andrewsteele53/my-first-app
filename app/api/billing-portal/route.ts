@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     if (!profile?.stripe_customer_id) {
       return NextResponse.json(
-        { error: "No Stripe customer found for this account yet." },
+        { error: "Set up billing before opening the billing portal." },
         { status: 400 }
       );
     }

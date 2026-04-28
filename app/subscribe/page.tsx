@@ -110,7 +110,8 @@ export default async function SubscribePage() {
             <BillingActions
               isSubscribed={isSubscribed}
               isTrialing={isTrialing}
-              canManageBilling={!isTrialing || hasStripeCustomer}
+              canManageBilling={hasStripeCustomer}
+              showSetupBilling={isTrialing && !hasStripeCustomer}
               showStartProNow={isTrialing}
             />
           </div>
