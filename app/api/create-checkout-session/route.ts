@@ -7,6 +7,20 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-03-25.dahlia",
 });
 
+async function createStripeCustomerForUser(user: {
+  id: string;
+  email?: string | null;
+}) {
+  return stripe.customers.create({
+    ...(user.email ? { email: user.email } : {}),
+    metadata: {
+      user_id: user.id,
+      supabase_user_id: user.id,
+      email: user.email || "",
+    },
+  });
+}
+
 export async function POST(req: Request) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -51,17 +65,38 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const origin =
       req.headers.get("origin") || body?.origin || "http://localhost:3000";
-    const existingCustomerId =
+    let stripeCustomerId =
       typeof profile?.stripe_customer_id === "string" &&
       profile.stripe_customer_id.trim()
         ? profile.stripe_customer_id
         : null;
 
+    if (!stripeCustomerId) {
+      const customer = await createStripeCustomerForUser(user);
+      stripeCustomerId = customer.id;
+
+      const { error: customerUpdateError } = await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq("id", user.id);
+
+      if (customerUpdateError) {
+        console.error("Could not save Stripe customer ID:", {
+          user_id: user.id,
+          stripe_customer_id: stripeCustomerId,
+          error: customerUpdateError,
+        });
+
+        return NextResponse.json(
+          { error: "Could not save Stripe customer for this account." },
+          { status: 500 }
+        );
+      }
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      ...(existingCustomerId
-        ? { customer: existingCustomerId }
-        : { customer_email: user.email }),
+      customer: stripeCustomerId,
       client_reference_id: user.id,
       metadata: {
         user_id: user.id,
