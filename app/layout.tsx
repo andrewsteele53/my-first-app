@@ -7,6 +7,7 @@ import {
   siteTitle,
   siteUrl,
 } from "@/lib/seo";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -49,6 +50,7 @@ export default function RootLayout({
         className="min-h-screen bg-[var(--color-app-bg)] text-[var(--color-text)] antialiased"
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
