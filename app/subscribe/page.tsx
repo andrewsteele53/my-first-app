@@ -13,6 +13,7 @@ export default async function SubscribePage() {
   let isTrialing = false;
   let subscriptionStatus = "inactive";
   let billingMessage = "Start your 30-day free trial.";
+  let hasStripeCustomer = false;
 
   if (user) {
     const access = await getProfileAccess(supabase, user);
@@ -26,6 +27,16 @@ export default async function SubscribePage() {
       : access.isActive
       ? "Your Pro subscription is active."
       : "Start your 30-day free trial.";
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", user.id)
+      .single();
+
+    hasStripeCustomer =
+      typeof profile?.stripe_customer_id === "string" &&
+      profile.stripe_customer_id.trim().length > 0;
   }
 
   return (
@@ -90,7 +101,18 @@ export default async function SubscribePage() {
           ) : null}
 
           <div className="mt-8">
-            <BillingActions isSubscribed={isSubscribed} isTrialing={isTrialing} />
+            {isTrialing ? (
+              <p className="mb-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                Need AI right away? Start Pro now and unlock the AI Assistant
+                immediately.
+              </p>
+            ) : null}
+            <BillingActions
+              isSubscribed={isSubscribed}
+              isTrialing={isTrialing}
+              canManageBilling={!isTrialing || hasStripeCustomer}
+              showStartProNow={isTrialing}
+            />
           </div>
 
           <div className="us-notice-warning mt-8 p-5 text-sm">
