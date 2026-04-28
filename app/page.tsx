@@ -61,14 +61,16 @@ export default async function Dashboard() {
   const hasCoreAccess = access.hasCoreAccess;
   const hasAiAccess = access.hasAiAccess;
   const subscriptionStatus = access.subscriptionStatus;
-  const trialDaysRemaining = access.trialDaysRemaining ?? 0;
+  const trialDaysRemaining = access.trialDaysRemaining;
   const planLabel = access.isActive
     ? "Active Plan"
     : access.isTrialing
     ? "Trial Plan"
     : "Restricted";
   const billingMessage = access.isTrialing
-    ? `You're on a 30-day free trial. ${trialDaysRemaining} days remaining.`
+    ? trialDaysRemaining === null
+      ? "Trial active. End date syncing."
+      : `You're on a 30-day free trial. ${trialDaysRemaining} days remaining.`
     : access.isActive
     ? "Your Pro subscription is active."
     : "Start your 30-day free trial.";

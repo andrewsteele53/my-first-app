@@ -20,7 +20,9 @@ export default async function SubscribePage() {
     isTrialing = access.isTrialing;
     subscriptionStatus = access.subscriptionStatus;
     billingMessage = access.isTrialing
-      ? `You're on a 30-day free trial. ${access.trialDaysRemaining ?? 0} days remaining.`
+      ? access.trialDaysRemaining === null
+        ? "Trial active. End date syncing."
+        : `You're on a 30-day free trial. ${access.trialDaysRemaining} days remaining.`
       : access.isActive
       ? "Your Pro subscription is active."
       : "Start your 30-day free trial.";

@@ -13,6 +13,7 @@ type ProfileUpdate = {
   stripe_subscription_id?: string | null;
   trial_start?: string | null;
   trial_end?: string | null;
+  trial_ends_at?: string | null;
   current_period_end?: string | null;
 };
 
@@ -39,6 +40,7 @@ function withoutStripeColumns(update: ProfileUpdate) {
   delete baseUpdate.stripe_subscription_id;
   delete baseUpdate.trial_start;
   delete baseUpdate.trial_end;
+  delete baseUpdate.trial_ends_at;
   delete baseUpdate.current_period_end;
 
   return baseUpdate;
@@ -137,14 +139,26 @@ function buildSubscriptionProfileUpdate(
   subscription: Stripe.Subscription,
   customerId: string | null
 ): ProfileUpdate {
+  const trialEndsAt = timestampToIso(subscription.trial_end);
+  const currentPeriodEnd = getSubscriptionPeriodEnd(subscription);
+
+  console.log("Stripe subscription sync:", {
+    subscription_id: subscription.id,
+    status: subscription.status,
+    trial_end: subscription.trial_end ?? null,
+    trial_ends_at: trialEndsAt,
+    current_period_end: currentPeriodEnd,
+  });
+
   return {
     is_subscribed: isActiveStatus(subscription.status),
     subscription_status: subscription.status,
     stripe_customer_id: customerId,
     stripe_subscription_id: subscription.id,
     trial_start: timestampToIso(subscription.trial_start),
-    trial_end: timestampToIso(subscription.trial_end),
-    current_period_end: getSubscriptionPeriodEnd(subscription),
+    trial_end: trialEndsAt,
+    trial_ends_at: trialEndsAt,
+    current_period_end: currentPeriodEnd,
   };
 }
 
@@ -165,6 +179,7 @@ async function handleCheckoutSessionCompleted(
     stripe_subscription_id: subscriptionId,
     trial_start: null,
     trial_end: null,
+    trial_ends_at: null,
     current_period_end: null,
   };
 

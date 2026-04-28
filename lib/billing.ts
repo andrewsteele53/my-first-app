@@ -13,6 +13,7 @@ export type ProfileAccess = {
   subscriptionStatus: string;
   trialStart: string | null;
   trialEnd: string | null;
+  trialEndsAt: string | null;
   trialDaysRemaining: number | null;
 };
 
@@ -22,13 +23,10 @@ type BillingUser = Pick<AuthUser, "id" | "email">;
 export function calculateTrialDaysRemaining(trialEnd?: string | null) {
   if (!trialEnd) return null;
 
-  const trialEndTime = new Date(trialEnd).getTime();
-  if (Number.isNaN(trialEndTime)) return null;
+  const msRemaining = new Date(trialEnd).getTime() - Date.now();
+  if (Number.isNaN(msRemaining)) return null;
 
-  const msRemaining = trialEndTime - Date.now();
-  if (msRemaining <= 0) return 0;
-
-  return Math.ceil(msRemaining / (24 * 60 * 60 * 1000));
+  return Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
 }
 
 export async function ensureProfile(
@@ -53,7 +51,7 @@ export async function getProfileAccess(
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("subscription_status, trial_start, trial_end")
+    .select("subscription_status, trial_start, trial_end, trial_ends_at")
     .eq("id", user.id)
     .single();
 
@@ -77,8 +75,12 @@ export async function getProfileAccess(
 
   const trialStart =
     typeof profile.trial_start === "string" ? profile.trial_start : null;
-  const trialEnd =
-    typeof profile.trial_end === "string" ? profile.trial_end : null;
+  const trialEndsAt =
+    typeof profile.trial_ends_at === "string"
+      ? profile.trial_ends_at
+      : typeof profile.trial_end === "string"
+      ? profile.trial_end
+      : null;
 
   return {
     accessState,
@@ -90,7 +92,8 @@ export async function getProfileAccess(
     hasAiAccess: isActive,
     subscriptionStatus,
     trialStart,
-    trialEnd,
-    trialDaysRemaining: calculateTrialDaysRemaining(trialEnd),
+    trialEnd: trialEndsAt,
+    trialEndsAt,
+    trialDaysRemaining: calculateTrialDaysRemaining(trialEndsAt),
   };
 }
