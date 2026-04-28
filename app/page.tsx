@@ -32,7 +32,7 @@ export default async function Dashboard() {
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">
                 Invoices, quotes, leads, and sales mapping built for service pros.
-                Start with a 30-day trial. No credit card required.
+                Start with a 30-day trial. Cancel anytime.
               </p>
               <div className="mt-8 flex w-full max-w-sm flex-col items-center gap-4">
                 <Link href="/auth/signup" className="us-btn-primary w-full">
