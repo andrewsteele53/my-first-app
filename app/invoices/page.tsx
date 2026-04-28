@@ -18,6 +18,24 @@ const HIDDEN_SECTION_KEY = "unified-steele-hidden-invoice-sections";
 
 const invoiceTypes: InvoiceCard[] = [
   {
+    title: "Automotive Mechanic Invoices",
+    description: "Diagnostics, repairs, shop labor, parts, and maintenance invoices.",
+    href: "/invoices/automotive-mechanic",
+    key: "automotive-mechanic",
+  },
+  {
+    title: "Airline Mechanic Invoices",
+    description: "Aviation maintenance, inspections, labor, and parts invoices.",
+    href: "/invoices/airline-mechanic",
+    key: "airline-mechanic",
+  },
+  {
+    title: "Power Sports Mechanic Invoices",
+    description: "Motorcycle, ATV, UTV, jet ski, and small engine repair invoices.",
+    href: "/invoices/power-sports-mechanic",
+    key: "power-sports-mechanic",
+  },
+  {
     title: "Construction Invoices",
     description: "Larger projects with multiple line items, deposits, and materials.",
     href: "/invoices/construction",

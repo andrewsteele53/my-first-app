@@ -74,6 +74,7 @@ export default async function Dashboard() {
 
   const sections = [
     { title: "Invoices", description: isSubscribed ? "Create, save, and manage customer-ready invoices for every service type." : `Create up to ${FREE_INVOICE_LIMIT} free invoices before upgrading.`, href: "/invoices", cta: "Open Invoices", tone: "primary" },
+    { title: "Quotes", description: "Create estimates and proposals, manage quote statuses, and convert approved quotes into invoices.", href: "/quotes", cta: "Open Quotes", tone: "primary" },
     { title: "Leads Database", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Open Leads", tone: "primary" },
     { title: "AI Assistant", description: "Get Pro-only help with customer follow-ups, invoice wording, route planning, and daily business priorities.", href: "/ai", cta: "Open AI Assistant", tone: "secondary" },
     { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: "Open Mapping", tone: "secondary" },
