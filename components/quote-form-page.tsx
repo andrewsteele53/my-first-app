@@ -230,7 +230,9 @@ export default function QuoteFormPage({
                   <div key={index} className="rounded-3xl border border-slate-200 p-5">
                     <div className="grid gap-4 md:grid-cols-12">
                       <div className="md:col-span-12">
-                        <label className="mb-2 block text-sm font-semibold">Description</label>
+                        <label className="mb-2 block text-sm font-semibold">
+                          Service Description
+                        </label>
                         <input
                           value={item.description}
                           onChange={(event) =>

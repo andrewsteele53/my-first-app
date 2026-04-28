@@ -240,46 +240,71 @@ export default function ServiceInvoicePage({ category }: Props) {
               </div>
 
               <div className="space-y-4">
-                {items.map((item, index) => (
-                  <div key={index} className="rounded-3xl border border-slate-200 p-5">
-                    <div className="grid gap-4 md:grid-cols-12">
-                      <input
-                        value={item.description}
-                        onChange={(event) =>
-                          updateItem(index, "description", event.target.value)
-                        }
-                        placeholder="Service item"
-                        className={`${invoiceUi.input} md:col-span-12`}
-                      />
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(event) =>
-                          updateItem(index, "quantity", Number(event.target.value))
-                        }
-                        className={`${invoiceUi.input} md:col-span-3`}
-                      />
-                      <input
-                        type="number"
-                        value={item.price}
-                        onChange={(event) =>
-                          updateItem(index, "price", Number(event.target.value))
-                        }
-                        className={`${invoiceUi.input} md:col-span-4`}
-                      />
-                      <div className={`${invoiceUi.readonlyBox} md:col-span-3`}>
-                        ${(item.quantity * item.price).toFixed(2)}
+                {items.map((item, index) => {
+                  const lineTotal = item.quantity * item.price;
+
+                  return (
+                    <div key={index} className="rounded-3xl border border-slate-200 p-5">
+                      <div className="grid gap-4 md:grid-cols-12">
+                        <div className="md:col-span-12">
+                          <label className="mb-2 block text-sm font-semibold">
+                            Service Description
+                          </label>
+                          <input
+                            value={item.description}
+                            onChange={(event) =>
+                              updateItem(index, "description", event.target.value)
+                            }
+                            placeholder="Service item"
+                            className={invoiceUi.input}
+                          />
+                        </div>
+
+                        <div className="md:col-span-3">
+                          <label className="mb-2 block text-sm font-semibold">Quantity</label>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(event) =>
+                              updateItem(index, "quantity", Number(event.target.value))
+                            }
+                            className={invoiceUi.input}
+                          />
+                        </div>
+
+                        <div className="md:col-span-4">
+                          <label className="mb-2 block text-sm font-semibold">
+                            Price Per Unit ($)
+                          </label>
+                          <input
+                            type="number"
+                            value={item.price}
+                            onChange={(event) =>
+                              updateItem(index, "price", Number(event.target.value))
+                            }
+                            className={invoiceUi.input}
+                          />
+                        </div>
+
+                        <div className="md:col-span-3">
+                          <label className="mb-2 block text-sm font-semibold">Line Total</label>
+                          <div className={invoiceUi.readonlyBox}>${lineTotal.toFixed(2)}</div>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="mb-2 block text-sm font-semibold">Remove</label>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(index)}
+                            className="us-btn-danger w-full px-3 py-3"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="us-btn-danger md:col-span-2"
-                      >
-                        Delete
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

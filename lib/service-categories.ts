@@ -15,13 +15,55 @@ export type ServiceCategory = {
   tips: string[];
 };
 
+export const SERVICE_CATEGORY_GROUPS = [
+  "Automotive & Mechanical",
+  "Home Services",
+  "Exterior & Property",
+  "Cleanup & Removal",
+] as const;
+
+const SERVICE_CATEGORY_ORDER = [
+  "towing",
+  "automotive-mechanic",
+  "airline-mechanic",
+  "power-sports-mechanic",
+  "car-detailing",
+  "hvac",
+  "plumbing",
+  "electrician",
+  "roofing",
+  "construction",
+  "handyman",
+  "landscaping-maintenance",
+  "lawn-care",
+  "gutter-cleaning",
+  "powerwashing",
+  "junk-removal",
+  "cleaning",
+];
+
+function compareServiceCategories(first: ServiceCategory, second: ServiceCategory) {
+  const firstGroup = SERVICE_CATEGORY_GROUPS.indexOf(
+    first.group as (typeof SERVICE_CATEGORY_GROUPS)[number]
+  );
+  const secondGroup = SERVICE_CATEGORY_GROUPS.indexOf(
+    second.group as (typeof SERVICE_CATEGORY_GROUPS)[number]
+  );
+
+  if (firstGroup !== secondGroup) {
+    return firstGroup - secondGroup;
+  }
+
+  return SERVICE_CATEGORY_ORDER.indexOf(first.slug) - SERVICE_CATEGORY_ORDER.indexOf(second.slug);
+}
+
 export const serviceCategories: ServiceCategory[] = [
   {
     id: "automotive-mechanic",
     slug: "automotive-mechanic",
     name: "Automotive Mechanic",
     description: "Diagnostics, repairs, parts, shop labor, and maintenance.",
-    group: "Mechanic",
+    group: "Automotive & Mechanical",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "AUTO",
@@ -35,7 +77,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "airline-mechanic",
     name: "Airline Mechanic",
     description: "Aviation maintenance, inspections, parts, and mechanic labor.",
-    group: "Mechanic",
+    group: "Automotive & Mechanical",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "AIR",
@@ -49,7 +91,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "power-sports-mechanic",
     name: "Power Sports Mechanic",
     description: "ATV, UTV, motorcycle, jet ski, and small engine service.",
-    group: "Mechanic",
+    group: "Automotive & Mechanical",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "PSM",
@@ -63,7 +105,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "construction",
     name: "Construction",
     description: "Project labor, materials, phases, deposits, and add-ons.",
-    group: "Building",
+    group: "Home Services",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "CONST",
@@ -91,7 +133,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "cleaning",
     name: "Cleaning",
     description: "Residential and commercial cleaning jobs, supplies, and add-ons.",
-    group: "Cleaning",
+    group: "Cleanup & Removal",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "CLEAN",
@@ -105,7 +147,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "powerwashing",
     name: "Power Washing",
     description: "Exterior cleaning for concrete, siding, patios, decks, and fences.",
-    group: "Exterior Services",
+    group: "Exterior & Property",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "WASH",
@@ -119,7 +161,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "gutter-cleaning",
     name: "Gutter Cleaning",
     description: "Gutter cleaning, downspout clearing, minor repairs, and add-ons.",
-    group: "Exterior Services",
+    group: "Exterior & Property",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "GUTTER",
@@ -133,7 +175,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "lawn-care",
     name: "Lawn Care",
     description: "Mowing, edging, trimming, cleanup, and recurring yard services.",
-    group: "Outdoor Services",
+    group: "Exterior & Property",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "LAWN",
@@ -147,7 +189,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "car-detailing",
     name: "Car Detailing",
     description: "Interior, exterior, full detail, wash packages, and add-ons.",
-    group: "Automotive",
+    group: "Automotive & Mechanical",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "DETAIL",
@@ -161,7 +203,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "towing",
     name: "Towing",
     description: "Tows, roadside service, mileage, hook-up fees, and after-hours calls.",
-    group: "Roadside Services",
+    group: "Automotive & Mechanical",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "TOW",
@@ -218,7 +260,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "junk-removal",
     name: "Junk Removal",
     description: "Load size, labor, disposal fees, heavy items, and cleanouts.",
-    group: "Hauling",
+    group: "Cleanup & Removal",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "JUNK",
@@ -237,7 +279,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "roofing",
     name: "Roofing",
     description: "Inspections, repairs, materials, labor, and roofing project work.",
-    group: "Building",
+    group: "Home Services",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "ROOF",
@@ -275,7 +317,7 @@ export const serviceCategories: ServiceCategory[] = [
     slug: "landscaping-maintenance",
     name: "Landscaping and Maintenance",
     description: "Lawn maintenance, mulch, beds, trimming, cleanup, and outdoor upkeep.",
-    group: "Outdoor Services",
+    group: "Exterior & Property",
     supportsInvoices: true,
     supportsQuotes: true,
     invoicePrefix: "LAND",
@@ -292,11 +334,15 @@ export const serviceCategories: ServiceCategory[] = [
 ];
 
 export function getInvoiceServiceCategories() {
-  return serviceCategories.filter((category) => category.supportsInvoices);
+  return serviceCategories
+    .filter((category) => category.supportsInvoices)
+    .sort(compareServiceCategories);
 }
 
 export function getQuoteServiceCategories() {
-  return serviceCategories.filter((category) => category.supportsQuotes);
+  return serviceCategories
+    .filter((category) => category.supportsQuotes)
+    .sort(compareServiceCategories);
 }
 
 export function getServiceCategory(slug: string) {

@@ -6,13 +6,14 @@ import InvoiceStorageNote from "@/components/invoice-storage-note";
 import { useInvoiceAccessStatus } from "@/hooks/use-invoice-access-status";
 import { getSavedInvoices, getTrashedInvoices } from "@/lib/invoices";
 import { invoiceUi } from "@/lib/invoice-ui";
-import { getInvoiceServiceCategories } from "@/lib/service-categories";
+import { getInvoiceServiceCategories, SERVICE_CATEGORY_GROUPS } from "@/lib/service-categories";
 
 type InvoiceCard = {
   title: string;
   description: string;
   href: string;
   key: string;
+  group?: string;
 };
 
 const HIDDEN_SECTION_KEY = "unified-steele-hidden-invoice-sections";
@@ -23,6 +24,7 @@ const invoiceTypes: InvoiceCard[] = [
     description: category.description,
     href: `/invoices/${category.slug}`,
     key: category.slug,
+    group: category.group,
   })),
   {
     title: "Saved Invoices",
@@ -81,6 +83,20 @@ export default function InvoicesPage() {
   const hiddenInvoiceTypes = useMemo(
     () => invoiceTypes.filter((type) => hiddenSections.includes(type.key)),
     [hiddenSections]
+  );
+
+  const visibleServiceGroups = useMemo(
+    () =>
+      SERVICE_CATEGORY_GROUPS.map((group) => ({
+        group,
+        items: visibleInvoiceTypes.filter((type) => type.group === group),
+      })).filter((section) => section.items.length > 0),
+    [visibleInvoiceTypes]
+  );
+
+  const visibleUtilityTypes = useMemo(
+    () => visibleInvoiceTypes.filter((type) => !type.group),
+    [visibleInvoiceTypes]
   );
 
   if (!loaded) {
@@ -164,48 +180,44 @@ export default function InvoicesPage() {
               </p>
             </div>
           ) : (
-            <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {visibleInvoiceTypes.map((type) => {
-                const isSaved = type.key === "saved";
-                const isTrash = type.key === "trash";
-
-                return (
-                  <div key={type.key} className={invoiceUi.heroCard}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h2 className="text-2xl font-bold">{type.title}</h2>
-                        {(isSaved || isTrash) ? (
-                          <p
-                            className={`mt-2 text-sm font-semibold ${
-                              isSaved ? "text-emerald-600" : "text-red-600"
-                            }`}
-                          >
-                            {isSaved ? `${savedCount} saved` : `${trashCount} in trash`}
-                          </p>
-                        ) : null}
-                        <p className="mt-3 text-[var(--color-text-secondary)]">
-                          {type.description}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => updateHiddenSections([...hiddenSections, type.key])}
-                        className="us-btn-primary px-3 py-2 text-sm"
-                      >
-                        Hide
-                      </button>
-                    </div>
-
-                    <Link
-                      href={type.href}
-                      className="us-link mt-6 inline-block text-sm"
-                    >
-                      Open section -&gt;
-                    </Link>
+            <div className="mt-6 space-y-8">
+              {visibleServiceGroups.map((section) => (
+                <div key={section.group}>
+                  <h3 className="text-lg font-bold text-[var(--color-text)]">
+                    {section.group}
+                  </h3>
+                  <div className="mt-4 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {section.items.map((type) => (
+                      <InvoiceSectionCard
+                        key={type.key}
+                        type={type}
+                        hiddenSections={hiddenSections}
+                        savedCount={savedCount}
+                        trashCount={trashCount}
+                        onHide={updateHiddenSections}
+                      />
+                    ))}
                   </div>
-                );
-              })}
+                </div>
+              ))}
+
+              {visibleUtilityTypes.length > 0 ? (
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--color-text)]">Saved & Trash</h3>
+                  <div className="mt-4 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {visibleUtilityTypes.map((type) => (
+                      <InvoiceSectionCard
+                        key={type.key}
+                        type={type}
+                        hiddenSections={hiddenSections}
+                        savedCount={savedCount}
+                        trashCount={trashCount}
+                        onHide={updateHiddenSections}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
         </section>
@@ -249,5 +261,56 @@ export default function InvoicesPage() {
         <InvoiceStorageNote className="mt-8" />
       </div>
     </main>
+  );
+}
+
+type InvoiceSectionCardProps = {
+  type: InvoiceCard;
+  hiddenSections: string[];
+  savedCount: number;
+  trashCount: number;
+  onHide: (next: string[]) => void;
+};
+
+function InvoiceSectionCard({
+  type,
+  hiddenSections,
+  savedCount,
+  trashCount,
+  onHide,
+}: InvoiceSectionCardProps) {
+  const isSaved = type.key === "saved";
+  const isTrash = type.key === "trash";
+
+  return (
+    <div className={invoiceUi.heroCard}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">{type.title}</h2>
+          {isSaved || isTrash ? (
+            <p
+              className={`mt-2 text-sm font-semibold ${
+                isSaved ? "text-emerald-600" : "text-red-600"
+              }`}
+            >
+              {isSaved ? `${savedCount} saved` : `${trashCount} in trash`}
+            </p>
+          ) : null}
+          <p className="mt-3 text-[var(--color-text-secondary)]">{type.description}</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onHide([...hiddenSections, type.key])}
+          className="us-btn-primary px-3 py-2 text-sm"
+        >
+          Hide
+        </button>
+      </div>
+
+      <Link href={type.href} className="us-link mt-6 inline-block text-sm">
+        Open section -&gt;
+      </Link>
+    </div>
   );
 }
