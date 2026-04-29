@@ -1,8 +1,12 @@
 import OpenAI from "openai";
 import { buildAIAssistPrompt } from "@/lib/ai/prompts";
 import {
+  type AIActionPreview,
+  type AIActionRequest,
+  type AIActionResponse,
   type AIAssistRequest,
   type AIAssistResponse,
+  normalizeAIActionPreview,
   normalizeAIAssistResults,
 } from "@/lib/ai/schemas";
 
@@ -309,5 +313,223 @@ export async function generateAIAssistance(
     };
   } catch {
     return buildFallbackResponse(request);
+  }
+}
+
+function getTextContextValue(context: AIActionRequest["context"], key: string) {
+  const value = context?.[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getDueDateFromInput(input: string) {
+  const match = input.toLowerCase().match(/due in (\d{1,3}) days?/);
+  if (!match) return undefined;
+
+  const days = Number(match[1]);
+  if (!Number.isFinite(days) || days < 0) return undefined;
+
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString();
+}
+
+function buildFallbackActionPreview(request: AIActionRequest): AIActionResponse {
+  const input = request.message;
+  const lower = input.toLowerCase();
+  const serviceType =
+    getTextContextValue(request.context, "serviceType") ||
+    (lower.includes("gutter")
+      ? "Gutter Cleaning"
+      : lower.includes("lawn")
+      ? "Lawn Care"
+      : lower.includes("roof")
+      ? "Roofing"
+      : lower.includes("tow")
+      ? "Towing"
+      : "Service");
+
+  let preview: AIActionPreview;
+
+  if (lower.includes("quote") || lower.includes("estimate")) {
+    const subtotal = lower.includes("gutter") ? 240 : 150;
+    preview = {
+      intent: "create_quote",
+      title: `${serviceType} Quote`,
+      summary: `Draft quote generated from: ${input}`,
+      data: {
+        customerName: getTextContextValue(request.context, "customerName"),
+        serviceType,
+        projectTitle: `${serviceType} Quote`,
+        lineItems: [
+          {
+            description: `${serviceType} service`,
+            quantity: 1,
+            unitPrice: subtotal,
+            total: subtotal,
+          },
+        ],
+        subtotal,
+        tax: 0,
+        taxRate: 0,
+        discount: 0,
+        total: subtotal,
+        notes: "Review scope and pricing before sending.",
+        terms: "Payment due upon completion unless otherwise agreed.",
+      },
+    };
+  } else if (lower.includes("invoice")) {
+    const total = Number(input.match(/\$?(\d+(?:\.\d{1,2})?)/)?.[1]) || 150;
+    const dueDate = getDueDateFromInput(input);
+    preview = {
+      intent: "create_invoice",
+      title: `${serviceType} Invoice`,
+      summary: `Draft invoice generated from: ${input}`,
+      data: {
+        customerName: getTextContextValue(request.context, "customerName"),
+        serviceType,
+        projectTitle: `${serviceType} Invoice`,
+        lineItems: [
+          {
+            description: `${serviceType} service`,
+            quantity: 1,
+            unitPrice: total,
+            total,
+          },
+        ],
+        subtotal: total,
+        tax: 0,
+        taxRate: 0,
+        discount: 0,
+        total,
+        dueDate,
+        dueTerms: dueDate
+          ? `Due ${new Date(dueDate).toLocaleDateString()}`
+          : "Due upon receipt.",
+        notes: "Review details before sending.",
+        terms: "Due upon receipt.",
+      },
+    };
+  } else if (lower.includes("lead")) {
+    preview = {
+      intent: "create_lead",
+      title: "New Lead",
+      summary: `Lead draft generated from: ${input}`,
+      data: {
+        businessName: input.replace(/^add a lead for/i, "").trim() || "New Lead",
+        city: lower.includes("schaumburg") ? "Schaumburg" : "",
+        serviceType,
+        leadSource: "AI Assistant",
+        status: "New",
+        priority: lower.includes("quickbooks") ? "high" : "medium",
+        notes: input,
+      },
+    };
+  } else if (lower.includes("mapping") || lower.includes("route") || lower.includes("near")) {
+    preview = {
+      intent: "create_sales_mapping_note",
+      title: "Sales Mapping Notes",
+      summary: `Mapping notes generated from: ${input}`,
+      data: {
+        title: "Sales Mapping Notes",
+        location: lower.includes("schaumburg") ? "Schaumburg" : "",
+        businessType: serviceType,
+        targetCustomer: "Service businesses that may need organized invoicing and follow-up.",
+        routeNotes: input,
+        outreachNotes: "Use a short introduction focused on reducing admin work and keeping records organized.",
+        priority: "medium",
+        status: "new",
+      },
+    };
+  } else if (lower.includes("follow-up") || lower.includes("follow up") || lower.includes("message")) {
+    preview = {
+      intent: "write_follow_up_message",
+      title: "Follow-Up Message",
+      summary: "Short professional follow-up message.",
+      data: {
+        channel: "sms",
+        message:
+          "Hi, just following up to see if you had any questions or wanted to discuss next steps. Happy to help when the timing is right.",
+      },
+    };
+  } else {
+    preview = {
+      intent: "general_assistant",
+      title: "Business Assistant",
+      summary: "Here is a practical next step based on your request.",
+      data: {
+        response:
+          "Turn this into a specific customer, quote, invoice, lead, mapping note, or follow-up request and I can generate a preview for you to review before saving.",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    mode: "action",
+    preview,
+    provider: "fallback",
+  };
+}
+
+function buildAIActionPrompt(request: AIActionRequest) {
+  return {
+    system:
+      "You are the Unified Steele AI Action Assistant for a service-business SaaS app. Detect the user's intent and return only valid JSON. Never save records. Generate a preview for the user to review. Supported intents: create_quote, create_invoice, create_lead, create_sales_mapping_note, write_follow_up_message, general_assistant. Avoid legal, tax, accounting, or financial advice. Use professional service-business wording. For quotes/invoices, include customer details if provided, serviceType, projectTitle, lineItems with description/quantity/unitPrice/total, subtotal, tax, taxRate, discount, total, notes, and terms. For invoices, include dueDate when a due date is clear, otherwise dueTerms='Due upon receipt.'. For leads, include businessName, contactName, phone, email, address, city, serviceType, leadSource, status, priority, estimatedValue, notes, followUpDate when clear. For mapping notes, include title, location, businessType, targetCustomer, routeNotes, outreachNotes, priority, status. For follow-up messages, include channel, subject if email, and message. If asked to turn a quote into an invoice, use supplied quote context if present and set intent create_invoice.",
+    user: JSON.stringify({
+      message: request.message,
+      currentDate: new Date().toISOString(),
+      context: request.context || {},
+      outputShape: {
+        intent: "create_quote",
+        title: "Short preview title",
+        summary: "One sentence summary.",
+        data: {},
+      },
+    }),
+  };
+}
+
+export async function generateAIActionPreview(
+  request: AIActionRequest
+): Promise<AIActionResponse> {
+  const client = getOpenAIClient();
+
+  if (!client) {
+    return buildFallbackActionPreview(request);
+  }
+
+  const prompt = buildAIActionPrompt(request);
+
+  try {
+    const response = await client.responses.create({
+      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+      input: [
+        {
+          role: "system",
+          content: [{ type: "input_text", text: prompt.system }],
+        },
+        {
+          role: "user",
+          content: [{ type: "input_text", text: prompt.user }],
+        },
+      ],
+      max_output_tokens: 1800,
+    });
+
+    const parsed = extractJson(response.output_text || "");
+    const preview = normalizeAIActionPreview(parsed);
+
+    if (!preview) {
+      return buildFallbackActionPreview(request);
+    }
+
+    return {
+      ok: true,
+      mode: "action",
+      preview,
+      provider: "openai",
+    };
+  } catch {
+    return buildFallbackActionPreview(request);
   }
 }

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import AIActionPreviewCard from "@/components/ai-action-preview-card";
+import { getSavedQuotes } from "@/lib/quotes";
+import type { AIActionPreview } from "@/lib/ai/schemas";
 
 type AIUsage = {
   used: number;
@@ -13,9 +16,11 @@ type AIUsage = {
 export default function AIAssistantPage() {
   const [message, setMessage] = useState("");
   const [answer, setAnswer] = useState("");
+  const [actionPreview, setActionPreview] = useState<AIActionPreview | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [usage, setUsage] = useState<AIUsage | null>(null);
+  const [statusMessage, setStatusMessage] = useState("");
 
   async function refreshUsage() {
     try {
@@ -60,6 +65,8 @@ export default function AIAssistantPage() {
     event.preventDefault();
     setError("");
     setAnswer("");
+    setActionPreview(null);
+    setStatusMessage("");
 
     const trimmedMessage = message.trim();
 
@@ -76,7 +83,26 @@ export default function AIAssistantPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: trimmedMessage }),
+        body: JSON.stringify({
+          mode: "action",
+          message: trimmedMessage,
+          context: {
+            savedQuotes: getSavedQuotes().slice(0, 8).map((quote) => ({
+              id: quote.id,
+              quoteNumber: quote.quoteNumber,
+              customerName: quote.customerName,
+              quoteType: quote.quoteType,
+              projectTitle: quote.projectTitle,
+              items: quote.items,
+              subtotal: quote.subtotal,
+              taxRate: quote.taxRate,
+              taxAmount: quote.taxAmount,
+              total: quote.total,
+              notes: quote.notes,
+              status: quote.status,
+            })),
+          },
+        }),
       });
 
       const data = await response.json();
@@ -85,7 +111,12 @@ export default function AIAssistantPage() {
         throw new Error(data.error || "AI request failed.");
       }
 
-      setAnswer(data.answer || "No answer was returned.");
+      if (data.mode === "action" && data.preview) {
+        setActionPreview(data.preview);
+      } else {
+        setAnswer(data.answer || "No answer was returned.");
+      }
+
       await refreshUsage();
     } catch (err) {
       setError(
@@ -109,8 +140,9 @@ export default function AIAssistantPage() {
                 Service Business Assistant
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)]">
-                Ask for help with invoices, lead follow-ups, sales mapping,
-                customer messages, or what to prioritize next.
+                Ask for help creating quotes, invoices, leads, sales mapping
+                notes, follow-up messages, or next-step business plans. AI
+                previews everything first so you decide what gets saved.
               </p>
             </div>
 
@@ -131,7 +163,7 @@ export default function AIAssistantPage() {
                 id="ai-message"
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Example: Help me write a follow-up text for a pressure washing lead who asked for pricing last week."
+                placeholder="Example: Create a quote for gutter cleaning: 2-story house, 180 linear feet, 4 downspouts."
                 className="us-textarea min-h-[160px]"
               />
               {usage ? (
@@ -146,12 +178,42 @@ export default function AIAssistantPage() {
               disabled={loading}
               className="us-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Thinking..." : "Ask AI Assistant"}
+              {loading ? "Thinking..." : "Start Running Your Business Smarter"}
             </button>
           </form>
 
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              "Make an invoice for John Smith for lawn care, $150, due in 7 days.",
+              "Add a lead for Mike's Towing in Schaumburg. They use QuickBooks and may need invoicing.",
+              "Write a follow-up message for a roofing contractor who hasn't responded.",
+              "Create sales mapping notes for towing companies near Schaumburg.",
+            ].map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => setMessage(suggestion)}
+                className="rounded-full border border-[var(--color-border)] bg-white px-3 py-2 text-left text-xs font-semibold text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+
           {error ? (
             <div className="us-notice-danger mt-5 text-sm">{error}</div>
+          ) : null}
+
+          {statusMessage ? (
+            <div className="us-notice-info mt-5 text-sm">{statusMessage}</div>
+          ) : null}
+
+          {actionPreview ? (
+            <AIActionPreviewCard
+              preview={actionPreview}
+              onCancel={() => setActionPreview(null)}
+              onSaved={setStatusMessage}
+            />
           ) : null}
 
           {answer ? (

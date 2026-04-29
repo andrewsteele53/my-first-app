@@ -74,6 +74,105 @@ export type AIErrorResponse = {
   error: string;
 };
 
+export const AI_ACTION_INTENTS = [
+  "create_quote",
+  "create_invoice",
+  "create_lead",
+  "create_sales_mapping_note",
+  "write_follow_up_message",
+  "general_assistant",
+] as const;
+
+export type AIActionIntent = (typeof AI_ACTION_INTENTS)[number];
+
+export type AIActionLineItem = {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+};
+
+export type AIActionDocumentData = {
+  customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  serviceAddress?: string;
+  serviceType: string;
+  projectTitle?: string;
+  lineItems: AIActionLineItem[];
+  subtotal: number;
+  tax: number;
+  taxRate?: number;
+  discount?: number;
+  total: number;
+  dueDate?: string;
+  dueTerms?: string;
+  notes?: string;
+  terms?: string;
+  sourceQuoteId?: string;
+  sourceQuoteNumber?: string;
+};
+
+export type AIActionLeadData = {
+  businessName: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  serviceType?: string;
+  leadSource?: string;
+  status?: string;
+  priority?: string;
+  estimatedValue?: number;
+  notes?: string;
+  followUpDate?: string;
+};
+
+export type AIActionMappingData = {
+  title: string;
+  location: string;
+  businessType: string;
+  targetCustomer: string;
+  routeNotes: string;
+  outreachNotes: string;
+  priority: string;
+  status: string;
+};
+
+export type AIActionMessageData = {
+  channel: "sms" | "email";
+  message: string;
+  subject?: string;
+};
+
+export type AIActionData =
+  | AIActionDocumentData
+  | AIActionLeadData
+  | AIActionMappingData
+  | AIActionMessageData
+  | { response: string };
+
+export type AIActionPreview = {
+  intent: AIActionIntent;
+  title: string;
+  summary: string;
+  data: AIActionData;
+};
+
+export type AIActionResponse = {
+  ok: true;
+  mode: "action";
+  preview: AIActionPreview;
+  provider: "openai" | "fallback";
+};
+
+export type AIActionRequest = {
+  mode: "action";
+  message: string;
+  context?: AIContext;
+};
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -81,6 +180,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function sanitizeString(value: unknown, maxLength: number) {
   if (typeof value !== "string") return "";
   return value.trim().slice(0, maxLength);
+}
+
+function sanitizeOptionalString(value: unknown, maxLength: number) {
+  const sanitized = sanitizeString(value, maxLength);
+  return sanitized || undefined;
+}
+
+function sanitizeNumber(value: unknown, fallback = 0) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? Math.max(numberValue, 0) : fallback;
 }
 
 function sanitizeContext(context: unknown): AIContext | undefined {
@@ -144,6 +253,180 @@ export function validateAIAssistRequest(body: unknown):
       input,
       context,
     },
+  };
+}
+
+export function validateAIActionRequest(body: unknown):
+  | { ok: true; data: AIActionRequest }
+  | { ok: false; error: string } {
+  if (!isPlainObject(body)) {
+    return { ok: false, error: "Invalid request payload." };
+  }
+
+  const mode = sanitizeString(body.mode, 20);
+  const message = sanitizeString(body.message, 3000);
+  const context = sanitizeContext(body.context);
+
+  if (mode !== "action") {
+    return { ok: false, error: "Invalid AI action mode." };
+  }
+
+  if (!message) {
+    return { ok: false, error: "Please describe what you want AI to create." };
+  }
+
+  return { ok: true, data: { mode, message, context } };
+}
+
+function isValidAIActionIntent(intent: string): intent is AIActionIntent {
+  return (AI_ACTION_INTENTS as readonly string[]).includes(intent);
+}
+
+function normalizeActionLineItems(rawLineItems: unknown): AIActionLineItem[] {
+  if (!Array.isArray(rawLineItems)) return [];
+
+  return rawLineItems
+    .map((rawItem): AIActionLineItem | null => {
+      if (!isPlainObject(rawItem)) return null;
+
+      const description = sanitizeString(rawItem.description, 180);
+      if (!description) return null;
+
+      const quantity = Math.max(sanitizeNumber(rawItem.quantity, 1), 1);
+      const unitPrice = sanitizeNumber(rawItem.unitPrice ?? rawItem.price, 0);
+      const total = sanitizeNumber(rawItem.total, quantity * unitPrice);
+
+      return {
+        description,
+        quantity,
+        unitPrice,
+        total,
+      };
+    })
+    .filter((item): item is AIActionLineItem => Boolean(item))
+    .slice(0, 12);
+}
+
+function normalizeIsoDate(value: unknown): string | undefined {
+  const dateString = sanitizeString(value, 80);
+  if (!dateString) return undefined;
+
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+
+  return parsed.toISOString();
+}
+
+function normalizeDocumentData(rawData: unknown): AIActionDocumentData {
+  const data = isPlainObject(rawData) ? rawData : {};
+  const lineItems = normalizeActionLineItems(data.lineItems);
+  const subtotal =
+    sanitizeNumber(data.subtotal, lineItems.reduce((sum, item) => sum + item.total, 0));
+  const tax = sanitizeNumber(data.tax ?? data.taxAmount, 0);
+  const discount = sanitizeNumber(data.discount, 0);
+  const total = sanitizeNumber(data.total, Math.max(subtotal + tax - discount, 0));
+
+  return {
+    customerName: sanitizeString(data.customerName, 140),
+    customerEmail: sanitizeOptionalString(data.customerEmail ?? data.email, 180),
+    customerPhone: sanitizeOptionalString(data.customerPhone ?? data.phone, 80),
+    serviceAddress: sanitizeOptionalString(data.serviceAddress ?? data.address, 240),
+    serviceType: sanitizeString(data.serviceType, 120) || "Service",
+    projectTitle: sanitizeOptionalString(data.projectTitle, 180),
+    lineItems,
+    subtotal,
+    tax,
+    taxRate: sanitizeNumber(data.taxRate, 0),
+    discount,
+    total,
+    dueDate: normalizeIsoDate(data.dueDate),
+    dueTerms: sanitizeOptionalString(data.dueTerms, 160),
+    notes: sanitizeOptionalString(data.notes, 1200),
+    terms: sanitizeOptionalString(data.terms, 800),
+    sourceQuoteId: sanitizeOptionalString(data.sourceQuoteId, 120),
+    sourceQuoteNumber: sanitizeOptionalString(data.sourceQuoteNumber, 120),
+  };
+}
+
+function normalizeLeadData(rawData: unknown): AIActionLeadData {
+  const data = isPlainObject(rawData) ? rawData : {};
+
+  return {
+    businessName:
+      sanitizeString(data.businessName ?? data.customerName ?? data.name, 160) ||
+      "New Lead",
+    contactName: sanitizeOptionalString(data.contactName, 140),
+    phone: sanitizeOptionalString(data.phone, 80),
+    email: sanitizeOptionalString(data.email, 180),
+    address: sanitizeOptionalString(data.address, 240),
+    city: sanitizeOptionalString(data.city ?? data.location, 140),
+    serviceType: sanitizeOptionalString(data.serviceType, 120),
+    leadSource: sanitizeOptionalString(data.leadSource, 120),
+    status: sanitizeOptionalString(data.status, 80),
+    priority: sanitizeOptionalString(data.priority, 80),
+    estimatedValue: sanitizeNumber(data.estimatedValue, 0),
+    notes: sanitizeOptionalString(data.notes, 1200),
+    followUpDate: normalizeIsoDate(data.followUpDate),
+  };
+}
+
+function normalizeMappingData(rawData: unknown): AIActionMappingData {
+  const data = isPlainObject(rawData) ? rawData : {};
+
+  return {
+    title: sanitizeString(data.title, 160) || "Sales Mapping Note",
+    location: sanitizeString(data.location, 160),
+    businessType: sanitizeString(data.businessType, 140) || "Service business",
+    targetCustomer: sanitizeString(data.targetCustomer, 280),
+    routeNotes: sanitizeString(data.routeNotes, 1200),
+    outreachNotes: sanitizeString(data.outreachNotes, 1200),
+    priority: sanitizeString(data.priority, 40) || "medium",
+    status: sanitizeString(data.status, 40) || "new",
+  };
+}
+
+function normalizeMessageData(rawData: unknown): AIActionMessageData {
+  const data = isPlainObject(rawData) ? rawData : {};
+  const channel = sanitizeString(data.channel, 20);
+
+  return {
+    channel: channel === "email" ? "email" : "sms",
+    subject: sanitizeOptionalString(data.subject, 140),
+    message: sanitizeString(data.message, 2000),
+  };
+}
+
+export function normalizeAIActionPreview(rawPreview: unknown): AIActionPreview | null {
+  if (!isPlainObject(rawPreview)) return null;
+
+  const intentValue = sanitizeString(rawPreview.intent, 80);
+  const intent: AIActionIntent = isValidAIActionIntent(intentValue)
+    ? intentValue
+    : "general_assistant";
+
+  const data =
+    intent === "create_quote" ||
+    intent === "create_invoice"
+      ? normalizeDocumentData(rawPreview.data)
+      : intent === "create_lead"
+      ? normalizeLeadData(rawPreview.data)
+      : intent === "create_sales_mapping_note"
+      ? normalizeMappingData(rawPreview.data)
+      : intent === "write_follow_up_message"
+      ? normalizeMessageData(rawPreview.data)
+      : {
+          response:
+            sanitizeString(
+              isPlainObject(rawPreview.data) ? rawPreview.data.response : "",
+              2000
+            ) || sanitizeString(rawPreview.summary, 2000),
+        };
+
+  return {
+    intent,
+    title: sanitizeString(rawPreview.title, 160) || "AI Action Preview",
+    summary: sanitizeString(rawPreview.summary, 1200),
+    data,
   };
 }
 

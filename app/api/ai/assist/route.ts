@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
-import { generateAIAssistance } from "@/lib/ai/assistant";
-import { validateAIAssistRequest } from "@/lib/ai/schemas";
+import { generateAIActionPreview, generateAIAssistance } from "@/lib/ai/assistant";
+import { validateAIActionRequest, validateAIAssistRequest } from "@/lib/ai/schemas";
 import { getProfileAccess } from "@/lib/billing";
 
 function isSimpleAssistRequest(body: unknown): body is { message: string } {
@@ -11,6 +11,15 @@ function isSimpleAssistRequest(body: unknown): body is { message: string } {
     body !== null &&
     "message" in body &&
     typeof (body as { message?: unknown }).message === "string"
+  );
+}
+
+function isActionAssistRequest(body: unknown): body is { mode: "action"; message: string } {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "mode" in body &&
+    (body as { mode?: unknown }).mode === "action"
   );
 }
 
@@ -94,6 +103,20 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => null);
+
+    if (isActionAssistRequest(body)) {
+      const validated = validateAIActionRequest(body);
+
+      if (!validated.ok) {
+        return NextResponse.json(
+          { ok: false, error: validated.error },
+          { status: 400 }
+        );
+      }
+
+      const result = await generateAIActionPreview(validated.data);
+      return NextResponse.json(result);
+    }
 
     if (isSimpleAssistRequest(body)) {
       const message = body.message.trim().slice(0, 2000);
