@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { InvoiceRecord, PaymentStatus } from "@/lib/invoices";
 
@@ -16,6 +17,7 @@ export default function QuickBooksInvoiceActions({
   const [connected, setConnected] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [message, setMessage] = useState("");
+  const [showConnectModal, setShowConnectModal] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -42,6 +44,12 @@ export default function QuickBooksInvoiceActions({
   }, []);
 
   async function syncInvoice() {
+    if (!connected) {
+      setShowConnectModal(true);
+      setMessage("");
+      return;
+    }
+
     try {
       setLoading("sync");
       setMessage("");
@@ -66,15 +74,28 @@ export default function QuickBooksInvoiceActions({
         quickbooks_customer_id:
           data.quickbooks_customer_id || invoice.quickbooks_customer_id,
         quickbooks_sync_status:
-          data.quickbooks_sync_status || (data.alreadySynced ? "already_synced" : "synced"),
+          data.quickbooks_sync_status || (data.alreadySynced ? "Synced" : "Synced"),
         quickbooks_synced_at:
           data.quickbooks_synced_at || invoice.quickbooks_synced_at || new Date().toISOString(),
+        synced_at:
+          data.synced_at ||
+          data.quickbooks_synced_at ||
+          invoice.synced_at ||
+          new Date().toISOString(),
       };
 
       onInvoiceUpdate(updated);
       setMessage(data.message || "Sync successful.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Sync failed.");
+      onInvoiceUpdate({
+        ...invoice,
+        quickbooks_sync_status: "Sync Failed",
+      });
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "QuickBooks sync failed. Please try again."
+      );
     } finally {
       setLoading(null);
     }
@@ -111,6 +132,11 @@ export default function QuickBooksInvoiceActions({
         ...invoice,
         paymentStatus,
         payment_status: paymentStatus,
+        status: paymentStatus,
+        paid_at:
+          paymentStatus === "Paid" && !invoice.paid_at
+            ? new Date().toISOString()
+            : invoice.paid_at,
         paidDate:
           paymentStatus === "Paid" && !invoice.paidDate
             ? new Date().toISOString()
@@ -131,7 +157,7 @@ export default function QuickBooksInvoiceActions({
   }
 
   const synced = Boolean(invoice.quickbooks_invoice_id);
-  const disabled = loading !== null || checkingStatus || !connected;
+  const disabled = loading !== null || checkingStatus;
 
   return (
     <div className="flex flex-col gap-2">
@@ -148,7 +174,7 @@ export default function QuickBooksInvoiceActions({
             ? "Already Synced"
             : loading === "sync"
             ? "Syncing..."
-            : "Sync to QuickBooks"}
+            : "Send to QuickBooks"}
         </button>
         <button
           type="button"
@@ -163,10 +189,40 @@ export default function QuickBooksInvoiceActions({
       </div>
       {message ? (
         <p className="text-sm text-[var(--color-text-secondary)]">{message}</p>
-      ) : !checkingStatus && !connected ? (
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          Connect QuickBooks in Settings before syncing invoices.
-        </p>
+      ) : null}
+      {showConnectModal ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="quickbooks-not-connected-title"
+        >
+          <div className="w-full max-w-md rounded-[1.5rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)]">
+            <h2
+              id="quickbooks-not-connected-title"
+              className="text-2xl font-bold text-[var(--color-text)]"
+            >
+              QuickBooks not connected
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+              To sync this invoice, connect your QuickBooks account in Settings
+              first. Once connected, you&apos;ll be able to send invoices in one
+              click.
+            </p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <Link href="/settings" className="us-btn-primary w-full sm:flex-1">
+                Go to Settings
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowConnectModal(false)}
+                className="us-btn-secondary w-full sm:flex-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

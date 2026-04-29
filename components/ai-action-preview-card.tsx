@@ -178,8 +178,10 @@ export default function AIActionPreviewCard({ preview, onCancel, onSaved }: Prop
       deposit: data.discount || 0,
       total: data.total,
       balanceDue: data.total,
+      status: "Unpaid",
       paymentStatus: "Unpaid",
       payment_status: "Unpaid",
+      quickbooks_sync_status: "Not Synced",
       paidDate: "",
       paymentMethod: "",
       paymentNotes: data.dueDate

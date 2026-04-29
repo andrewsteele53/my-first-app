@@ -6,6 +6,7 @@ import InvoiceStorageNote from "@/components/invoice-storage-note";
 import QuickBooksInvoiceActions from "@/components/quickbooks-invoice-actions";
 import {
   InvoiceRecord,
+  type InvoiceStatus,
   formatInvoiceCurrency,
   getDaysUntilInvoiceTrash,
   getSavedInvoices,
@@ -22,6 +23,48 @@ function getInvoiceTitle(invoice: InvoiceRecord, index: number) {
     invoice.serviceType ||
     `Invoice ${index + 1}`
   );
+}
+
+function getInvoiceStatus(invoice: InvoiceRecord): InvoiceStatus {
+  if (invoice.paymentStatus === "Paid" || invoice.status === "Paid") return "Paid";
+
+  const dueDate = invoice.details?.dueDate;
+  if (dueDate) {
+    const dueTime = new Date(dueDate).getTime();
+    if (!Number.isNaN(dueTime) && dueTime < Date.now()) return "Overdue";
+  }
+
+  return "Unpaid";
+}
+
+function getStatusClasses(status: InvoiceStatus) {
+  switch (status) {
+    case "Paid":
+      return "border-[rgba(46,125,90,0.2)] bg-[rgba(46,125,90,0.12)] text-[var(--color-success)]";
+    case "Overdue":
+      return "border-[rgba(199,80,80,0.2)] bg-[rgba(199,80,80,0.12)] text-[var(--color-danger)]";
+    default:
+      return "border-[rgba(183,121,31,0.25)] bg-[rgba(183,121,31,0.12)] text-[var(--color-warning)]";
+  }
+}
+
+function getQuickBooksSyncStatus(invoice: InvoiceRecord) {
+  if (invoice.quickbooks_invoice_id) return "Synced";
+  if (invoice.quickbooks_sync_status === "Sync Failed") return "Sync Failed";
+  if (invoice.quickbooks_sync_status === "Synced") return "Synced";
+  return "Not Synced";
+}
+
+function getQuickBooksClasses(status: string) {
+  if (status === "Synced") {
+    return "border-[rgba(46,125,90,0.2)] bg-[rgba(46,125,90,0.12)] text-[var(--color-success)]";
+  }
+
+  if (status === "Sync Failed") {
+    return "border-[rgba(199,80,80,0.2)] bg-[rgba(199,80,80,0.12)] text-[var(--color-danger)]";
+  }
+
+  return "border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]";
 }
 
 export default function SavedInvoicesPage() {
@@ -47,6 +90,20 @@ export default function SavedInvoicesPage() {
 
   const updateInvoiceAndRefresh = (invoice: InvoiceRecord) => {
     const next = updateSavedInvoiceRecord(invoice.id, invoice);
+    setSavedInvoices(next);
+  };
+
+  const markAsPaid = (invoice: InvoiceRecord) => {
+    const paidAt = new Date().toISOString();
+    const next = updateSavedInvoiceRecord(invoice.id, {
+      ...invoice,
+      status: "Paid",
+      paymentStatus: "Paid",
+      payment_status: "Paid",
+      paid_at: paidAt,
+      paidDate: paidAt,
+      balanceDue: 0,
+    });
     setSavedInvoices(next);
   };
 
@@ -140,13 +197,17 @@ export default function SavedInvoicesPage() {
               </p>
               <h1 className="mt-2 text-4xl font-bold">Saved Invoices</h1>
               <p className="mt-3 max-w-2xl text-[var(--color-text-secondary)]">
-                View, manage, and move saved invoices into trash when no longer needed.
+                Track invoice payment status, send records to QuickBooks, and
+                keep invoice history organized.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/invoices" className={invoiceUi.navLink}>
-                Back to Invoices
+              <Link href="/quotes" className="us-btn-primary">
+                Create Quote
+              </Link>
+              <Link href="/invoices" className="us-btn-secondary">
+                Create Invoice
               </Link>
               <Link href="/invoices/trash" className={invoiceUi.navLink}>
                 Open Trash
@@ -199,16 +260,44 @@ export default function SavedInvoicesPage() {
             {savedInvoices.map((invoice, index) => (
               <div key={invoice.id} id={invoice.id} className={invoiceUi.heroCard}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold">{getInvoiceTitle(invoice, index)}</h2>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="min-w-0 text-2xl font-bold">
+                        {getInvoiceTitle(invoice, index)}
+                      </h2>
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${getStatusClasses(
+                          getInvoiceStatus(invoice)
+                        )}`}
+                      >
+                        {getInvoiceStatus(invoice)}
+                      </span>
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${getQuickBooksClasses(
+                          getQuickBooksSyncStatus(invoice)
+                        )}`}
+                      >
+                        QuickBooks: {getQuickBooksSyncStatus(invoice)}
+                      </span>
+                    </div>
                     <div className="mt-3 space-y-1 text-sm text-[var(--color-text-secondary)]">
                       <p>Service Type: {invoice.serviceType}</p>
                       <p>Created: {new Date(invoice.createdAt).toLocaleDateString()}</p>
                       <p>Days Until Trash: {getDaysUntilInvoiceTrash(invoice.moveToTrashAfter)}</p>
-                      <p>Total: {formatInvoiceCurrency(invoice.total || 0)}</p>
-                      <p>Payment Status: {invoice.paymentStatus}</p>
+                      <p className="whitespace-nowrap font-semibold text-[var(--color-text)]">
+                        Total: {formatInvoiceCurrency(invoice.total || 0)}
+                      </p>
+                      <p>Payment Status: {getInvoiceStatus(invoice)}</p>
                       {invoice.quickbooks_invoice_id ? (
                         <p>QuickBooks Invoice ID: {invoice.quickbooks_invoice_id}</p>
+                      ) : null}
+                      {invoice.quickbooks_synced_at || invoice.synced_at ? (
+                        <p>
+                          Synced:{" "}
+                          {new Date(
+                            invoice.quickbooks_synced_at || invoice.synced_at || ""
+                          ).toLocaleDateString()}
+                        </p>
                       ) : null}
                       <p>Payment Method: {invoice.paymentMethod || "Not recorded"}</p>
                       {invoice.convertedFromQuoteId || invoice.converted_from_quote_id ? (
@@ -225,7 +314,16 @@ export default function SavedInvoicesPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex w-full flex-wrap gap-3 lg:w-auto lg:justify-end">
+                    {getInvoiceStatus(invoice) !== "Paid" ? (
+                      <button
+                        type="button"
+                        onClick={() => markAsPaid(invoice)}
+                        className="us-btn-primary px-4 py-2"
+                      >
+                        Mark as Paid
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => printInvoice(invoice, index)}

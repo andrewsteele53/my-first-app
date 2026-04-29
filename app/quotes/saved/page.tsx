@@ -39,15 +39,9 @@ export default function SavedQuotesPage() {
 
   function convertAndRefresh(quote: QuoteRecord) {
     const isAlreadyConverted = quote.status === "Converted" || Boolean(quote.convertedInvoiceId);
-    const allowDuplicate =
-      !isAlreadyConverted ||
-      window.confirm(
-        "This quote has already been converted to an invoice. Create another invoice from it?"
-      );
+    if (isAlreadyConverted) return;
 
-    if (!allowDuplicate) return;
-
-    const result = convertQuoteToInvoice(quote.id, { allowDuplicate: isAlreadyConverted });
+    const result = convertQuoteToInvoice(quote.id);
     if (!result) return;
     setQuotes(getSavedQuotes());
     setMessage(`Converted ${result.quote.quoteNumber} to invoice ${result.invoice.invoiceNumber}.`);
@@ -65,13 +59,16 @@ export default function SavedQuotesPage() {
               </p>
               <h1 className="mt-2 text-4xl font-bold">Saved Quotes</h1>
               <p className="mt-3 max-w-2xl text-[var(--color-text-secondary)]">
-                Track quote status, move old quotes to trash, and convert approved
-                quotes into invoice records.
+                Start new jobs here, track quote status, and convert approved
+                quotes into invoice records without deleting the original quote.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/quotes" className={invoiceUi.navLink}>
-                Back to Quotes
+              <Link href="/quotes" className="us-btn-primary">
+                Create Quote
+              </Link>
+              <Link href="/invoices" className="us-btn-secondary">
+                Create Invoice
               </Link>
               <Link href="/quotes/trash" className={invoiceUi.navLink}>
                 Open Trash
@@ -110,9 +107,9 @@ export default function SavedQuotesPage() {
             {quotes.map((quote, index) => (
               <div key={quote.id} className={invoiceUi.heroCard}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
-                      <h2 className="text-2xl font-bold">{getQuoteTitle(quote, index)}</h2>
+                      <h2 className="min-w-0 text-2xl font-bold">{getQuoteTitle(quote, index)}</h2>
                       {quote.status === "Converted" || quote.convertedInvoiceId ? (
                         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-700">
                           Converted to Invoice
@@ -123,23 +120,42 @@ export default function SavedQuotesPage() {
                       <p>Quote Type: {quote.quoteType}</p>
                       <p>Status: {quote.status}</p>
                       <p>Customer: {quote.customerName || "Not recorded"}</p>
-                      <p>Total: {formatInvoiceCurrency(quote.total)}</p>
+                      <p className="whitespace-nowrap font-semibold text-[var(--color-text)]">
+                        Total: {formatInvoiceCurrency(quote.total)}
+                      </p>
                       <p>Days Until Trash: {getDaysUntilQuoteTrash(quote.moveToTrashAfter)}</p>
                       {quote.convertedInvoiceId ? (
-                        <p>Converted Invoice ID: {quote.convertedInvoiceId}</p>
+                        <p>
+                          Converted Invoice:{" "}
+                          <Link
+                            href={`/invoices/saved#${encodeURIComponent(quote.convertedInvoiceId)}`}
+                            className="us-link"
+                          >
+                            View invoice
+                          </Link>
+                        </p>
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={() => convertAndRefresh(quote)}
-                      className="us-btn-primary px-4 py-2"
-                    >
-                      {quote.status === "Converted" || quote.convertedInvoiceId
-                        ? "Convert Again"
-                        : "Convert to Invoice"}
-                    </button>
+                  <div className="flex w-full flex-wrap gap-3 lg:w-auto lg:justify-end">
+                    {quote.status === "Converted" || quote.convertedInvoiceId ? (
+                      <Link
+                        href={`/invoices/saved#${encodeURIComponent(
+                          quote.convertedInvoiceId || ""
+                        )}`}
+                        className="us-btn-secondary px-4 py-2"
+                      >
+                        Already Converted
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => convertAndRefresh(quote)}
+                        className="us-btn-primary px-4 py-2"
+                      >
+                        Convert to Invoice
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => moveToTrashAndRefresh(quote.id)}

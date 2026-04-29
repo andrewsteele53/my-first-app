@@ -5,6 +5,7 @@ export type InvoiceLineItem = {
 };
 
 export type PaymentStatus = "Paid" | "Unpaid";
+export type InvoiceStatus = PaymentStatus | "Overdue";
 export type PaymentMethod = "cash" | "card" | "check" | "other";
 
 export type InvoiceRecord = {
@@ -24,8 +25,10 @@ export type InvoiceRecord = {
   deposit: number;
   total: number;
   balanceDue: number;
+  status?: InvoiceStatus;
   paymentStatus: PaymentStatus;
   payment_status?: PaymentStatus;
+  paid_at?: string;
   paidDate: string;
   paymentMethod: PaymentMethod | "";
   paymentNotes: string;
@@ -34,6 +37,7 @@ export type InvoiceRecord = {
   quickbooks_customer_id?: string;
   quickbooks_sync_status?: string;
   quickbooks_synced_at?: string;
+  synced_at?: string;
   convertedFromQuoteId?: string;
   converted_from_quote_id?: string;
   details?: Record<string, string>;
@@ -208,6 +212,12 @@ function normalizeInvoiceRecord(
     deposit: Number(record.deposit) || 0,
     total: Number(record.total ?? record.grandTotal) || 0,
     balanceDue: Number(record.balanceDue ?? record.total ?? record.grandTotal) || 0,
+    status:
+      record.status === "Paid" || record.status === "Unpaid" || record.status === "Overdue"
+        ? record.status
+        : record.paymentStatus === "Paid" || record.payment_status === "Paid"
+        ? "Paid"
+        : "Unpaid",
     paymentStatus: record.paymentStatus === "Paid" ? "Paid" : "Unpaid",
     payment_status:
       record.payment_status === "Paid" || record.payment_status === "Unpaid"
@@ -215,6 +225,12 @@ function normalizeInvoiceRecord(
         : record.paymentStatus === "Paid"
         ? "Paid"
         : "Unpaid",
+    paid_at:
+      typeof record.paid_at === "string"
+        ? record.paid_at
+        : typeof record.paidDate === "string"
+        ? record.paidDate
+        : undefined,
     paidDate:
       typeof record.paidDate === "string" ? record.paidDate : "",
     paymentMethod:
@@ -241,6 +257,12 @@ function normalizeInvoiceRecord(
         : undefined,
     quickbooks_synced_at:
       typeof record.quickbooks_synced_at === "string"
+        ? record.quickbooks_synced_at
+        : undefined,
+    synced_at:
+      typeof record.synced_at === "string"
+        ? record.synced_at
+        : typeof record.quickbooks_synced_at === "string"
         ? record.quickbooks_synced_at
         : undefined,
     convertedFromQuoteId:
@@ -375,6 +397,10 @@ export function saveInvoiceRecord(invoice: InvoiceRecord) {
 
   const record: InvoiceRecord = {
     ...invoice,
+    status: invoice.status || invoice.paymentStatus || "Unpaid",
+    paymentStatus: invoice.paymentStatus || "Unpaid",
+    payment_status: invoice.payment_status || invoice.paymentStatus || "Unpaid",
+    quickbooks_sync_status: invoice.quickbooks_sync_status || "Not Synced",
     createdAt: toIsoString(invoice.createdAt),
     moveToTrashAfter: getFutureDate(SAVED_RETENTION_DAYS),
     trashedAt: undefined,
