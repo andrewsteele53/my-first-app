@@ -31,17 +31,19 @@ export default async function Dashboard() {
                 <h1 className="mt-4 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight text-[var(--color-text)] sm:text-5xl md:text-6xl">
                   Running a service business shouldn&apos;t be this complicated.
                 </h1>
+                <p className="mt-4 max-w-2xl text-lg font-bold text-[var(--color-primary)] md:text-xl">
+                  AI-powered business tools with QuickBooks integration.
+                </p>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)] md:text-lg">
-                  Invoices, quotes, leads, and sales tools built for contractors,
-                  cleaners, landscapers, mechanics, and service pros — all in one
-                  simple dashboard.
+                  Create quotes, send invoices, sync customer records, and get
+                  AI-powered help running your service business.
                 </p>
                 <div className="mt-7 flex w-full flex-col gap-3 sm:max-w-lg sm:flex-row">
                   <Link href="/auth/signup" className="us-btn-primary w-full sm:flex-1">
-                    Get Started Free
+                    Try Unified Steele
                   </Link>
-                  <Link href="#how-it-works" className="us-btn-secondary w-full sm:flex-1">
-                    See How It Works
+                  <Link href="#integrations" className="us-btn-secondary w-full sm:flex-1">
+                    Connect Your Workflow
                   </Link>
                 </div>
                 <p className="mt-4 text-sm font-semibold text-[var(--color-text-secondary)]">
@@ -72,8 +74,8 @@ export default async function Dashboard() {
                     {[
                       { label: "Invoices", value: "$4,280" },
                       { label: "Quotes", value: "12 open" },
-                      { label: "Leads", value: "8 new" },
-                      { label: "Sales Mapping", value: "3 areas" },
+                      { label: "QuickBooks Sync", value: "Ready" },
+                      { label: "AI Assistant", value: "Pro" },
                     ].map((item) => (
                       <div
                         key={item.label}
@@ -107,26 +109,74 @@ export default async function Dashboard() {
             </div>
           </section>
 
-          <section id="how-it-works" className="scroll-mt-8">
-            <div className="mb-5">
-              <p className="us-kicker">How it works</p>
+          <section id="integrations" className="scroll-mt-8">
+            <div className="mb-5 max-w-3xl">
+              <p className="us-kicker">Integrations</p>
               <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
-                Built to keep service work moving.
+                Built to work with the tools your business already uses
               </h2>
             </div>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               {[
                 {
-                  title: "Create quotes and invoices",
-                  text: "Build professional quotes and invoices fast without jumping between tools.",
+                  icon: "QB",
+                  title: "QuickBooks Integration",
+                  text: "Sync invoices, customers, and payment status with QuickBooks to reduce double entry and keep records organized.",
                 },
                 {
-                  title: "Track leads and jobs",
-                  text: "Keep customer opportunities organized so follow-ups don't get lost.",
+                  icon: "AI",
+                  title: "OpenAI-Powered Assistant",
+                  text: "Use AI to draft invoice notes, organize business tasks, improve customer communication, and generate helpful business insights.",
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="flex gap-4 rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]"
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] text-sm font-extrabold text-[var(--color-primary)]">
+                    {item.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-bold text-[var(--color-text)]">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                      {item.text}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section id="how-it-works" className="scroll-mt-8">
+            <div className="mb-5">
+              <p className="us-kicker">Platform</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
+                More than invoices. One operating system for service work.
+              </h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[
+                {
+                  title: "Invoices and quotes",
+                  text: "Build professional quotes and invoices fast, then keep every customer-ready document organized.",
                 },
                 {
-                  title: "Manage growth in one place",
-                  text: "Use simple business tools designed for service pros who want to stay organized.",
+                  title: "QuickBooks sync",
+                  text: "Connect accounting workflows so invoices, customer records, and payment status stay easier to manage.",
+                },
+                {
+                  title: "AI business assistant",
+                  text: "Use AI-powered help for notes, follow-ups, customer communication, and practical business insights.",
+                },
+                {
+                  title: "Customer and job organization",
+                  text: "Track leads, customers, job details, and follow-ups so important opportunities do not get lost.",
+                },
+                {
+                  title: "Service-business workflow tools",
+                  text: "Run daily work from one dashboard built for contractors, cleaners, landscapers, mechanics, and service pros.",
                 },
               ].map((item) => (
                 <div
@@ -143,6 +193,10 @@ export default async function Dashboard() {
               ))}
             </div>
           </section>
+          <p className="border-t border-[var(--color-border-muted)] pt-5 text-xs leading-5 text-[var(--color-text-secondary)]">
+            QuickBooks and OpenAI are trademarks of their respective owners.
+            Unified Steele is not endorsed by or affiliated with Intuit or OpenAI.
+          </p>
         </div>
       </main>
     );
