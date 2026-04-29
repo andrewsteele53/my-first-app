@@ -25,10 +25,15 @@ export type InvoiceRecord = {
   total: number;
   balanceDue: number;
   paymentStatus: PaymentStatus;
+  payment_status?: PaymentStatus;
   paidDate: string;
   paymentMethod: PaymentMethod | "";
   paymentNotes: string;
   createdAt: string;
+  quickbooks_invoice_id?: string;
+  quickbooks_customer_id?: string;
+  quickbooks_sync_status?: string;
+  quickbooks_synced_at?: string;
   convertedFromQuoteId?: string;
   converted_from_quote_id?: string;
   details?: Record<string, string>;
@@ -204,6 +209,12 @@ function normalizeInvoiceRecord(
     total: Number(record.total ?? record.grandTotal) || 0,
     balanceDue: Number(record.balanceDue ?? record.total ?? record.grandTotal) || 0,
     paymentStatus: record.paymentStatus === "Paid" ? "Paid" : "Unpaid",
+    payment_status:
+      record.payment_status === "Paid" || record.payment_status === "Unpaid"
+        ? record.payment_status
+        : record.paymentStatus === "Paid"
+        ? "Paid"
+        : "Unpaid",
     paidDate:
       typeof record.paidDate === "string" ? record.paidDate : "",
     paymentMethod:
@@ -216,6 +227,22 @@ function normalizeInvoiceRecord(
     paymentNotes:
       typeof record.paymentNotes === "string" ? record.paymentNotes : "",
     createdAt,
+    quickbooks_invoice_id:
+      typeof record.quickbooks_invoice_id === "string"
+        ? record.quickbooks_invoice_id
+        : undefined,
+    quickbooks_customer_id:
+      typeof record.quickbooks_customer_id === "string"
+        ? record.quickbooks_customer_id
+        : undefined,
+    quickbooks_sync_status:
+      typeof record.quickbooks_sync_status === "string"
+        ? record.quickbooks_sync_status
+        : undefined,
+    quickbooks_synced_at:
+      typeof record.quickbooks_synced_at === "string"
+        ? record.quickbooks_synced_at
+        : undefined,
     convertedFromQuoteId:
       typeof record.convertedFromQuoteId === "string"
         ? record.convertedFromQuoteId
@@ -356,6 +383,18 @@ export function saveInvoiceRecord(invoice: InvoiceRecord) {
 
   writeStorage(INVOICE_STORAGE_KEY, dedupeInvoices([record, ...existing]));
   return record;
+}
+
+export function updateSavedInvoiceRecord(
+  id: string,
+  update: Partial<InvoiceRecord>
+) {
+  const existing = getSavedInvoices();
+  const next = existing.map((invoice) =>
+    invoice.id === id ? { ...invoice, ...update } : invoice
+  );
+  writeStorage(INVOICE_STORAGE_KEY, next);
+  return next;
 }
 
 export function moveInvoiceToTrash(id: string) {

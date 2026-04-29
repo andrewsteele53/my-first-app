@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import BillingActions from "../billing-actions";
 import { getProfileAccess } from "@/lib/billing";
+import QuickBooksSettingsPanel from "@/components/quickbooks-settings-panel";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -14,12 +15,14 @@ export default async function SettingsPage() {
   let isTrialing = false;
   let subscriptionStatus = "inactive";
   let billingMessage = "Start your 30-day free trial.";
+  let hasProAccess = false;
   const userEmail = user?.email || "No email found";
 
   if (user) {
     const access = await getProfileAccess(supabase, user);
     isSubscribed = access.isSubscribed;
     isTrialing = access.isTrialing;
+    hasProAccess = access.hasProAccess;
     subscriptionStatus = access.subscriptionStatus;
     const trialDaysRemaining = access.trialDaysRemaining;
     billingMessage = access.isTrialing
@@ -131,6 +134,8 @@ export default async function SettingsPage() {
             </div>
           </div>
         </section>
+
+        <QuickBooksSettingsPanel hasProAccess={hasProAccess} />
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="rounded-[1.6rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-7 shadow-[var(--shadow-card)]">

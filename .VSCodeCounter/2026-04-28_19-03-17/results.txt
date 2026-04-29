@@ -1,0 +1,249 @@
+Date : 2026-04-28 19:03:17
+Directory : c:\Users\andre\OneDrive\Desktop\my-first-app
+Total : 134 files,  23031 codes, 11 comments, 2089 blanks, all 25131 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| TypeScript JSX     |         82 |     11,776 |          5 |      1,435 |     13,216 |
+| JSON               |          3 |      7,145 |          0 |          3 |      7,148 |
+| TypeScript         |         29 |      3,435 |          2 |        528 |      3,965 |
+| PostCSS            |          1 |        446 |          0 |         72 |        518 |
+| MS SQL             |          4 |        117 |          0 |         20 |        137 |
+| Markdown           |          3 |         48 |          2 |         20 |         70 |
+| JSON with Comments |          1 |         34 |          0 |          1 |         35 |
+| JavaScript         |          2 |         20 |          2 |          5 |         27 |
+| Log                |          4 |          5 |          0 |          5 |         10 |
+| XML                |          5 |          5 |          0 |          0 |          5 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++---------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                    | files      | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                       |        134 |     23,031 |         11 |      2,089 |     25,131 |
+| . (Files)                                                                                               |         15 |      7,363 |          5 |         61 |      7,429 |
+| app                                                                                                     |         78 |     10,660 |          4 |      1,457 |     12,121 |
+| app (Files)                                                                                             |          5 |        987 |          0 |        132 |      1,119 |
+| app\ai                                                                                                  |          1 |        142 |          2 |         28 |        172 |
+| app\api                                                                                                 |         10 |        756 |          0 |        159 |        915 |
+| app\api\ai                                                                                              |          2 |        161 |          0 |         32 |        193 |
+| app\api\ai\assist                                                                                       |          1 |        111 |          0 |         22 |        133 |
+| app\api\ai\usage                                                                                        |          1 |         50 |          0 |         10 |         60 |
+| app\api\billing                                                                                         |          2 |         63 |          0 |         16 |         79 |
+| app\api\billing-portal                                                                                  |          1 |         51 |          0 |         13 |         64 |
+| app\api\billing\access                                                                                  |          1 |         21 |          0 |          7 |         28 |
+| app\api\billing\create-customer                                                                         |          1 |         42 |          0 |          9 |         51 |
+| app\api\checkout                                                                                        |          1 |          1 |          0 |          1 |          2 |
+| app\api\create-checkout-session                                                                         |          1 |         73 |          0 |         12 |         85 |
+| app\api\start-pro-now                                                                                   |          1 |        173 |          0 |         30 |        203 |
+| app\api\stripe-webhook                                                                                  |          1 |          1 |          0 |          1 |          2 |
+| app\api\webhooks                                                                                        |          1 |        233 |          0 |         54 |        287 |
+| app\api\webhooks\stripe                                                                                 |          1 |        233 |          0 |         54 |        287 |
+| app\auth                                                                                                |          2 |        191 |          1 |         28 |        220 |
+| app\auth\callback                                                                                       |          1 |         18 |          0 |          5 |         23 |
+| app\auth\signup                                                                                         |          1 |        173 |          1 |         23 |        197 |
+| app\forgot-password                                                                                     |          2 |         95 |          0 |         19 |        114 |
+| app\invoices                                                                                            |         23 |      5,470 |          0 |        682 |      6,152 |
+| app\invoices (Files)                                                                                    |          2 |        299 |          0 |         35 |        334 |
+| app\invoices\airline-mechanic                                                                           |          1 |         13 |          0 |          2 |         15 |
+| app\invoices\automotive-mechanic                                                                        |          1 |         13 |          0 |          2 |         15 |
+| app\invoices\car-detailing                                                                              |          1 |        666 |          0 |         81 |        747 |
+| app\invoices\cleaning                                                                                   |          1 |        602 |          0 |         77 |        679 |
+| app\invoices\construction                                                                               |          1 |        685 |          0 |         86 |        771 |
+| app\invoices\electrician                                                                                |          1 |          8 |          0 |          3 |         11 |
+| app\invoices\gutter-cleaning                                                                            |          1 |        681 |          0 |         82 |        763 |
+| app\invoices\handyman                                                                                   |          1 |        677 |          0 |         82 |        759 |
+| app\invoices\hvac                                                                                       |          1 |          8 |          0 |          3 |         11 |
+| app\invoices\junk-removal                                                                               |          1 |          8 |          0 |          3 |         11 |
+| app\invoices\landscaping-maintenance                                                                    |          1 |          8 |          0 |          3 |         11 |
+| app\invoices\lawn-care                                                                                  |          1 |        677 |          0 |         82 |        759 |
+| app\invoices\plumbing                                                                                   |          1 |          8 |          0 |          3 |         11 |
+| app\invoices\power-sports-mechanic                                                                      |          1 |         13 |          0 |          2 |         15 |
+| app\invoices\powerwashing                                                                               |          1 |        679 |          0 |         82 |        761 |
+| app\invoices\roofing                                                                                    |          1 |          8 |          0 |          3 |         11 |
+| app\invoices\saved                                                                                      |          2 |        240 |          0 |         27 |        267 |
+| app\invoices\towing                                                                                     |          1 |          8 |          0 |          3 |         11 |
+| app\invoices\trash                                                                                      |          2 |        169 |          0 |         21 |        190 |
+| app\leads                                                                                               |          2 |        766 |          0 |         97 |        863 |
+| app\login                                                                                               |          1 |        150 |          1 |         21 |        172 |
+| app\mapping                                                                                             |          2 |        633 |          0 |         88 |        721 |
+| app\quotes                                                                                              |         23 |        820 |          0 |        101 |        921 |
+| app\quotes (Files)                                                                                      |          2 |        273 |          0 |         31 |        304 |
+| app\quotes\airline-mechanic                                                                             |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\automotive-mechanic                                                                          |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\car-detailing                                                                                |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\cleaning                                                                                     |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\construction                                                                                 |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\electrician                                                                                  |          1 |         18 |          0 |          3 |         21 |
+| app\quotes\gutter-cleaning                                                                              |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\handyman                                                                                     |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\hvac                                                                                         |          1 |         18 |          0 |          3 |         21 |
+| app\quotes\junk-removal                                                                                 |          1 |         18 |          0 |          3 |         21 |
+| app\quotes\landscaping-maintenance                                                                      |          1 |         18 |          0 |          3 |         21 |
+| app\quotes\lawn-care                                                                                    |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\plumbing                                                                                     |          1 |         18 |          0 |          3 |         21 |
+| app\quotes\power-sports-mechanic                                                                        |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\powerwashing                                                                                 |          1 |         13 |          0 |          2 |         15 |
+| app\quotes\roofing                                                                                      |          1 |         18 |          0 |          3 |         21 |
+| app\quotes\saved                                                                                        |          2 |        160 |          0 |         17 |        177 |
+| app\quotes\towing                                                                                       |          1 |         18 |          0 |          3 |         21 |
+| app\quotes\trash                                                                                        |          2 |        131 |          0 |         12 |        143 |
+| app\reset-password                                                                                      |          1 |        227 |          0 |         43 |        270 |
+| app\settings                                                                                            |          2 |        160 |          0 |         19 |        179 |
+| app\signup                                                                                              |          1 |         86 |          0 |         18 |        104 |
+| app\subscribe                                                                                           |          2 |        136 |          0 |         18 |        154 |
+| app\support                                                                                             |          1 |         41 |          0 |          4 |         45 |
+| components                                                                                              |         16 |      2,383 |          1 |        216 |      2,600 |
+| hooks                                                                                                   |          2 |        101 |          0 |         20 |        121 |
+| lib                                                                                                     |         14 |      2,402 |          1 |        315 |      2,718 |
+| lib (Files)                                                                                             |          9 |      1,593 |          0 |        231 |      1,824 |
+| lib\ai                                                                                                  |          3 |        753 |          0 |         72 |        825 |
+| lib\supabase                                                                                            |          2 |         56 |          1 |         12 |         69 |
+| public                                                                                                  |          5 |          5 |          0 |          0 |          5 |
+| supabase                                                                                                |          4 |        117 |          0 |         20 |        137 |
+| supabase (Files)                                                                                        |          1 |         46 |          0 |          7 |         53 |
+| supabase\migrations                                                                                     |          3 |         71 |          0 |         13 |         84 |
++---------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++---------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                                                                                | language           | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| c:\Users\andre\OneDrive\Desktop\my-first-app\.mcp.json                                                  | JSON               |          8 |          0 |          1 |          9 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\AGENTS.md                                                  | Markdown           |          2 |          2 |          2 |          6 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\CLAUDE.md                                                  | Markdown           |         23 |          0 |          4 |         27 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\README.md                                                  | Markdown           |         23 |          0 |         14 |         37 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\ai\page.tsx                                            | TypeScript JSX     |        142 |          2 |         28 |        172 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\ai\assist\route.ts                                 | TypeScript         |        111 |          0 |         22 |        133 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\ai\usage\route.ts                                  | TypeScript         |         50 |          0 |         10 |         60 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\billing-portal\route.ts                            | TypeScript         |         51 |          0 |         13 |         64 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\billing\access\route.ts                            | TypeScript         |         21 |          0 |          7 |         28 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\billing\create-customer\route.ts                   | TypeScript         |         42 |          0 |          9 |         51 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\checkout\route.ts                                  | TypeScript         |          1 |          0 |          1 |          2 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\create-checkout-session\route.ts                   | TypeScript         |         73 |          0 |         12 |         85 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\start-pro-now\route.ts                             | TypeScript         |        173 |          0 |         30 |        203 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\stripe-webhook\route.tsx                           | TypeScript JSX     |          1 |          0 |          1 |          2 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\api\webhooks\stripe\route.ts                           | TypeScript         |        233 |          0 |         54 |        287 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\auth\callback\route.ts                                 | TypeScript         |         18 |          0 |          5 |         23 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\auth\signup\page.tsx                                   | TypeScript JSX     |        173 |          1 |         23 |        197 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\billing-actions.tsx                                    | TypeScript JSX     |        199 |          0 |         39 |        238 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\forgot-password\forgot-password-form.tsx               | TypeScript JSX     |         90 |          0 |         16 |        106 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\forgot-password\page.tsx                               | TypeScript JSX     |          5 |          0 |          3 |          8 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\globals.css                                            | PostCSS            |        446 |          0 |         72 |        518 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\airline-mechanic\page.tsx                     | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\automotive-mechanic\page.tsx                  | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\car-detailing\page.tsx                        | TypeScript JSX     |        666 |          0 |         81 |        747 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\cleaning\page.tsx                             | TypeScript JSX     |        602 |          0 |         77 |        679 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\construction\page.tsx                         | TypeScript JSX     |        685 |          0 |         86 |        771 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\electrician\page.tsx                          | TypeScript JSX     |          8 |          0 |          3 |         11 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\gutter-cleaning\page.tsx                      | TypeScript JSX     |        681 |          0 |         82 |        763 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\handyman\page.tsx                             | TypeScript JSX     |        677 |          0 |         82 |        759 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\hvac\page.tsx                                 | TypeScript JSX     |          8 |          0 |          3 |         11 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\junk-removal\page.tsx                         | TypeScript JSX     |          8 |          0 |          3 |         11 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\landscaping-maintenance\page.tsx              | TypeScript JSX     |          8 |          0 |          3 |         11 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\lawn-care\page.tsx                            | TypeScript JSX     |        677 |          0 |         82 |        759 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\layout.tsx                                    | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\page.tsx                                      | TypeScript JSX     |        285 |          0 |         32 |        317 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\plumbing\page.tsx                             | TypeScript JSX     |          8 |          0 |          3 |         11 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\power-sports-mechanic\page.tsx                | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\powerwashing\page.tsx                         | TypeScript JSX     |        679 |          0 |         82 |        761 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\roofing\page.tsx                              | TypeScript JSX     |          8 |          0 |          3 |         11 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\saved\layout.tsx                              | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\saved\page.tsx                                | TypeScript JSX     |        226 |          0 |         24 |        250 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\towing\page.tsx                               | TypeScript JSX     |          8 |          0 |          3 |         11 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\trash\layout.tsx                              | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\invoices\trash\page.tsx                                | TypeScript JSX     |        155 |          0 |         18 |        173 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\layout.tsx                                             | TypeScript JSX     |         51 |          0 |          5 |         56 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\leads\layout.tsx                                       | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\leads\page.tsx                                         | TypeScript JSX     |        752 |          0 |         94 |        846 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\login\page.tsx                                         | TypeScript JSX     |        150 |          1 |         21 |        172 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\mapping\layout.tsx                                     | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\mapping\page.tsx                                       | TypeScript JSX     |        619 |          0 |         85 |        704 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\page.tsx                                               | TypeScript JSX     |        243 |          0 |         13 |        256 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\airline-mechanic\page.tsx                       | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\automotive-mechanic\page.tsx                    | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\car-detailing\page.tsx                          | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\cleaning\page.tsx                               | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\construction\page.tsx                           | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\electrician\page.tsx                            | TypeScript JSX     |         18 |          0 |          3 |         21 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\gutter-cleaning\page.tsx                        | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\handyman\page.tsx                               | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\hvac\page.tsx                                   | TypeScript JSX     |         18 |          0 |          3 |         21 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\junk-removal\page.tsx                           | TypeScript JSX     |         18 |          0 |          3 |         21 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\landscaping-maintenance\page.tsx                | TypeScript JSX     |         18 |          0 |          3 |         21 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\lawn-care\page.tsx                              | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\layout.tsx                                      | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\page.tsx                                        | TypeScript JSX     |        259 |          0 |         28 |        287 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\plumbing\page.tsx                               | TypeScript JSX     |         18 |          0 |          3 |         21 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\power-sports-mechanic\page.tsx                  | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\powerwashing\page.tsx                           | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\roofing\page.tsx                                | TypeScript JSX     |         18 |          0 |          3 |         21 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\saved\layout.tsx                                | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\saved\page.tsx                                  | TypeScript JSX     |        146 |          0 |         14 |        160 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\towing\page.tsx                                 | TypeScript JSX     |         18 |          0 |          3 |         21 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\trash\layout.tsx                                | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\quotes\trash\page.tsx                                  | TypeScript JSX     |        117 |          0 |          9 |        126 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\reset-password\page.tsx                                | TypeScript JSX     |        227 |          0 |         43 |        270 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\settings\layout.tsx                                    | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\settings\page.tsx                                      | TypeScript JSX     |        146 |          0 |         16 |        162 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\signup\page.tsx                                        | TypeScript JSX     |         86 |          0 |         18 |        104 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\sitemap.ts                                             | TypeScript         |         48 |          0 |          3 |         51 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\subscribe\layout.tsx                                   | TypeScript JSX     |         14 |          0 |          3 |         17 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\subscribe\page.tsx                                     | TypeScript JSX     |        122 |          0 |         15 |        137 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\app\support\page.tsx                                       | TypeScript JSX     |         41 |          0 |          4 |         45 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\codex-next-3000.err.log                                    | Log                |          0 |          0 |          1 |          1 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\codex-next-3000.log                                        | Log                |          5 |          0 |          2 |          7 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\codex-next-3001.err.log                                    | Log                |          0 |          0 |          1 |          1 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\codex-next-3001.log                                        | Log                |          0 |          0 |          1 |          1 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\ai-assistant-panel.tsx                          | TypeScript JSX     |        197 |          0 |         19 |        216 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\ai-insert-button.tsx                            | TypeScript JSX     |         16 |          0 |          3 |         19 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\ai-result-card.tsx                              | TypeScript JSX     |         97 |          1 |         13 |        111 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\ai-suggestion-chip.tsx                          | TypeScript JSX     |         16 |          0 |          3 |         19 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\ai-upgrade-card.tsx                             | TypeScript JSX     |         43 |          0 |          6 |         49 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\dashboard-ai-widget.tsx                         | TypeScript JSX     |         52 |          0 |          4 |         56 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\dashboard-insights.tsx                          | TypeScript JSX     |        251 |          0 |         25 |        276 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\invoice-ai-assistant.tsx                        | TypeScript JSX     |         84 |          0 |          4 |         88 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\invoice-payment-fields.tsx                      | TypeScript JSX     |         98 |          0 |          8 |        106 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\invoice-save-button.tsx                         | TypeScript JSX     |         84 |          0 |         15 |         99 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\invoice-storage-note.tsx                        | TypeScript JSX     |         14 |          0 |          4 |         18 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\invoice-template-panel.tsx                      | TypeScript JSX     |        206 |          0 |         22 |        228 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\logout-button.tsx                               | TypeScript JSX     |         17 |          0 |          4 |         21 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\mechanic-invoice-page.tsx                       | TypeScript JSX     |        343 |          0 |         25 |        368 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\quote-form-page.tsx                             | TypeScript JSX     |        410 |          0 |         25 |        435 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\components\service-invoice-page.tsx                        | TypeScript JSX     |        455 |          0 |         36 |        491 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\eslint.config.mjs                                          | JavaScript         |         14 |          2 |          3 |         19 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\hooks\use-ai-assistant.ts                                  | TypeScript         |         51 |          0 |         10 |         61 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\hooks\use-invoice-access-status.ts                         | TypeScript         |         50 |          0 |         10 |         60 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\ai\assistant.ts                                        | TypeScript         |        293 |          0 |         21 |        314 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\ai\prompts.ts                                          | TypeScript         |        241 |          0 |         10 |        251 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\ai\schemas.ts                                          | TypeScript         |        219 |          0 |         41 |        260 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\billing.ts                                             | TypeScript         |         84 |          0 |         16 |        100 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\invoice-templates.ts                                   | TypeScript         |         90 |          0 |         16 |        106 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\invoice-ui.ts                                          | TypeScript         |         36 |          0 |          2 |         38 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\invoices.ts                                            | TypeScript         |        374 |          0 |         77 |        451 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\leads.ts                                               | TypeScript         |        190 |          0 |         25 |        215 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\quotes.ts                                              | TypeScript         |        293 |          0 |         46 |        339 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\seo.ts                                                 | TypeScript         |         35 |          0 |          5 |         40 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\service-categories.ts                                  | TypeScript         |        340 |          0 |         11 |        351 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\stripe-customers.ts                                    | TypeScript         |        151 |          0 |         33 |        184 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\supabase\client.ts                                     | TypeScript         |         18 |          0 |          6 |         24 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\lib\supabase\server.ts                                     | TypeScript         |         38 |          1 |          6 |         45 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\next.config.ts                                             | TypeScript         |          4 |          1 |          3 |          8 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\package-lock.json                                          | JSON               |      7,105 |          0 |          1 |      7,106 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\package.json                                               | JSON               |         32 |          0 |          1 |         33 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\postcss.config.mjs                                         | JavaScript         |          6 |          0 |          2 |          8 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\proxy.ts                                                   | TypeScript         |        107 |          0 |         24 |        131 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\public\file.svg                                            | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\public\globe.svg                                           | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\public\next.svg                                            | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\public\vercel.svg                                          | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\public\window.svg                                          | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\supabase\migrations\20260422_invoice_limits.sql            | MS SQL             |         55 |          0 |          9 |         64 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\supabase\migrations\20260428_add_trial_ends_at.sql         | MS SQL             |          6 |          0 |          2 |          8 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\supabase\migrations\20260428_subscription_trial_fields.sql | MS SQL             |         10 |          0 |          2 |         12 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\supabase\quotes.sql                                        | MS SQL             |         46 |          0 |          7 |         53 |
+| c:\Users\andre\OneDrive\Desktop\my-first-app\tsconfig.json                                              | JSON with Comments |         34 |          0 |          1 |         35 |
+| Total                                                                                                   |                    |     23,031 |         11 |      2,089 |     25,131 |
++---------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+

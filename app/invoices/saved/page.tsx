@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import InvoiceStorageNote from "@/components/invoice-storage-note";
+import QuickBooksInvoiceActions from "@/components/quickbooks-invoice-actions";
 import {
   InvoiceRecord,
   formatInvoiceCurrency,
   getDaysUntilInvoiceTrash,
   getSavedInvoices,
   moveInvoiceToTrash,
+  updateSavedInvoiceRecord,
 } from "@/lib/invoices";
 import { invoiceUi } from "@/lib/invoice-ui";
 
@@ -41,6 +43,11 @@ export default function SavedInvoicesPage() {
   const moveToTrashAndRefresh = (invoiceId: string) => {
     const next = moveInvoiceToTrash(invoiceId);
     setSavedInvoices(next.saved);
+  };
+
+  const updateInvoiceAndRefresh = (invoice: InvoiceRecord) => {
+    const next = updateSavedInvoiceRecord(invoice.id, invoice);
+    setSavedInvoices(next);
   };
 
   const printInvoice = (invoice: InvoiceRecord, index: number) => {
@@ -200,6 +207,9 @@ export default function SavedInvoicesPage() {
                       <p>Days Until Trash: {getDaysUntilInvoiceTrash(invoice.moveToTrashAfter)}</p>
                       <p>Total: {formatInvoiceCurrency(invoice.total || 0)}</p>
                       <p>Payment Status: {invoice.paymentStatus}</p>
+                      {invoice.quickbooks_invoice_id ? (
+                        <p>QuickBooks Invoice ID: {invoice.quickbooks_invoice_id}</p>
+                      ) : null}
                       <p>Payment Method: {invoice.paymentMethod || "Not recorded"}</p>
                       {invoice.convertedFromQuoteId || invoice.converted_from_quote_id ? (
                         <p>
@@ -237,6 +247,10 @@ export default function SavedInvoicesPage() {
                     >
                       Move to Trash
                     </button>
+                    <QuickBooksInvoiceActions
+                      invoice={invoice}
+                      onInvoiceUpdate={updateInvoiceAndRefresh}
+                    />
                   </div>
                 </div>
               </div>
