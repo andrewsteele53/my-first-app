@@ -131,6 +131,14 @@ export default async function SettingsPage() {
               <Link href="/mapping" className="us-btn-secondary flex w-full">
                 Open Mapping
               </Link>
+              <div className="flex flex-wrap gap-4 pt-2 text-sm">
+                <Link href="/privacy" className="us-link">
+                  Privacy Policy
+                </Link>
+                <Link href="/terms" className="us-link">
+                  Terms of Service
+                </Link>
+              </div>
             </div>
           </div>
         </section>
