@@ -79,6 +79,24 @@ function clean(value?: string | null) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function createFallbackBusinessProfile(user: BusinessUser): BusinessProfile {
+  return {
+    id: user.id,
+    email: user.email ?? null,
+    business_name: null,
+    owner_name: null,
+    industry: null,
+    services_offered: null,
+    default_quote_type: "general",
+    default_invoice_type: "general",
+    business_phone: null,
+    business_email: null,
+    business_logo_url: null,
+    onboarding_completed: true,
+    updated_at: null,
+  };
+}
+
 export function getTemplateSlugForIndustry(industry?: string | null) {
   const match = INDUSTRY_OPTIONS.find((option) => option === industry);
   return match ? INDUSTRY_TEMPLATE_MAP[match] : "general";
@@ -151,7 +169,8 @@ export async function getBusinessProfile(
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message);
+    console.error("Business profile read failed:", error.message);
+    return createFallbackBusinessProfile(user);
   }
 
   return (data as BusinessProfile | null) ?? null;
