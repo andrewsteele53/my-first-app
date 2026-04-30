@@ -38,35 +38,19 @@ export default async function Dashboard() {
               <div className="min-w-0">
                 <p className="us-kicker">Unified Steele</p>
                 <h1 className="mt-4 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight text-[var(--color-text)] sm:text-5xl md:text-6xl">
-                  Stop losing money running your service business.
+                  Stop losing money from missed invoices and disorganized jobs.
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)] md:text-lg">
-                  Create invoices, send quotes, track leads, map sales
-                  opportunities, and stay organized in one simple dashboard &mdash;
-                  with AI and QuickBooks built in.
+                  Send invoices faster, track every lead, and keep your entire
+                  business organized &mdash; all in one simple dashboard.
                 </p>
-                <ul className="mt-5 grid gap-3 text-sm font-semibold text-[var(--color-text)] sm:max-w-2xl">
-                  {[
-                    "Built for contractors, cleaners, landscapers, and service pros",
-                    "Create quotes and invoices faster",
-                    "Keep leads, jobs, and business tools in one place",
-                  ].map((item) => (
-                    <li key={item} className="flex gap-3">
-                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--color-success)]" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-7 flex w-full flex-col gap-3 sm:max-w-lg sm:flex-row">
-                  <Link href="/auth/signup" className="us-btn-primary w-full sm:flex-1">
+                <div className="mt-7 flex w-full flex-col gap-3 sm:max-w-xs">
+                  <Link href="/auth/signup" className="us-btn-primary w-full">
                     Start Free Trial
-                  </Link>
-                  <Link href="#how-it-works" className="us-btn-secondary w-full sm:flex-1">
-                    See How It Works
                   </Link>
                 </div>
                 <p className="mt-4 text-sm font-semibold text-[var(--color-text-secondary)]">
-                  30-day trial. Cancel anytime. Built for real service businesses.
+                  30-day free trial. Cancel anytime. Built for real service businesses.
                 </p>
                 <Link href="/login" className="us-link mt-5 inline-flex text-sm">
                   Log In
@@ -132,7 +116,7 @@ export default async function Dashboard() {
             <div className="mb-5 max-w-3xl">
               <p className="us-kicker">The problem</p>
               <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
-                Still running your business the hard way?
+                Why service businesses lose money
               </h2>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
@@ -143,11 +127,11 @@ export default async function Dashboard() {
                 </h2>
                 <ul className="mt-5 space-y-3 text-sm leading-6 text-[var(--color-text-secondary)]">
                   {[
-                    "Losing track of leads",
-                    "Sending invoices late",
-                    "Forgetting follow-ups",
-                    "Jumping between too many apps",
-                    "Not knowing where your best jobs are coming from",
+                    "Lost leads",
+                    "Late invoices",
+                    "Missed follow-ups",
+                    "Too many apps",
+                    "No clear system for jobs and customers",
                   ].map((item) => (
                     <li key={item} className="flex gap-3">
                       <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" />
@@ -166,9 +150,9 @@ export default async function Dashboard() {
                   {[
                     "Quotes and invoices in one place",
                     "Lead tracking built into your dashboard",
+                    "Follow-ups stay organized",
                     "Sales mapping for better targeting",
-                    "AI assistance for business tasks",
-                    "QuickBooks integration for cleaner bookkeeping",
+                    "QuickBooks and AI built in",
                   ].map((item) => (
                     <li key={item} className="flex gap-3">
                       <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-success)]" />
@@ -177,6 +161,92 @@ export default async function Dashboard() {
                   ))}
                 </ul>
               </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="mb-5 max-w-3xl">
+              <p className="us-kicker">The outcome</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
+                What this means for your business
+              </h2>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  title: "Get paid faster",
+                  text: "Send quotes and invoices quickly so jobs do not sit unpaid.",
+                },
+                {
+                  title: "Stop losing leads",
+                  text: "Keep every customer, job, and follow-up organized in one place.",
+                },
+                {
+                  title: "Save hours every week",
+                  text: "Spend less time jumping between apps and more time running the business.",
+                },
+                {
+                  title: "Look more professional",
+                  text: "Give customers cleaner quotes, invoices, and communication.",
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]"
+                >
+                  <h3 className="text-lg font-bold text-[var(--color-text)]">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section id="how-it-works" className="scroll-mt-8">
+            <div className="mb-5">
+              <p className="us-kicker">Platform</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
+                Everything you need to run the day
+              </h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[
+                {
+                  title: "Invoices and quotes",
+                  text: "Create professional quotes and invoices fast, then keep every customer-ready document organized.",
+                },
+                {
+                  title: "QuickBooks sync",
+                  text: "Reduce double entry and keep invoice, customer, and payment details easier to manage.",
+                },
+                {
+                  title: "AI business assistant",
+                  text: "Use AI to help with notes, follow-ups, customer messages, and practical business tasks.",
+                },
+                {
+                  title: "Customer and job organization",
+                  text: "Track leads, customers, job details, and follow-ups so important opportunities do not get lost.",
+                },
+                {
+                  title: "Service-business workflow tools",
+                  text: "Run daily work from one dashboard built for contractors, cleaners, landscapers, mechanics, and service pros.",
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]"
+                >
+                  <h3 className="text-xl font-bold text-[var(--color-text)]">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -215,51 +285,6 @@ export default async function Dashboard() {
                       {item.text}
                     </p>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section id="how-it-works" className="scroll-mt-8">
-            <div className="mb-5">
-              <p className="us-kicker">Platform</p>
-              <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
-                More than invoices. One operating system for service work.
-              </h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[
-                {
-                  title: "Invoices and quotes",
-                  text: "Build professional quotes and invoices fast, then keep every customer-ready document organized.",
-                },
-                {
-                  title: "QuickBooks sync",
-                  text: "Connect accounting workflows so invoices, customer records, and payment status stay easier to manage.",
-                },
-                {
-                  title: "AI business assistant",
-                  text: "Use AI-powered help for notes, follow-ups, customer communication, and practical business insights.",
-                },
-                {
-                  title: "Customer and job organization",
-                  text: "Track leads, customers, job details, and follow-ups so important opportunities do not get lost.",
-                },
-                {
-                  title: "Service-business workflow tools",
-                  text: "Run daily work from one dashboard built for contractors, cleaners, landscapers, mechanics, and service pros.",
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]"
-                >
-                  <h3 className="text-xl font-bold text-[var(--color-text)]">
-                    {item.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
-                    {item.text}
-                  </p>
                 </div>
               ))}
             </div>
@@ -338,11 +363,14 @@ export default async function Dashboard() {
                   Start today
                 </p>
                 <h2 className="mt-3 text-3xl font-extrabold">
-                  Ready to run your business smarter?
+                  Stop losing money and take control of your business.
                 </h2>
+                <p className="mt-3 text-sm font-semibold text-white/80">
+                  30-day free trial. Cancel anytime.
+                </p>
               </div>
               <a
-                href="/signup"
+                href="/auth/signup"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
