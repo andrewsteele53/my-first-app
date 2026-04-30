@@ -29,21 +29,31 @@ export default async function Dashboard() {
               <div className="min-w-0">
                 <p className="us-kicker">Unified Steele</p>
                 <h1 className="mt-4 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight text-[var(--color-text)] sm:text-5xl md:text-6xl">
-                  Running a service business shouldn&apos;t be this complicated.
+                  Stop losing money running your service business.
                 </h1>
-                <p className="mt-4 max-w-2xl text-lg font-bold text-[var(--color-primary)] md:text-xl">
-                  AI-powered business tools with QuickBooks integration.
-                </p>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)] md:text-lg">
-                  Create quotes, send invoices, sync customer records, and get
-                  AI-powered help running your service business.
+                  Create invoices, send quotes, track leads, map sales
+                  opportunities, and stay organized in one simple dashboard &mdash;
+                  with AI and QuickBooks built in.
                 </p>
+                <ul className="mt-5 grid gap-3 text-sm font-semibold text-[var(--color-text)] sm:max-w-2xl">
+                  {[
+                    "Built for contractors, cleaners, landscapers, and service pros",
+                    "Create quotes and invoices faster",
+                    "Keep leads, jobs, and business tools in one place",
+                  ].map((item) => (
+                    <li key={item} className="flex gap-3">
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--color-success)]" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
                 <div className="mt-7 flex w-full flex-col gap-3 sm:max-w-lg sm:flex-row">
                   <Link href="/auth/signup" className="us-btn-primary w-full sm:flex-1">
-                    Try Unified Steele
+                    Start Free Trial
                   </Link>
-                  <Link href="#integrations" className="us-btn-secondary w-full sm:flex-1">
-                    Connect Your Workflow
+                  <Link href="#how-it-works" className="us-btn-secondary w-full sm:flex-1">
+                    See How It Works
                   </Link>
                 </div>
                 <p className="mt-4 text-sm font-semibold text-[var(--color-text-secondary)]">
@@ -105,6 +115,58 @@ export default async function Dashboard() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="mb-5 max-w-3xl">
+              <p className="us-kicker">The problem</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
+                Still running your business the hard way?
+              </h2>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+                <p className="us-kicker">The hard way</p>
+                <h2 className="mt-3 text-2xl font-extrabold text-[var(--color-text)]">
+                  What slows you down
+                </h2>
+                <ul className="mt-5 space-y-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                  {[
+                    "Losing track of leads",
+                    "Sending invoices late",
+                    "Forgetting follow-ups",
+                    "Jumping between too many apps",
+                    "Not knowing where your best jobs are coming from",
+                  ].map((item) => (
+                    <li key={item} className="flex gap-3">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-[1.4rem] border border-[rgba(46,125,90,0.2)] bg-[rgba(46,125,90,0.07)] p-6 shadow-[var(--shadow-card-soft)]">
+                <p className="us-kicker">Unified Steele</p>
+                <h2 className="mt-3 text-2xl font-extrabold text-[var(--color-text)]">
+                  What Unified Steele helps fix
+                </h2>
+                <ul className="mt-5 space-y-3 text-sm leading-6 text-[var(--color-text)]">
+                  {[
+                    "Quotes and invoices in one place",
+                    "Lead tracking built into your dashboard",
+                    "Sales mapping for better targeting",
+                    "AI assistance for business tasks",
+                    "QuickBooks integration for cleaner bookkeeping",
+                  ].map((item) => (
+                    <li key={item} className="flex gap-3">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-success)]" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </section>
@@ -193,6 +255,92 @@ export default async function Dashboard() {
               ))}
             </div>
           </section>
+          <section>
+            <div className="mb-5 max-w-3xl">
+              <p className="us-kicker">Built for service pros</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
+                Built for small service businesses
+              </h2>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                {
+                  title: "Contractors",
+                  text: "Keep job details, quotes, invoices, and follow-ups organized from first contact to payment.",
+                },
+                {
+                  title: "Gutter cleaning businesses",
+                  text: "Build fast quotes, track seasonal leads, and follow up before jobs slip away.",
+                },
+                {
+                  title: "Lawn care companies",
+                  text: "Manage recurring work, customer requests, and invoices without bouncing between apps.",
+                },
+                {
+                  title: "Cleaning businesses",
+                  text: "Create polished customer records and send professional quotes and invoices faster.",
+                },
+                {
+                  title: "Handyman services",
+                  text: "Turn scattered job notes into organized leads, quotes, invoices, and tasks.",
+                },
+                {
+                  title: "Auto detailing businesses",
+                  text: "Track customers, packages, follow-ups, and payments in one simple dashboard.",
+                },
+                {
+                  title: "Pressure washing companies",
+                  text: "Map neighborhoods, quote jobs quickly, and keep every follow-up in view.",
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]"
+                >
+                  <h3 className="text-lg font-bold text-[var(--color-text)]">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-7 shadow-[var(--shadow-card-soft)]">
+            <div className="max-w-3xl">
+              <p className="us-kicker">Professional operations</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
+                Simple, professional, and built to help you stay organized.
+              </h2>
+              <p className="mt-4 text-base leading-7 text-[var(--color-text-secondary)]">
+                Unified Steele gives small business owners the tools they need
+                to manage work, follow up faster, and look more professional
+                without using five different apps.
+              </p>
+            </div>
+          </section>
+
+          <section className="rounded-[1.6rem] border border-[rgba(47,93,138,0.2)] bg-[var(--color-primary)] p-7 text-white shadow-[var(--shadow-card)]">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/75">
+                  Start today
+                </p>
+                <h2 className="mt-3 text-3xl font-extrabold">
+                  Ready to run your business smarter?
+                </h2>
+              </div>
+              <Link
+                href="/auth/signup"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-white px-6 py-3 text-sm font-bold text-[var(--color-primary)] shadow-[var(--shadow-button)] transition hover:scale-[1.01]"
+              >
+                Start Free Trial
+              </Link>
+            </div>
+          </section>
+
           <p className="border-t border-[var(--color-border-muted)] pt-5 text-xs leading-5 text-[var(--color-text-secondary)]">
             QuickBooks and OpenAI are trademarks of their respective owners.
             Unified Steele is not endorsed by or affiliated with Intuit or OpenAI.
