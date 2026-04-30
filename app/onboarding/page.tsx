@@ -3,6 +3,22 @@ import BusinessProfileForm from "@/components/business-profile-form";
 import { getBusinessProfile } from "@/lib/business-profile";
 import { createClient } from "@/lib/supabase/server";
 
+function getAuthMetadataName(user: {
+  user_metadata?: Record<string, unknown>;
+}) {
+  const fullName = user.user_metadata?.full_name;
+  if (typeof fullName === "string" && fullName.trim()) {
+    return fullName.trim();
+  }
+
+  const name = user.user_metadata?.name;
+  if (typeof name === "string" && name.trim()) {
+    return name.trim();
+  }
+
+  return "";
+}
+
 export default async function OnboardingPage() {
   const supabase = await createClient();
   const {
@@ -36,7 +52,11 @@ export default async function OnboardingPage() {
         </section>
 
         <section className="mt-6 rounded-[1.8rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)] md:p-8">
-          <BusinessProfileForm initialProfile={profile} mode="onboarding" />
+          <BusinessProfileForm
+            initialProfile={profile}
+            initialOwnerName={getAuthMetadataName(user)}
+            mode="onboarding"
+          />
         </section>
       </div>
     </main>

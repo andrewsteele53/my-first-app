@@ -6,6 +6,22 @@ import BusinessProfileForm from "@/components/business-profile-form";
 import QuickBooksSettingsPanel from "@/components/quickbooks-settings-panel";
 import { getBusinessProfile } from "@/lib/business-profile";
 
+function getAuthMetadataName(user: {
+  user_metadata?: Record<string, unknown>;
+}) {
+  const fullName = user.user_metadata?.full_name;
+  if (typeof fullName === "string" && fullName.trim()) {
+    return fullName.trim();
+  }
+
+  const name = user.user_metadata?.name;
+  if (typeof name === "string" && name.trim()) {
+    return name.trim();
+  }
+
+  return "";
+}
+
 export default async function SettingsPage() {
   const supabase = await createClient();
 
@@ -20,6 +36,7 @@ export default async function SettingsPage() {
   let hasProAccess = false;
   const userEmail = user?.email || "No email found";
   const businessProfile = user ? await getBusinessProfile(supabase, user) : null;
+  const authMetadataName = user ? getAuthMetadataName(user) : "";
 
   if (user) {
     const access = await getProfileAccess(supabase, user);
@@ -100,7 +117,11 @@ export default async function SettingsPage() {
               quotes, invoices, dashboard actions, and AI context.
             </p>
           </div>
-          <BusinessProfileForm initialProfile={businessProfile} mode="settings" />
+          <BusinessProfileForm
+            initialProfile={businessProfile}
+            initialOwnerName={authMetadataName}
+            mode="settings"
+          />
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">

@@ -14,6 +14,7 @@ import { getInvoiceServiceCategories, getQuoteServiceCategories } from "@/lib/se
 
 type Props = {
   initialProfile?: BusinessProfile | null;
+  initialOwnerName?: string;
   mode: "onboarding" | "settings";
 };
 
@@ -21,7 +22,11 @@ function profileValue(value?: string | null) {
   return value || "";
 }
 
-export default function BusinessProfileForm({ initialProfile, mode }: Props) {
+export default function BusinessProfileForm({
+  initialProfile,
+  initialOwnerName = "",
+  mode,
+}: Props) {
   const router = useRouter();
   const normalizedInitialIndustry = normalizeIndustry(initialProfile?.industry);
   const initialCustomIndustry =
@@ -32,7 +37,9 @@ export default function BusinessProfileForm({ initialProfile, mode }: Props) {
       ? initialProfile.industry
       : "");
   const [businessName, setBusinessName] = useState(profileValue(initialProfile?.business_name));
-  const [ownerName, setOwnerName] = useState(profileValue(initialProfile?.owner_name));
+  const [ownerName, setOwnerName] = useState(
+    profileValue(initialProfile?.owner_name) || initialOwnerName
+  );
   const [industry, setIndustry] = useState(normalizedInitialIndustry);
   const [customIndustry, setCustomIndustry] = useState(initialCustomIndustry);
   const [servicesOffered, setServicesOffered] = useState(
@@ -156,12 +163,15 @@ export default function BusinessProfileForm({ initialProfile, mode }: Props) {
           />
         </Field>
 
-        <Field label="Owner Name">
+        <Field
+          label="Owner Name"
+          helper="This will appear on your quotes and invoices."
+        >
           <input
             value={ownerName}
             onChange={(event) => setOwnerName(event.target.value)}
             className="us-input"
-            placeholder="Andrew Steele"
+            placeholder="Enter owner name"
           />
         </Field>
 
@@ -356,10 +366,12 @@ export default function BusinessProfileForm({ initialProfile, mode }: Props) {
 
 function Field({
   label,
+  helper,
   required = false,
   children,
 }: {
   label: string;
+  helper?: string;
   required?: boolean;
   children: React.ReactNode;
 }) {
@@ -369,6 +381,11 @@ function Field({
         {label} {required ? <span className="text-[var(--color-danger)]">*</span> : null}
       </span>
       {children}
+      {helper ? (
+        <span className="mt-2 block text-xs leading-5 text-[var(--color-text-secondary)]">
+          {helper}
+        </span>
+      ) : null}
     </label>
   );
 }
