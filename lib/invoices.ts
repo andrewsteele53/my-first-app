@@ -49,9 +49,8 @@ export type InvoiceRecord = {
 export const INVOICE_STORAGE_KEY = "all_service_invoices_v1";
 export const TRASH_STORAGE_KEY = "trashed_service_invoices_v1";
 export const INVOICE_STORAGE_NOTICE =
-  "Invoices are not permanently stored. Please download or print for your records.";
+  "Your saved quotes and invoices stay in your account unless you delete them. We recommend downloading important records for your own backup.";
 
-const SAVED_RETENTION_DAYS = 45;
 const TRASH_RETENTION_DAYS = 30;
 
 const LEGACY_SAVED_KEYS = [
@@ -161,11 +160,6 @@ function normalizeInvoiceRecord(
   const createdAt = toIsoString(
     typeof record.createdAt === "string" ? record.createdAt : undefined
   );
-
-  const moveToTrashAfter =
-    typeof record.moveToTrashAfter === "string"
-      ? toIsoString(record.moveToTrashAfter)
-      : getFutureDate(SAVED_RETENTION_DAYS);
 
   const trashedAt =
     typeof record.trashedAt === "string"
@@ -278,7 +272,7 @@ function normalizeInvoiceRecord(
         ? record.convertedFromQuoteId
         : undefined,
     details: normalizeDetails(record.details),
-    moveToTrashAfter: kind === "saved" ? moveToTrashAfter : undefined,
+    moveToTrashAfter: undefined,
     trashedAt: kind === "trash" ? trashedAt ?? new Date().toISOString() : undefined,
     deleteAfter: kind === "trash" ? deleteAfter : undefined,
   };
@@ -328,36 +322,6 @@ function migrateLegacyStorage() {
   clearLegacyStorage(LEGACY_TRASH_KEYS);
 }
 
-function cleanSavedInvoices(invoices: InvoiceRecord[]): InvoiceRecord[] {
-  const now = Date.now();
-  const active: InvoiceRecord[] = [];
-  const toTrash: InvoiceRecord[] = [];
-
-  for (const invoice of invoices) {
-    const moveDate = invoice.moveToTrashAfter
-      ? new Date(invoice.moveToTrashAfter).getTime()
-      : null;
-
-    if (moveDate && moveDate <= now) {
-      toTrash.push({
-        ...invoice,
-        moveToTrashAfter: undefined,
-        trashedAt: new Date().toISOString(),
-        deleteAfter: getFutureDate(TRASH_RETENTION_DAYS),
-      });
-    } else {
-      active.push(invoice);
-    }
-  }
-
-  if (toTrash.length > 0 && typeof window !== "undefined") {
-    const existingTrash = getTrashedInvoices();
-    writeStorage(TRASH_STORAGE_KEY, dedupeInvoices([...toTrash, ...existingTrash]));
-  }
-
-  return active;
-}
-
 function cleanTrashedInvoices(invoices: InvoiceRecord[]): InvoiceRecord[] {
   return invoices.filter((invoice) => !isExpired(invoice.deleteAfter));
 }
@@ -380,7 +344,12 @@ function readCanonicalTrashedInvoices() {
 
 export function getSavedInvoices(): InvoiceRecord[] {
   const invoices = readCanonicalSavedInvoices();
-  const cleaned = cleanSavedInvoices(dedupeInvoices(invoices));
+  const cleaned = dedupeInvoices(invoices).map((invoice) => ({
+    ...invoice,
+    moveToTrashAfter: undefined,
+    trashedAt: undefined,
+    deleteAfter: undefined,
+  }));
   writeStorage(INVOICE_STORAGE_KEY, cleaned);
   return cleaned;
 }
@@ -402,7 +371,7 @@ export function saveInvoiceRecord(invoice: InvoiceRecord) {
     payment_status: invoice.payment_status || invoice.paymentStatus || "Unpaid",
     quickbooks_sync_status: invoice.quickbooks_sync_status || "Not Synced",
     createdAt: toIsoString(invoice.createdAt),
-    moveToTrashAfter: getFutureDate(SAVED_RETENTION_DAYS),
+    moveToTrashAfter: undefined,
     trashedAt: undefined,
     deleteAfter: undefined,
   };
@@ -456,7 +425,7 @@ export function restoreInvoiceFromTrash(id: string) {
 
   const restoredInvoice: InvoiceRecord = {
     ...invoice,
-    moveToTrashAfter: getFutureDate(SAVED_RETENTION_DAYS),
+    moveToTrashAfter: undefined,
     trashedAt: undefined,
     deleteAfter: undefined,
   };
@@ -493,10 +462,10 @@ export function getInvoicePaymentLabel(invoice: InvoiceRecord) {
 }
 
 export function getDaysUntilInvoiceTrash(moveToTrashAfter?: string) {
-  if (!moveToTrashAfter) return SAVED_RETENTION_DAYS;
+  if (!moveToTrashAfter) return null;
 
   const moveTime = new Date(moveToTrashAfter).getTime();
-  if (Number.isNaN(moveTime)) return SAVED_RETENTION_DAYS;
+  if (Number.isNaN(moveTime)) return null;
 
   const msLeft = moveTime - Date.now();
   const days = Math.ceil(msLeft / (24 * 60 * 60 * 1000));

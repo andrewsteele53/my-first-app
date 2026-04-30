@@ -35,7 +35,6 @@ export type QuoteRecord = {
 export const QUOTE_STORAGE_KEY = "all_service_quotes_v1";
 export const QUOTE_TRASH_STORAGE_KEY = "trashed_service_quotes_v1";
 
-const SAVED_RETENTION_DAYS = 45;
 const TRASH_RETENTION_DAYS = 30;
 
 function getFutureDate(days: number): string {
@@ -106,10 +105,6 @@ function normalizeQuote(raw: unknown, kind: "saved" | "trash"): QuoteRecord | nu
   const updatedAt = toIsoString(
     typeof record.updatedAt === "string" ? record.updatedAt : createdAt
   );
-  const moveToTrashAfter =
-    typeof record.moveToTrashAfter === "string"
-      ? toIsoString(record.moveToTrashAfter)
-      : getFutureDate(SAVED_RETENTION_DAYS);
   const trashedAt =
     typeof record.trashedAt === "string" ? toIsoString(record.trashedAt) : undefined;
   const deleteAfter =
@@ -139,7 +134,7 @@ function normalizeQuote(raw: unknown, kind: "saved" | "trash"): QuoteRecord | nu
       typeof record.convertedInvoiceId === "string" ? record.convertedInvoiceId : undefined,
     createdAt,
     updatedAt,
-    moveToTrashAfter: kind === "saved" ? moveToTrashAfter : undefined,
+    moveToTrashAfter: undefined,
     trashedAt: kind === "trash" ? trashedAt ?? new Date().toISOString() : undefined,
     deleteAfter: kind === "trash" ? deleteAfter : undefined,
   };
@@ -155,40 +150,16 @@ function dedupeQuotes(quotes: QuoteRecord[]) {
   });
 }
 
-function cleanSavedQuotes(quotes: QuoteRecord[]): QuoteRecord[] {
-  const now = Date.now();
-  const active: QuoteRecord[] = [];
-  const toTrash: QuoteRecord[] = [];
-
-  for (const quote of quotes) {
-    const moveDate = quote.moveToTrashAfter
-      ? new Date(quote.moveToTrashAfter).getTime()
-      : null;
-
-    if (moveDate && moveDate <= now) {
-      toTrash.push({
-        ...quote,
-        moveToTrashAfter: undefined,
-        trashedAt: new Date().toISOString(),
-        deleteAfter: getFutureDate(TRASH_RETENTION_DAYS),
-      });
-    } else {
-      active.push(quote);
-    }
-  }
-
-  if (toTrash.length > 0 && typeof window !== "undefined") {
-    writeStorage(QUOTE_TRASH_STORAGE_KEY, dedupeQuotes([...toTrash, ...getTrashedQuotes()]));
-  }
-
-  return active;
-}
-
 export function getSavedQuotes(): QuoteRecord[] {
   const quotes = readStorage(QUOTE_STORAGE_KEY)
     .map((quote) => normalizeQuote(quote, "saved"))
     .filter((quote): quote is QuoteRecord => Boolean(quote));
-  const cleaned = cleanSavedQuotes(dedupeQuotes(quotes));
+  const cleaned = dedupeQuotes(quotes).map((quote) => ({
+    ...quote,
+    moveToTrashAfter: undefined,
+    trashedAt: undefined,
+    deleteAfter: undefined,
+  }));
   writeStorage(QUOTE_STORAGE_KEY, cleaned);
   return cleaned;
 }
@@ -208,7 +179,7 @@ export function saveQuoteRecord(quote: QuoteRecord) {
     ...quote,
     createdAt: toIsoString(quote.createdAt),
     updatedAt: new Date().toISOString(),
-    moveToTrashAfter: getFutureDate(SAVED_RETENTION_DAYS),
+    moveToTrashAfter: undefined,
     trashedAt: undefined,
     deleteAfter: undefined,
   };
@@ -245,7 +216,7 @@ export function restoreQuoteFromTrash(id: string) {
   const updatedTrash = trash.filter((item) => item.id !== id);
   const restored: QuoteRecord = {
     ...quote,
-    moveToTrashAfter: getFutureDate(SAVED_RETENTION_DAYS),
+    moveToTrashAfter: undefined,
     trashedAt: undefined,
     deleteAfter: undefined,
   };
@@ -325,7 +296,7 @@ export function convertQuoteToInvoice(quoteId: string, options: ConvertQuoteOpti
 export { formatInvoiceCurrency };
 
 export function getDaysUntilQuoteTrash(moveToTrashAfter?: string) {
-  if (!moveToTrashAfter) return SAVED_RETENTION_DAYS;
+  if (!moveToTrashAfter) return null;
   const days = Math.ceil(
     (new Date(moveToTrashAfter).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
   );

@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import DeleteConfirmationModal from "@/components/delete-confirmation-modal";
 import InvoiceStorageNote from "@/components/invoice-storage-note";
 import QuickBooksInvoiceActions from "@/components/quickbooks-invoice-actions";
 import {
   InvoiceRecord,
   type InvoiceStatus,
   formatInvoiceCurrency,
-  getDaysUntilInvoiceTrash,
   getSavedInvoices,
   moveInvoiceToTrash,
   updateSavedInvoiceRecord,
@@ -69,6 +69,7 @@ function getQuickBooksClasses(status: string) {
 
 export default function SavedInvoicesPage() {
   const [savedInvoices, setSavedInvoices] = useState<InvoiceRecord[]>([]);
+  const [pendingTrashInvoiceId, setPendingTrashInvoiceId] = useState<string | null>(null);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -86,6 +87,7 @@ export default function SavedInvoicesPage() {
   const moveToTrashAndRefresh = (invoiceId: string) => {
     const next = moveInvoiceToTrash(invoiceId);
     setSavedInvoices(next.saved);
+    setPendingTrashInvoiceId(null);
   };
 
   const updateInvoiceAndRefresh = (invoice: InvoiceRecord) => {
@@ -232,16 +234,6 @@ export default function SavedInvoicesPage() {
 
         <InvoiceStorageNote className="mt-6" />
 
-        <section className="us-notice-warning mt-6 p-6">
-          <h2 className="text-lg font-bold">
-            Retention Policy
-          </h2>
-          <p className="mt-2 text-sm">
-            Saved invoices automatically move to trash after 45 days. Trash items
-            permanently delete after 30 more days.
-          </p>
-        </section>
-
         {savedInvoices.length === 0 ? (
           <section className={`mt-8 text-center ${invoiceUi.heroCard}`}>
             <h2 className="text-2xl font-bold">No saved invoices yet</h2>
@@ -283,7 +275,6 @@ export default function SavedInvoicesPage() {
                     <div className="mt-3 space-y-1 text-sm text-[var(--color-text-secondary)]">
                       <p>Service Type: {invoice.serviceType}</p>
                       <p>Created: {new Date(invoice.createdAt).toLocaleDateString()}</p>
-                      <p>Days Until Trash: {getDaysUntilInvoiceTrash(invoice.moveToTrashAfter)}</p>
                       <p className="whitespace-nowrap font-semibold text-[var(--color-text)]">
                         Total: {formatInvoiceCurrency(invoice.total || 0)}
                       </p>
@@ -340,7 +331,7 @@ export default function SavedInvoicesPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => moveToTrashAndRefresh(invoice.id)}
+                      onClick={() => setPendingTrashInvoiceId(invoice.id)}
                       className="us-btn-danger px-4 py-2"
                     >
                       Move to Trash
@@ -355,6 +346,15 @@ export default function SavedInvoicesPage() {
             ))}
           </section>
         )}
+        <DeleteConfirmationModal
+          open={Boolean(pendingTrashInvoiceId)}
+          onCancel={() => setPendingTrashInvoiceId(null)}
+          onConfirm={() => {
+            if (pendingTrashInvoiceId) {
+              moveToTrashAndRefresh(pendingTrashInvoiceId);
+            }
+          }}
+        />
       </div>
     </main>
   );

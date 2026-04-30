@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import DeleteConfirmationModal from "@/components/delete-confirmation-modal";
+import InvoiceStorageNote from "@/components/invoice-storage-note";
 import { invoiceUi } from "@/lib/invoice-ui";
 import {
   type QuoteRecord,
   convertQuoteToInvoice,
   formatInvoiceCurrency,
-  getDaysUntilQuoteTrash,
   getSavedQuotes,
   moveQuoteToTrash,
 } from "@/lib/quotes";
@@ -21,6 +22,7 @@ export default function SavedQuotesPage() {
   const router = useRouter();
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [message, setMessage] = useState("");
+  const [pendingTrashQuoteId, setPendingTrashQuoteId] = useState<string | null>(null);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setQuotes(getSavedQuotes()), 0);
@@ -35,6 +37,7 @@ export default function SavedQuotesPage() {
   function moveToTrashAndRefresh(id: string) {
     const next = moveQuoteToTrash(id);
     setQuotes(next.saved);
+    setPendingTrashQuoteId(null);
   }
 
   function convertAndRefresh(quote: QuoteRecord) {
@@ -91,6 +94,7 @@ export default function SavedQuotesPage() {
         </section>
 
         {message ? <div className="us-notice-success mt-6 text-sm">{message}</div> : null}
+        <InvoiceStorageNote className="mt-6" />
 
         {quotes.length === 0 ? (
           <section className={`mt-8 text-center ${invoiceUi.heroCard}`}>
@@ -123,7 +127,6 @@ export default function SavedQuotesPage() {
                       <p className="whitespace-nowrap font-semibold text-[var(--color-text)]">
                         Total: {formatInvoiceCurrency(quote.total)}
                       </p>
-                      <p>Days Until Trash: {getDaysUntilQuoteTrash(quote.moveToTrashAfter)}</p>
                       {quote.convertedInvoiceId ? (
                         <p>
                           Converted Invoice:{" "}
@@ -158,7 +161,7 @@ export default function SavedQuotesPage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => moveToTrashAndRefresh(quote.id)}
+                      onClick={() => setPendingTrashQuoteId(quote.id)}
                       className="us-btn-danger px-4 py-2"
                     >
                       Move to Trash
@@ -169,6 +172,15 @@ export default function SavedQuotesPage() {
             ))}
           </section>
         )}
+        <DeleteConfirmationModal
+          open={Boolean(pendingTrashQuoteId)}
+          onCancel={() => setPendingTrashQuoteId(null)}
+          onConfirm={() => {
+            if (pendingTrashQuoteId) {
+              moveToTrashAndRefresh(pendingTrashQuoteId);
+            }
+          }}
+        />
       </div>
     </main>
   );

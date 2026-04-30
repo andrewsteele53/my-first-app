@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import InvoiceStorageNote from "@/components/invoice-storage-note";
 import {
   InvoiceRecord,
   emptyInvoiceTrash,
@@ -96,7 +95,10 @@ export default function TrashInvoicesPage() {
           </div>
         </section>
 
-        <InvoiceStorageNote className="mt-6" />
+        <section className="us-notice-warning mt-6 p-5 text-sm">
+          Items in Trash are automatically deleted after 30 days and cannot be
+          restored after deletion.
+        </section>
 
         {trashInvoices.length > 0 ? (
           <section className="mt-6">

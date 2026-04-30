@@ -64,6 +64,11 @@ export default function QuoteTrashPage() {
           </div>
         </section>
 
+        <section className="us-notice-warning mt-6 p-5 text-sm">
+          Items in Trash are automatically deleted after 30 days and cannot be
+          restored after deletion.
+        </section>
+
         {quotes.length > 0 ? (
           <section className="mt-6">
             <button type="button" onClick={() => setQuotes(emptyQuoteTrash())} className="us-btn-danger">
