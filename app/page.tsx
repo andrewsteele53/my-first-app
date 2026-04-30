@@ -1,10 +1,19 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import BillingActions from "./billing-actions";
 import LogoutButton from "@/components/logout-button";
 import DashboardAIWidget from "@/components/dashboard-ai-widget";
 import DashboardInsights from "@/components/dashboard-insights";
 import { getProfileAccess } from "@/lib/billing";
+import {
+  getBusinessProfile,
+  getProfileDefaultInvoiceSlug,
+  getProfileDefaultQuoteSlug,
+  getProfileIndustryLabel,
+  getProfileInvoiceLabel,
+  getProfileQuoteLabel,
+} from "@/lib/business-profile";
 import { createPageMetadata, siteDescriptionWithTagline, siteTitle } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
@@ -357,6 +366,12 @@ export default async function Dashboard() {
         ? user.user_metadata.name
         : "";
   const displayName = metadataName.trim() || user.email?.split("@")[0] || "Your";
+  const businessProfile = await getBusinessProfile(supabase, user);
+
+  if (!businessProfile?.onboarding_completed) {
+    redirect("/onboarding");
+  }
+
   const access = await getProfileAccess(supabase, user);
   const isSubscribed = access.isSubscribed;
   const hasCoreAccess = access.hasCoreAccess;
@@ -375,6 +390,12 @@ export default async function Dashboard() {
     : access.isActive
     ? "Your Pro subscription is active."
     : "Start your 30-day free trial.";
+  const businessName = businessProfile.business_name || `${displayName}'s Business`;
+  const industryLabel = getProfileIndustryLabel(businessProfile);
+  const quoteLabel = getProfileQuoteLabel(businessProfile);
+  const invoiceLabel = getProfileInvoiceLabel(businessProfile);
+  const defaultQuoteHref = `/quotes/${getProfileDefaultQuoteSlug(businessProfile)}`;
+  const defaultInvoiceHref = `/invoices/${getProfileDefaultInvoiceSlug(businessProfile)}`;
 
   const stats = [
     { label: "Total Leads", value: "0", note: "Track new opportunities as they come in." },
@@ -390,8 +411,8 @@ export default async function Dashboard() {
   ];
 
   const sections = [
-    { title: "Invoices", description: "Create, save, and manage customer-ready invoices for every service type.", href: "/invoices", cta: "Open Invoices", tone: "primary" },
-    { title: "Quotes", description: "Create estimates and proposals, manage quote statuses, and convert approved quotes into invoices.", href: "/quotes", cta: "Open Quotes", tone: "primary" },
+    { title: "Invoices", description: "Create, save, and manage customer-ready invoices for every service type.", href: defaultInvoiceHref, cta: `Create ${invoiceLabel} Invoice`, tone: "primary" },
+    { title: "Quotes", description: "Create estimates and proposals, manage quote statuses, and convert approved quotes into invoices.", href: defaultQuoteHref, cta: `Create ${quoteLabel} Quote`, tone: "primary" },
     { title: "Leads Database", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Open Leads", tone: "primary" },
     { title: "AI Assistant", description: "Get paid-plan help with customer follow-ups, invoice wording, route planning, and daily business priorities.", href: "/ai", cta: "Open AI Assistant", tone: "secondary" },
     { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: "Open Mapping", tone: "secondary" },
@@ -405,12 +426,24 @@ export default async function Dashboard() {
           <div className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
             <div>
               <p className="us-kicker">Unified Steele</p>
-              <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-[var(--color-text)] md:text-6xl">{displayName}&apos;s Business Dashboard</h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">A cleaner operating view for invoices, leads, mapping, and business follow-up.</p>
+              <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-[var(--color-text)] md:text-6xl">Welcome back, {businessName}</h1>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">
+                A cleaner operating view for your {industryLabel.toLowerCase()} business:
+                invoices, quotes, leads, mapping, and business follow-up.
+              </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">{planLabel}</span>
                 <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">Status: {subscriptionStatus}</span>
+                <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">Industry: {industryLabel}</span>
                 {access.isTrialing ? <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">AI Assistant unlocks after your paid subscription begins.</span> : null}
+              </div>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link href={defaultQuoteHref} className="us-btn-primary">
+                  Create {quoteLabel} Quote
+                </Link>
+                <Link href={defaultInvoiceHref} className="us-btn-secondary">
+                  Create {invoiceLabel} Invoice
+                </Link>
               </div>
             </div>
             <div className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
@@ -450,7 +483,24 @@ export default async function Dashboard() {
           ))}
         </section>
         <DashboardInsights isSubscribed={hasAiAccess} />
-        <DashboardAIWidget context={{ isSubscribed, hasCoreAccess, hasAiAccess, subscriptionStatus, trialDaysRemaining, stats, sections }} />
+        <DashboardAIWidget
+          context={{
+            isSubscribed,
+            hasCoreAccess,
+            hasAiAccess,
+            subscriptionStatus,
+            trialDaysRemaining,
+            businessProfile: {
+              businessName: businessProfile.business_name,
+              industry: businessProfile.industry,
+              servicesOffered: businessProfile.services_offered,
+              defaultQuoteType: businessProfile.default_quote_type,
+              defaultInvoiceType: businessProfile.default_invoice_type,
+            },
+            stats,
+            sections,
+          }}
+        />
       </div>
     </main>
   );

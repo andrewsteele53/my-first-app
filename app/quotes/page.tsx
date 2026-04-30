@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { invoiceUi } from "@/lib/invoice-ui";
+import {
+  getProfileDefaultQuoteSlug,
+  getProfileIndustryLabel,
+  getProfileQuoteLabel,
+  type BusinessProfile,
+} from "@/lib/business-profile";
 import { getSavedQuotes, getTrashedQuotes } from "@/lib/quotes";
 import { getQuoteServiceCategories, SERVICE_CATEGORY_GROUPS } from "@/lib/service-categories";
 
@@ -42,6 +48,7 @@ export default function QuotesPage() {
   const [savedCount, setSavedCount] = useState(0);
   const [trashCount, setTrashCount] = useState(0);
   const [hiddenSections, setHiddenSections] = useState<string[]>([]);
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -61,7 +68,20 @@ export default function QuotesPage() {
         }
       }
 
-      setLoaded(true);
+      fetch("/api/business-profile")
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.profile) {
+            setBusinessProfile(data.profile);
+          }
+        })
+        .catch(() => {
+          setBusinessProfile(null);
+        })
+        .finally(() => {
+          setLoaded(true);
+        });
+
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -71,6 +91,10 @@ export default function QuotesPage() {
     setHiddenSections(next);
     localStorage.setItem(HIDDEN_SECTION_KEY, JSON.stringify(next));
   }
+
+  const defaultQuoteSlug = getProfileDefaultQuoteSlug(businessProfile);
+  const defaultQuoteLabel = getProfileQuoteLabel(businessProfile);
+  const industryLabel = getProfileIndustryLabel(businessProfile);
 
   const visibleQuoteTypes = useMemo(
     () => quoteTypes.filter((type) => !hiddenSections.includes(type.key)),
@@ -123,11 +147,28 @@ export default function QuotesPage() {
                 approved quotes into invoices when the job is ready. Hide sections
                 you do not want showing on this device.
               </p>
+              <p className="mt-3 text-sm font-semibold text-[var(--color-primary)]">
+                Defaulting to {defaultQuoteLabel} based on your business profile.
+              </p>
             </div>
-            <Link href="/" className={invoiceUi.navLink}>
-              Back to Dashboard
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link href={`/quotes/${defaultQuoteSlug}`} className="us-btn-primary">
+                Create {defaultQuoteLabel} Quote
+              </Link>
+              <Link href="/" className={invoiceUi.navLink}>
+                Back to Dashboard
+              </Link>
+            </div>
           </div>
+        </section>
+
+        <section className="mt-6 rounded-[1.5rem] border border-[rgba(47,93,138,0.2)] bg-[rgba(47,93,138,0.08)] p-5 shadow-[var(--shadow-card-soft)]">
+          <p className="text-sm font-semibold text-[var(--color-primary)]">
+            Business profile: {industryLabel}
+          </p>
+          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+            You can still open any quote type below or change your default in Settings.
+          </p>
         </section>
 
         <section className="mt-6 grid gap-4 sm:grid-cols-2">

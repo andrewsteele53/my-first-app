@@ -4,6 +4,15 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { generateAIActionPreview, generateAIAssistance } from "@/lib/ai/assistant";
 import { validateAIActionRequest, validateAIAssistRequest } from "@/lib/ai/schemas";
 import { getProfileAccess } from "@/lib/billing";
+import { getBusinessProfile } from "@/lib/business-profile";
+
+type AIBusinessContext = {
+  businessName: string | null;
+  industry: string | null;
+  servicesOffered: string | null;
+  defaultQuoteType: string | null;
+  defaultInvoiceType: string | null;
+};
 
 function isSimpleAssistRequest(body: unknown): body is { message: string } {
   return (
@@ -23,7 +32,10 @@ function isActionAssistRequest(body: unknown): body is { mode: "action"; message
   );
 }
 
-async function generateSimpleAnswer(message: string) {
+async function generateSimpleAnswer(
+  message: string,
+  businessContext?: AIBusinessContext
+) {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -40,10 +52,23 @@ async function generateSimpleAnswer(message: string) {
           {
             type: "input_text",
             text:
-              "You are the Unified Steele AI Assistant for a service-business dashboard. Help service pros with practical, concise guidance for invoices, leads, follow-ups, sales mapping, route planning, customer communication, and daily priorities. Avoid legal, tax, or financial advice beyond general business organization. Keep answers actionable and easy to use.",
+              "You are the Unified Steele AI Assistant for a service-business dashboard. Help service pros with practical, concise guidance for invoices, leads, follow-ups, sales mapping, route planning, customer communication, and daily priorities. Avoid legal, tax, or financial advice beyond general business organization. Keep answers actionable and easy to use. Use the user's business profile when it helps tailor service wording, quote/invoice context, lead suggestions, and customer communication.",
           },
         ],
       },
+      ...(businessContext
+        ? [
+            {
+              role: "system" as const,
+              content: [
+                {
+                  type: "input_text" as const,
+                  text: `Business profile context: ${JSON.stringify(businessContext)}`,
+                },
+              ],
+            },
+          ]
+        : []),
       {
         role: "user",
         content: [{ type: "input_text", text: message }],
@@ -103,6 +128,16 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => null);
+    const businessProfile = await getBusinessProfile(supabase, user).catch(() => null);
+    const businessContext = businessProfile
+      ? {
+          businessName: businessProfile.business_name,
+          industry: businessProfile.industry,
+          servicesOffered: businessProfile.services_offered,
+          defaultQuoteType: businessProfile.default_quote_type,
+          defaultInvoiceType: businessProfile.default_invoice_type,
+        }
+      : undefined;
 
     if (isActionAssistRequest(body)) {
       const validated = validateAIActionRequest(body);
@@ -114,7 +149,13 @@ export async function POST(req: Request) {
         );
       }
 
-      const result = await generateAIActionPreview(validated.data);
+      const result = await generateAIActionPreview({
+        ...validated.data,
+        context: {
+          ...(validated.data.context || {}),
+          businessProfile: businessContext,
+        },
+      });
       return NextResponse.json(result);
     }
 
@@ -128,7 +169,7 @@ export async function POST(req: Request) {
         );
       }
 
-      const answer = await generateSimpleAnswer(message);
+      const answer = await generateSimpleAnswer(message, businessContext);
       return NextResponse.json({ answer });
     }
 
@@ -141,7 +182,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await generateAIAssistance(validated.data);
+    const result = await generateAIAssistance({
+      ...validated.data,
+      context: {
+        ...(validated.data.context || {}),
+        businessProfile: businessContext,
+      },
+    });
     return NextResponse.json(result);
   } catch (error) {
     const message =

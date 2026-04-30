@@ -9,7 +9,8 @@ function requiresAuth(pathname: string) {
     pathname.startsWith("/mapping") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/subscribe") ||
-    pathname.startsWith("/ai")
+    pathname.startsWith("/ai") ||
+    pathname.startsWith("/onboarding")
   );
 }
 
@@ -90,16 +91,35 @@ export async function proxy(request: NextRequest) {
       return redirectTo(request, "/");
     }
 
-    if (user && (requiresSubscription(pathname) || requiresActiveSubscription(pathname))) {
+    if (user) {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("subscription_status")
+        .select("subscription_status, onboarding_completed")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
-        console.error("Proxy subscription check error:", profileError);
+        console.error("Proxy profile check error:", profileError);
         return NextResponse.next();
+      }
+
+      const onboardingCompleted = Boolean(profile?.onboarding_completed);
+      const shouldCheckOnboarding =
+        pathname === "/" ||
+        pathname.startsWith("/invoices") ||
+        pathname.startsWith("/quotes") ||
+        pathname.startsWith("/leads") ||
+        pathname.startsWith("/mapping") ||
+        pathname.startsWith("/settings") ||
+        pathname.startsWith("/subscribe") ||
+        pathname.startsWith("/ai");
+
+      if (!onboardingCompleted && shouldCheckOnboarding && pathname !== "/onboarding") {
+        return redirectTo(request, "/onboarding");
+      }
+
+      if (onboardingCompleted && pathname === "/onboarding") {
+        return redirectTo(request, "/");
       }
 
       const subscriptionStatus = profile?.subscription_status || "inactive";
@@ -107,12 +127,14 @@ export async function proxy(request: NextRequest) {
         subscriptionStatus === "trialing" || subscriptionStatus === "active";
       const hasAiAccess = subscriptionStatus === "active";
 
-      if (requiresActiveSubscription(pathname) && !hasAiAccess) {
-        return redirectTo(request, "/subscribe");
-      }
+      if (requiresSubscription(pathname) || requiresActiveSubscription(pathname)) {
+        if (requiresActiveSubscription(pathname) && !hasAiAccess) {
+          return redirectTo(request, "/subscribe");
+        }
 
-      if (requiresSubscription(pathname) && !hasCoreAccess) {
-        return redirectTo(request, "/subscribe");
+        if (requiresSubscription(pathname) && !hasCoreAccess) {
+          return redirectTo(request, "/subscribe");
+        }
       }
     }
 

@@ -23,6 +23,7 @@ export const SERVICE_CATEGORY_GROUPS = [
 ] as const;
 
 const SERVICE_CATEGORY_ORDER = [
+  "general",
   "towing",
   "automotive-mechanic",
   "airline-mechanic",
@@ -32,6 +33,7 @@ const SERVICE_CATEGORY_ORDER = [
   "plumbing",
   "electrician",
   "roofing",
+  "siding",
   "construction",
   "handyman",
   "landscaping-maintenance",
@@ -58,6 +60,20 @@ function compareServiceCategories(first: ServiceCategory, second: ServiceCategor
 }
 
 export const serviceCategories: ServiceCategory[] = [
+  {
+    id: "general",
+    slug: "general",
+    name: "General Service",
+    description: "Flexible quotes and invoices for service businesses that do a little of everything.",
+    group: "Home Services",
+    supportsInvoices: true,
+    supportsQuotes: true,
+    invoicePrefix: "GEN",
+    quotePrefix: "QGEN",
+    defaultLineItems: [{ description: "Service labor", quantity: 1, price: 150 }],
+    suggestedFields: ["Service Type", "Job Location", "Scope", "Completion Date"],
+    tips: ["Use clear service descriptions.", "Separate labor, materials, and add-ons when possible."],
+  },
   {
     id: "automotive-mechanic",
     slug: "automotive-mechanic",
@@ -292,6 +308,25 @@ export const serviceCategories: ServiceCategory[] = [
     ],
     suggestedFields: ["Roof Type", "Damage Area", "Material", "Warranty Notes"],
     tips: ["Separate inspection, repair, and materials.", "Use notes for exclusions, weather, or warranty details."],
+  },
+  {
+    id: "siding",
+    slug: "siding",
+    name: "Siding",
+    description: "Siding repairs, installs, materials, labor, and exterior project work.",
+    group: "Home Services",
+    supportsInvoices: true,
+    supportsQuotes: true,
+    invoicePrefix: "SIDE",
+    quotePrefix: "QSIDE",
+    defaultLineItems: [
+      { description: "Siding inspection", quantity: 1, price: 125 },
+      { description: "Labor", quantity: 1, price: 450 },
+      { description: "Materials", quantity: 1, price: 0 },
+      { description: "Repair or installation", quantity: 1, price: 300 },
+    ],
+    suggestedFields: ["Siding Type", "Damage Area", "Material", "Warranty Notes"],
+    tips: ["Separate materials from labor.", "Use notes for color match, access, or exclusions."],
   },
   {
     id: "electrician",

@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import InvoiceStorageNote from "@/components/invoice-storage-note";
 import { useInvoiceAccessStatus } from "@/hooks/use-invoice-access-status";
+import {
+  getProfileDefaultInvoiceSlug,
+  getProfileIndustryLabel,
+  getProfileInvoiceLabel,
+  type BusinessProfile,
+} from "@/lib/business-profile";
 import { getSavedInvoices, getTrashedInvoices } from "@/lib/invoices";
 import { invoiceUi } from "@/lib/invoice-ui";
 import { getInvoiceServiceCategories, SERVICE_CATEGORY_GROUPS } from "@/lib/service-categories";
@@ -44,6 +50,7 @@ export default function InvoicesPage() {
   const [savedCount, setSavedCount] = useState(0);
   const [trashCount, setTrashCount] = useState(0);
   const [hiddenSections, setHiddenSections] = useState<string[]>([]);
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [loaded, setLoaded] = useState(false);
   const { status } = useInvoiceAccessStatus();
 
@@ -64,7 +71,19 @@ export default function InvoicesPage() {
         }
       }
 
-      setLoaded(true);
+      fetch("/api/business-profile")
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.profile) {
+            setBusinessProfile(data.profile);
+          }
+        })
+        .catch(() => {
+          setBusinessProfile(null);
+        })
+        .finally(() => {
+          setLoaded(true);
+        });
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -99,6 +118,10 @@ export default function InvoicesPage() {
     [visibleInvoiceTypes]
   );
 
+  const defaultInvoiceSlug = getProfileDefaultInvoiceSlug(businessProfile);
+  const defaultInvoiceLabel = getProfileInvoiceLabel(businessProfile);
+  const industryLabel = getProfileIndustryLabel(businessProfile);
+
   if (!loaded) {
     return (
       <main className={invoiceUi.page}>
@@ -125,12 +148,29 @@ export default function InvoicesPage() {
                 Create invoices, manage saved records, review deleted items, and
                 hide sections you do not want showing on this device.
               </p>
+              <p className="mt-3 text-sm font-semibold text-[var(--color-primary)]">
+                Defaulting to {defaultInvoiceLabel} based on your business profile.
+              </p>
             </div>
 
-            <Link href="/" className={invoiceUi.navLink}>
-              Back to Dashboard
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link href={`/invoices/${defaultInvoiceSlug}`} className="us-btn-primary">
+                Create {defaultInvoiceLabel} Invoice
+              </Link>
+              <Link href="/" className={invoiceUi.navLink}>
+                Back to Dashboard
+              </Link>
+            </div>
           </div>
+        </section>
+
+        <section className="mt-6 rounded-[1.5rem] border border-[rgba(47,93,138,0.2)] bg-[rgba(47,93,138,0.08)] p-5 shadow-[var(--shadow-card-soft)]">
+          <p className="text-sm font-semibold text-[var(--color-primary)]">
+            Business profile: {industryLabel}
+          </p>
+          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+            You can still open any invoice type below or change your default in Settings.
+          </p>
         </section>
 
         {status ? (

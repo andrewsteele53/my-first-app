@@ -2,7 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import BillingActions from "../billing-actions";
 import { getProfileAccess } from "@/lib/billing";
+import BusinessProfileForm from "@/components/business-profile-form";
 import QuickBooksSettingsPanel from "@/components/quickbooks-settings-panel";
+import { getBusinessProfile } from "@/lib/business-profile";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -17,6 +19,7 @@ export default async function SettingsPage() {
   let billingMessage = "Start your 30-day free trial.";
   let hasProAccess = false;
   const userEmail = user?.email || "No email found";
+  const businessProfile = user ? await getBusinessProfile(supabase, user) : null;
 
   if (user) {
     const access = await getProfileAccess(supabase, user);
@@ -82,6 +85,22 @@ export default async function SettingsPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-7 shadow-[var(--shadow-card)]">
+          <div className="mb-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">
+              Business Profile
+            </p>
+            <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">
+              Dashboard Defaults
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)]">
+              Update the business details Unified Steele uses for your default
+              quotes, invoices, dashboard actions, and AI context.
+            </p>
+          </div>
+          <BusinessProfileForm initialProfile={businessProfile} mode="settings" />
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
