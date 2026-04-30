@@ -41,8 +41,12 @@ export default async function Dashboard() {
                   Stop losing money from missed invoices and disorganized jobs.
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)] md:text-lg">
-                  Send invoices faster, track every lead, and keep your entire
-                  business organized &mdash; all in one simple dashboard.
+                  Send invoices faster, never lose a lead, and keep your entire
+                  business organized &mdash; all in one simple system.
+                </p>
+                <p className="mt-4 max-w-2xl text-sm font-bold leading-6 text-[var(--color-primary)] md:text-base">
+                  Built by a service business owner who got tired of losing money
+                  from disorganized work.
                 </p>
                 <div className="mt-7 flex w-full flex-col gap-3 sm:max-w-xs">
                   <Link href="/auth/signup" className="us-btn-primary w-full">
@@ -50,7 +54,7 @@ export default async function Dashboard() {
                   </Link>
                 </div>
                 <p className="mt-4 text-sm font-semibold text-[var(--color-text-secondary)]">
-                  30-day free trial. Cancel anytime. Built for real service businesses.
+                  30-day free trial. No risk. Start organizing your business today.
                 </p>
                 <Link href="/login" className="us-link mt-5 inline-flex text-sm">
                   Log In
@@ -58,6 +62,9 @@ export default async function Dashboard() {
               </div>
 
               <div className="w-full min-w-0 rounded-[1.6rem] border border-[var(--color-border)] bg-white p-4 shadow-[var(--shadow-card-soft)] sm:p-5">
+                <p className="mb-3 text-sm font-bold text-[var(--color-primary)]">
+                  See exactly what needs your attention &mdash; at a glance
+                </p>
                 <div className="rounded-[1.2rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -112,12 +119,39 @@ export default async function Dashboard() {
             </div>
           </section>
 
+          <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+            <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+              <div>
+                <p className="us-kicker">Why switch</p>
+                <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
+                  Why people switch to Unified Steele
+                </h2>
+              </div>
+              <ul className="grid gap-3 text-sm font-semibold text-[var(--color-text)] sm:grid-cols-2">
+                {[
+                  "Stop forgetting invoices and follow-ups",
+                  "Know exactly what jobs need attention today",
+                  "Run your entire business without juggling multiple apps",
+                  "Built specifically for service businesses",
+                ].map((item) => (
+                  <li key={item} className="flex gap-3">
+                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--color-success)]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
           <section>
             <div className="mb-5 max-w-3xl">
               <p className="us-kicker">The problem</p>
               <h2 className="mt-3 text-3xl font-extrabold text-[var(--color-text)]">
-                Why service businesses lose money
+                Where you&apos;re losing money right now
               </h2>
+              <p className="mt-3 text-base leading-7 text-[var(--color-text-secondary)]">
+                This is where most small service businesses fall behind.
+              </p>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
@@ -175,19 +209,19 @@ export default async function Dashboard() {
               {[
                 {
                   title: "Get paid faster",
-                  text: "Send quotes and invoices quickly so jobs do not sit unpaid.",
+                  text: "Send invoices immediately and stop waiting to get paid.",
                 },
                 {
                   title: "Stop losing leads",
-                  text: "Keep every customer, job, and follow-up organized in one place.",
+                  text: "Never forget a customer or job again.",
                 },
                 {
                   title: "Save hours every week",
-                  text: "Spend less time jumping between apps and more time running the business.",
+                  text: "Stop switching between apps and wasting time.",
                 },
                 {
                   title: "Look more professional",
-                  text: "Give customers cleaner quotes, invoices, and communication.",
+                  text: "Give customers clean quotes, invoices, and communication.",
                 },
               ].map((item) => (
                 <div
@@ -366,7 +400,7 @@ export default async function Dashboard() {
                   Stop losing money and take control of your business.
                 </h2>
                 <p className="mt-3 text-sm font-semibold text-white/80">
-                  30-day free trial. Cancel anytime.
+                  30-day free trial. Cancel anytime. No risk.
                 </p>
               </div>
               <a

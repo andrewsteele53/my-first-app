@@ -49,13 +49,17 @@ export default function SignupPage() {
 
   return (
     <main className="us-page flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-[1.8rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-9 shadow-[var(--shadow-card)]">
+      <div className="w-full max-w-md rounded-[1.8rem] border border-[var(--color-border)] bg-white p-9 shadow-[var(--shadow-card)]">
         <p className="us-kicker text-center">Unified Steele</p>
-        <h1 className="mb-6 mt-4 text-center text-3xl font-bold text-[var(--color-text)]">
-          Create Account
+        <h1 className="mt-4 text-center text-3xl font-extrabold text-[var(--color-text)]">
+          Start your free trial in under 30 seconds.
         </h1>
+        <p className="mx-auto mt-3 max-w-sm text-center text-sm leading-6 text-[var(--color-text-secondary)]">
+          Create your account and start organizing invoices, leads, jobs, and
+          follow-ups from one dashboard.
+        </p>
 
-        <form onSubmit={handleSignup} className="space-y-4">
+        <form onSubmit={handleSignup} className="mt-8 space-y-4">
           <input
             type="email"
             placeholder="Email"
@@ -79,7 +83,7 @@ export default function SignupPage() {
             disabled={loading}
             className="us-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Creating Account..." : "Sign Up"}
+            {loading ? "Creating Account..." : "Start Free Trial"}
           </button>
         </form>
 
@@ -90,6 +94,10 @@ export default function SignupPage() {
         {error ? (
           <div className="us-notice-danger mt-4 text-sm">{error}</div>
         ) : null}
+
+        <p className="mt-5 text-center text-sm font-semibold text-[var(--color-text-secondary)]">
+          30-day free trial. Cancel anytime.
+        </p>
 
         <p className="mt-6 text-center text-sm text-[var(--color-text-secondary)]">
           Already have an account?{" "}

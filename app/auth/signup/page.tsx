@@ -9,7 +9,6 @@ export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
@@ -50,13 +49,8 @@ export default function SignupPage() {
     setError("");
     setSuccess("");
 
-    if (!email.trim() || !password || !confirmPassword) {
-      setError("Please fill in all fields.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+    if (!email.trim() || !password) {
+      setError("Please enter your email and password.");
       return;
     }
 
@@ -76,7 +70,6 @@ export default function SignupPage() {
 
       setSuccess("Check your email to confirm your account");
       setPassword("");
-      setConfirmPassword("");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to create your account."
@@ -87,26 +80,24 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10 sm:px-6">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-8">
+    <main className="us-page flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
+      <div className="w-full max-w-md rounded-[1.8rem] border border-[var(--color-border)] bg-white p-7 shadow-[var(--shadow-card)] sm:p-9">
         <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">
-            Unified Steele
-          </p>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900">
-            Create Account
+          <p className="us-kicker">Unified Steele</p>
+          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[var(--color-text)]">
+            Start your free trial in under 30 seconds.
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            Set up your account to access the dashboard, billing, and business
-            tools.
+          <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+            Create your account and start organizing invoices, leads, jobs, and
+            follow-ups from one dashboard.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>
             <label
               htmlFor="email"
-              className="mb-2 block text-sm font-medium text-slate-700"
+              className="mb-2 block text-sm font-semibold text-[var(--color-text)]"
             >
               Email
             </label>
@@ -116,7 +107,7 @@ export default function SignupPage() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+              className="us-input"
               placeholder="you@example.com"
               disabled={loading || checkingSession}
             />
@@ -125,7 +116,7 @@ export default function SignupPage() {
           <div>
             <label
               htmlFor="password"
-              className="mb-2 block text-sm font-medium text-slate-700"
+              className="mb-2 block text-sm font-semibold text-[var(--color-text)]"
             >
               Password
             </label>
@@ -135,27 +126,8 @@ export default function SignupPage() {
               autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+              className="us-input"
               placeholder="Create a password"
-              disabled={loading || checkingSession}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="confirm-password"
-              className="mb-2 block text-sm font-medium text-slate-700"
-            >
-              Confirm Password
-            </label>
-            <input
-              id="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
-              placeholder="Confirm your password"
               disabled={loading || checkingSession}
             />
           </div>
@@ -163,31 +135,31 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading || checkingSession}
-            className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="us-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {checkingSession ? "Checking Session..." : loading ? "Creating Account..." : "Sign Up"}
+            {checkingSession ? "Checking..." : loading ? "Creating Account..." : "Start Free Trial"}
           </button>
         </form>
 
         {error ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
+          <div className="us-notice-danger mt-4 text-sm">{error}</div>
         ) : null}
 
         {success ? (
-          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {success}
-          </div>
+          <div className="us-notice-success mt-4 text-sm">{success}</div>
         ) : null}
 
-        <p className="mt-6 text-center text-sm text-slate-600">
+        <p className="mt-5 text-center text-sm font-semibold text-[var(--color-text-secondary)]">
+          30-day free trial. Cancel anytime.
+        </p>
+
+        <p className="mt-6 text-center text-sm text-[var(--color-text-secondary)]">
           Already have an account?{" "}
           <Link
             href="/login"
-            className="font-semibold text-slate-900 transition hover:text-slate-700"
+            className="us-link"
           >
-            Back to Login
+            Log in
           </Link>
         </p>
       </div>
