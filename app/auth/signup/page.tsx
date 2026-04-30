@@ -68,7 +68,7 @@ export default function SignupPage() {
         return;
       }
 
-      setSuccess("Check your email to confirm your account");
+      setSuccess("Account created. You're one step closer to getting organized.");
       setPassword("");
     } catch (err) {
       setError(
@@ -85,15 +85,23 @@ export default function SignupPage() {
         <div className="text-center">
           <p className="us-kicker">Unified Steele</p>
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[var(--color-text)]">
-            Start your free trial in under 30 seconds.
+            Stop losing money from missed invoices and disorganized jobs.
           </h1>
           <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
-            Create your account and start organizing invoices, leads, jobs, and
-            follow-ups from one dashboard.
+            Join service pros using Unified Steele to track leads, send invoices
+            faster, and stay organized &mdash; all in one place.
+          </p>
+          <p className="mt-4 text-sm font-bold leading-6 text-[var(--color-primary)]">
+            Built by a service business owner who got tired of losing money from
+            disorganized work.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <p className="rounded-2xl border border-[rgba(47,93,138,0.18)] bg-[rgba(47,93,138,0.08)] px-4 py-3 text-center text-sm font-bold text-[var(--color-primary)]">
+            ⚡ Most users get set up in under 30 seconds
+          </p>
+
           <div>
             <label
               htmlFor="email"
@@ -135,10 +143,20 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading || checkingSession}
-            className="us-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+            className="us-btn-primary w-full px-5 py-4 text-base disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {checkingSession ? "Checking..." : loading ? "Creating Account..." : "Start Free Trial"}
+            {checkingSession
+              ? "Checking..."
+              : loading
+              ? "Creating Account..."
+              : "Start Free Trial — It Takes 30 Seconds"}
           </button>
+
+          <div className="space-y-2 rounded-2xl border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] px-4 py-4 text-center text-sm font-semibold text-[var(--color-text)]">
+            <p>No credit card required</p>
+            <p>Takes less than 30 seconds</p>
+            <p>Built for real service businesses</p>
+          </div>
         </form>
 
         {error ? (
@@ -150,7 +168,7 @@ export default function SignupPage() {
         ) : null}
 
         <p className="mt-5 text-center text-sm font-semibold text-[var(--color-text-secondary)]">
-          30-day free trial. Cancel anytime.
+          30-day free trial. No risk. Cancel anytime.
         </p>
 
         <p className="mt-6 text-center text-sm text-[var(--color-text-secondary)]">
