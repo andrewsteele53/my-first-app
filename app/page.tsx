@@ -507,7 +507,8 @@ export default async function Dashboard() {
             trialDaysRemaining,
             businessProfile: {
               businessName: businessProfile.business_name,
-              industry: businessProfile.industry,
+              industry: industryLabel,
+              customIndustry: businessProfile.custom_industry,
               servicesOffered: businessProfile.services_offered,
               defaultQuoteType: businessProfile.default_quote_type,
               defaultInvoiceType: businessProfile.default_invoice_type,

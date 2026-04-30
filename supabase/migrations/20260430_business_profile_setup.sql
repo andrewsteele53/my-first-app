@@ -8,6 +8,7 @@ alter table if exists public.profiles
   add column if not exists business_phone text,
   add column if not exists business_email text,
   add column if not exists business_logo_url text,
+  add column if not exists custom_industry text,
   add column if not exists onboarding_completed boolean not null default false,
   add column if not exists updated_at timestamptz;
 

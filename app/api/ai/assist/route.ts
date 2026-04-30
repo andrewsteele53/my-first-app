@@ -4,11 +4,12 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { generateAIActionPreview, generateAIAssistance } from "@/lib/ai/assistant";
 import { validateAIActionRequest, validateAIAssistRequest } from "@/lib/ai/schemas";
 import { getProfileAccess } from "@/lib/billing";
-import { getBusinessProfile } from "@/lib/business-profile";
+import { getBusinessProfile, getProfileIndustryLabel } from "@/lib/business-profile";
 
 type AIBusinessContext = {
   businessName: string | null;
   industry: string | null;
+  customIndustry: string | null;
   servicesOffered: string | null;
   defaultQuoteType: string | null;
   defaultInvoiceType: string | null;
@@ -132,7 +133,8 @@ export async function POST(req: Request) {
     const businessContext = businessProfile
       ? {
           businessName: businessProfile.business_name,
-          industry: businessProfile.industry,
+          industry: getProfileIndustryLabel(businessProfile),
+          customIndustry: businessProfile.custom_industry,
           servicesOffered: businessProfile.services_offered,
           defaultQuoteType: businessProfile.default_quote_type,
           defaultInvoiceType: businessProfile.default_invoice_type,

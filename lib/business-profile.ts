@@ -1,24 +1,117 @@
 import type { AuthUser, SupabaseClient } from "@supabase/supabase-js";
 import { getServiceCategory } from "@/lib/service-categories";
 
-export const INDUSTRY_OPTIONS = [
-  "Roofing",
-  "Siding",
-  "Gutters",
-  "Landscaping / Lawn Care",
-  "Junk Removal",
-  "HVAC",
-  "Plumbing",
-  "Electrical",
-  "Auto Detailing",
-  "Automotive Mechanic",
-  "Power Sports Mechanic",
-  "Handyman",
-  "Cleaning",
-  "Construction",
-  "Towing",
-  "Other",
+export const INDUSTRY_GROUPS = [
+  {
+    group: "Home Services",
+    options: [
+      {
+        name: "Roofing",
+        icon: "RF",
+        helper: "Roof repairs, replacements, inspections, and exterior work.",
+      },
+      {
+        name: "Siding",
+        icon: "SD",
+        helper: "Siding installs, repairs, trim, and exterior finish jobs.",
+      },
+      {
+        name: "Gutters",
+        icon: "GT",
+        helper: "Gutter cleaning, repairs, downspouts, and replacements.",
+      },
+      {
+        name: "Landscaping / Lawn Care",
+        icon: "LC",
+        helper: "Lawn care, maintenance, cleanup, and landscaping work.",
+      },
+      {
+        name: "HVAC",
+        icon: "HV",
+        helper: "Heating, cooling, service calls, installs, and repairs.",
+      },
+      {
+        name: "Plumbing",
+        icon: "PL",
+        helper: "Service calls, repairs, installs, and maintenance.",
+      },
+      {
+        name: "Electrical",
+        icon: "EL",
+        helper: "Electrical service, installs, repairs, and inspections.",
+      },
+    ],
+  },
+  {
+    group: "Automotive",
+    options: [
+      {
+        name: "Auto Detailing",
+        icon: "AD",
+        helper: "Detail packages, customer vehicles, add-ons, and follow-ups.",
+      },
+      {
+        name: "Auto Repair",
+        icon: "AR",
+        helper: "Repairs, diagnostics, labor, parts, and service records.",
+      },
+      {
+        name: "Power Sports Mechanic",
+        icon: "PS",
+        helper: "ATV, motorcycle, marine, and power sports repair work.",
+      },
+      {
+        name: "Towing",
+        icon: "TW",
+        helper: "Towing jobs, roadside calls, impounds, and customer records.",
+      },
+    ],
+  },
+  {
+    group: "Cleaning & Labor",
+    options: [
+      {
+        name: "Residential / Commercial Cleaning",
+        icon: "CL",
+        helper: "Cleaning jobs, recurring work, quotes, and invoices.",
+      },
+      {
+        name: "Junk Removal",
+        icon: "JR",
+        helper: "Hauling, removal, disposal, and cleanout jobs.",
+      },
+    ],
+  },
+  {
+    group: "General Trades",
+    options: [
+      {
+        name: "Handyman",
+        icon: "HM",
+        helper: "Small repairs, punch lists, maintenance, and service calls.",
+      },
+      {
+        name: "General Contractor",
+        icon: "GC",
+        helper: "Construction, remodels, project scopes, and contractor work.",
+      },
+    ],
+  },
+  {
+    group: "Other",
+    options: [
+      {
+        name: "Other",
+        icon: "OT",
+        helper: "Use a general setup and describe your business your way.",
+      },
+    ],
+  },
 ] as const;
+
+export const INDUSTRY_OPTIONS = INDUSTRY_GROUPS.flatMap((group) =>
+  group.options.map((option) => option.name)
+);
 
 export type IndustryOption = (typeof INDUSTRY_OPTIONS)[number];
 
@@ -34,6 +127,7 @@ export type BusinessProfile = {
   business_phone: string | null;
   business_email: string | null;
   business_logo_url: string | null;
+  custom_industry: string | null;
   onboarding_completed: boolean;
   updated_at: string | null;
 };
@@ -48,6 +142,7 @@ export type BusinessProfileInput = {
   business_phone?: string;
   business_email?: string;
   business_logo_url?: string;
+  custom_industry?: string;
   onboarding_completed?: boolean;
 };
 
@@ -61,18 +156,24 @@ export const INDUSTRY_TEMPLATE_MAP: Record<IndustryOption, string> = {
   Siding: "siding",
   Gutters: "gutter-cleaning",
   "Landscaping / Lawn Care": "lawn-care",
-  "Junk Removal": "junk-removal",
   HVAC: "hvac",
   Plumbing: "plumbing",
   Electrical: "electrician",
   "Auto Detailing": "car-detailing",
-  "Automotive Mechanic": "automotive-mechanic",
+  "Auto Repair": "automotive-mechanic",
   "Power Sports Mechanic": "power-sports-mechanic",
-  Handyman: "handyman",
-  Cleaning: "cleaning",
-  Construction: "construction",
   Towing: "towing",
+  "Residential / Commercial Cleaning": "cleaning",
+  "Junk Removal": "junk-removal",
+  Handyman: "handyman",
+  "General Contractor": "construction",
   Other: "general",
+};
+
+const LEGACY_INDUSTRY_MAP: Record<string, IndustryOption> = {
+  "Automotive Mechanic": "Auto Repair",
+  Cleaning: "Residential / Commercial Cleaning",
+  Construction: "General Contractor",
 };
 
 function clean(value?: string | null) {
@@ -92,13 +193,25 @@ function createFallbackBusinessProfile(user: BusinessUser): BusinessProfile {
     business_phone: null,
     business_email: null,
     business_logo_url: null,
+    custom_industry: null,
     onboarding_completed: true,
     updated_at: null,
   };
 }
 
+export function normalizeIndustry(industry?: string | null): IndustryOption | "" {
+  const value = clean(industry);
+  if (!value) return "";
+
+  const legacy = LEGACY_INDUSTRY_MAP[value];
+  if (legacy) return legacy;
+
+  const match = INDUSTRY_OPTIONS.find((option) => option === value);
+  return match || "Other";
+}
+
 export function getTemplateSlugForIndustry(industry?: string | null) {
-  const match = INDUSTRY_OPTIONS.find((option) => option === industry);
+  const match = normalizeIndustry(industry);
   return match ? INDUSTRY_TEMPLATE_MAP[match] : "general";
 }
 
@@ -111,7 +224,12 @@ export function getProfileDefaultInvoiceSlug(profile?: Partial<BusinessProfile> 
 }
 
 export function getProfileIndustryLabel(profile?: Partial<BusinessProfile> | null) {
-  return clean(profile?.industry) || "General";
+  const normalized = normalizeIndustry(profile?.industry);
+  if (normalized === "Other") {
+    return clean(profile?.custom_industry) || clean(profile?.industry) || "Other";
+  }
+
+  return normalized || "General";
 }
 
 export function getProfileQuoteLabel(profile?: Partial<BusinessProfile> | null) {
@@ -137,6 +255,7 @@ export function getBusinessProfileSelect() {
     "business_phone",
     "business_email",
     "business_logo_url",
+    "custom_industry",
     "onboarding_completed",
     "updated_at",
   ].join(", ");
@@ -182,7 +301,8 @@ export async function updateBusinessProfile(
   input: BusinessProfileInput
 ) {
   const businessName = clean(input.business_name);
-  const industry = clean(input.industry);
+  const industry = normalizeIndustry(input.industry);
+  const customIndustry = clean(input.custom_industry);
 
   if (!businessName) {
     throw new Error("Business name is required.");
@@ -190,6 +310,10 @@ export async function updateBusinessProfile(
 
   if (!industry) {
     throw new Error("Industry is required.");
+  }
+
+  if (industry === "Other" && !customIndustry) {
+    throw new Error("Custom industry is required when Other is selected.");
   }
 
   const defaultSlug = getTemplateSlugForIndustry(industry);
@@ -210,6 +334,7 @@ export async function updateBusinessProfile(
       business_phone: clean(input.business_phone) || null,
       business_email: clean(input.business_email) || null,
       business_logo_url: clean(input.business_logo_url) || null,
+      custom_industry: industry === "Other" ? customIndustry : null,
       onboarding_completed: input.onboarding_completed ?? true,
       updated_at: new Date().toISOString(),
     })
