@@ -343,7 +343,7 @@ export default async function Dashboard() {
               </div>
               <Link
                 href="/auth/signup"
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-white px-6 py-3 text-sm font-bold text-[var(--color-primary)] shadow-[var(--shadow-button)] transition hover:scale-[1.01]"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-slate-100 md:w-auto"
               >
                 Start Free Trial
               </Link>
