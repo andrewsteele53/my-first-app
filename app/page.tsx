@@ -341,12 +341,27 @@ export default async function Dashboard() {
                   Ready to run your business smarter?
                 </h2>
               </div>
-              <Link
-                href="/auth/signup"
-                className="inline-flex min-w-[150px] items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#24588a] shadow-sm transition hover:bg-slate-100"
+              <a
+                href="/signup"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: "170px",
+                  minHeight: "48px",
+                  borderRadius: "14px",
+                  backgroundColor: "#ffffff",
+                  color: "#24588a",
+                  fontSize: "14px",
+                  fontWeight: 800,
+                  lineHeight: "20px",
+                  textDecoration: "none",
+                  position: "relative",
+                  zIndex: 20,
+                }}
               >
                 Start Free Trial
-              </Link>
+              </a>
             </div>
           </section>
 
