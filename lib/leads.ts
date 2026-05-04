@@ -11,6 +11,7 @@ export type LeadStatus =
 
 export type LeadRecord = {
   id: string;
+  customerId?: string;
   fullName: string;
   phone: string;
   email: string;
@@ -78,6 +79,12 @@ function normalizeLead(raw: unknown): LeadRecord | null {
       typeof record.id === "string" && record.id.trim()
         ? record.id
         : crypto.randomUUID(),
+    customerId:
+      typeof record.customerId === "string"
+        ? record.customerId.trim()
+        : typeof record.customer_id === "string"
+        ? record.customer_id.trim()
+        : "",
     fullName:
       typeof record.fullName === "string"
         ? record.fullName.trim()

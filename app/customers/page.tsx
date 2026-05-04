@@ -38,7 +38,7 @@ type CustomerRow = {
   id: string;
   user_id: string;
   customer_name: string;
-  phone_number: string | null;
+  phone: string | null;
   email: string | null;
   address: string | null;
   company_name: string | null;
@@ -54,7 +54,7 @@ type CustomerRow = {
 
 type CustomerFormState = {
   customer_name: string;
-  phone_number: string;
+  phone: string;
   email: string;
   address: string;
   company_name: string;
@@ -68,7 +68,7 @@ type CustomerFormState = {
 
 const EMPTY_FORM: CustomerFormState = {
   customer_name: "",
-  phone_number: "",
+  phone: "",
   email: "",
   address: "",
   company_name: "",
@@ -83,7 +83,7 @@ const EMPTY_FORM: CustomerFormState = {
 function toFormState(customer: CustomerRow): CustomerFormState {
   return {
     customer_name: customer.customer_name,
-    phone_number: customer.phone_number ?? "",
+    phone: customer.phone ?? "",
     email: customer.email ?? "",
     address: customer.address ?? "",
     company_name: customer.company_name ?? "",
@@ -161,6 +161,9 @@ function getContactHref(prefix: "tel" | "sms" | "mailto", value: string | null) 
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
+  const [leads, setLeads] = useState<
+    { id: string; customer_id: string | null; full_name: string; service_type: string; status: string; created_at: string }[]
+  >([]);
   const [userId, setUserId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -204,6 +207,11 @@ export default function CustomersPage() {
         .select("*")
         .order("created_at", { ascending: false });
 
+      const { data: leadsData, error: leadsError } = await supabase
+        .from("leads")
+        .select("id, customer_id, full_name, service_type, status, created_at")
+        .order("created_at", { ascending: false });
+
       if (!isMounted) return;
 
       if (customersError) {
@@ -211,6 +219,10 @@ export default function CustomersPage() {
         setCustomers([]);
       } else {
         setCustomers((data ?? []) as CustomerRow[]);
+      }
+
+      if (!leadsError) {
+        setLeads((leadsData ?? []) as typeof leads);
       }
 
       setIsLoading(false);
@@ -240,7 +252,7 @@ export default function CustomersPage() {
 
         return [
           customer.customer_name,
-          customer.phone_number,
+          customer.phone,
           customer.email,
           customer.address,
           customer.service_needed,
@@ -339,7 +351,7 @@ export default function CustomersPage() {
     const payload = {
       user_id: userId,
       customer_name: form.customer_name.trim(),
-      phone_number: cleanOptional(form.phone_number),
+      phone: cleanOptional(form.phone),
       email: cleanOptional(form.email),
       address: cleanOptional(form.address),
       company_name: cleanOptional(form.company_name),
@@ -557,9 +569,12 @@ export default function CustomersPage() {
             <div className="mt-6 grid gap-4 xl:grid-cols-2">
               {filteredCustomers.map((customer) => {
                 const followUpState = getFollowUpState(customer);
-                const callHref = getContactHref("tel", customer.phone_number);
-                const textHref = getContactHref("sms", customer.phone_number);
+                const callHref = getContactHref("tel", customer.phone);
+                const textHref = getContactHref("sms", customer.phone);
                 const emailHref = getContactHref("mailto", customer.email);
+                const relatedLeads = leads.filter(
+                  (lead) => lead.customer_id === customer.id
+                );
 
                 return (
                   <article
@@ -593,7 +608,7 @@ export default function CustomersPage() {
                     </div>
 
                     <div className="mt-4 grid gap-3 text-sm text-[var(--color-text-secondary)] md:grid-cols-2">
-                      <p><span className="font-bold text-[var(--color-text)]">Phone:</span> {customer.phone_number || "-"}</p>
+                      <p><span className="font-bold text-[var(--color-text)]">Phone:</span> {customer.phone || "-"}</p>
                       <p><span className="font-bold text-[var(--color-text)]">Email:</span> {customer.email || "-"}</p>
                       <p><span className="font-bold text-[var(--color-text)]">Address:</span> {customer.address || "-"}</p>
                       <p><span className="font-bold text-[var(--color-text)]">Source:</span> {customer.lead_source}</p>
@@ -606,6 +621,33 @@ export default function CustomersPage() {
                       <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[var(--color-text-secondary)]">
                         {customer.notes || "No notes added."}
                       </p>
+                    </div>
+
+                    <div className="mt-4 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] p-4">
+                      <p className="text-sm font-bold text-[var(--color-text)]">
+                        Related Leads ({relatedLeads.length})
+                      </p>
+                      {relatedLeads.length === 0 ? (
+                        <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+                          No linked leads yet.
+                        </p>
+                      ) : (
+                        <div className="mt-3 grid gap-2">
+                          {relatedLeads.slice(0, 3).map((lead) => (
+                            <div
+                              key={lead.id}
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm"
+                            >
+                              <span className="font-semibold text-[var(--color-text)]">
+                                {lead.full_name}
+                              </span>
+                              <span className="text-[var(--color-text-secondary)]">
+                                {lead.service_type} / {lead.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -720,8 +762,8 @@ export default function CustomersPage() {
               <div>
                 <label className="mb-2 block text-sm font-bold">Phone Number</label>
                 <input
-                  value={form.phone_number}
-                  onChange={(event) => updateForm("phone_number", event.target.value)}
+                  value={form.phone}
+                  onChange={(event) => updateForm("phone", event.target.value)}
                   className="us-input"
                 />
               </div>

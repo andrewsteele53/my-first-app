@@ -2,7 +2,7 @@ create table if not exists public.customers (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   customer_name text not null,
-  phone_number text,
+  phone text,
   email text,
   address text,
   company_name text,

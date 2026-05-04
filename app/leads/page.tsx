@@ -1,18 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AIAssistantPanel from "@/components/ai-assistant-panel";
+import { createClient } from "@/lib/supabase/client";
 import {
-  deleteLeadRecord,
   getFollowUpsDueToday,
   getLeadStatusClasses,
   getSavedLeads,
-  saveLeadRecord,
-  updateLeadRecord,
   type LeadRecord,
   type LeadStatus,
 } from "@/lib/leads";
+
+type CustomerOption = {
+  id: string;
+  customer_name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  company_name: string | null;
+};
+
+type LeadRow = {
+  id: string;
+  user_id: string;
+  customer_id: string | null;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  area: string | null;
+  service_type: string;
+  status: LeadStatus;
+  estimated_value: number;
+  follow_up_date: string | null;
+  reminder_note: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 type AreaSummary = {
   area: string;
@@ -39,21 +65,41 @@ type MappingArea = {
 };
 
 const MAPPING_STORAGE_KEY = "sales_mapping_areas_v3";
-const FORTY_FIVE_DAYS_MS = 45 * 24 * 60 * 60 * 1000;
+const LOCAL_LEADS_IMPORT_KEY = "leads_database_v1_supabase_imported";
 
-function isMappingAreaExpired(createdAt: string) {
-  const createdTime = new Date(createdAt).getTime();
-  if (Number.isNaN(createdTime)) return true;
-  return Date.now() - createdTime > FORTY_FIVE_DAYS_MS;
+function cleanOptional(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
-function getActiveMappingAreas(areaList: MappingArea[]) {
-  return areaList.filter((area) => !isMappingAreaExpired(area.createdAt));
+function toLeadRecord(lead: LeadRow): LeadRecord {
+  return {
+    id: lead.id,
+    customerId: lead.customer_id ?? "",
+    fullName: lead.full_name,
+    phone: lead.phone ?? "",
+    email: lead.email ?? "",
+    address: lead.address ?? "",
+    area: lead.area ?? "",
+    serviceType: lead.service_type,
+    status: lead.status,
+    estimatedValue: Number(lead.estimated_value) || 0,
+    followUpDate: lead.follow_up_date ?? "",
+    reminderNote: lead.reminder_note ?? "",
+    notes: lead.notes ?? "",
+    createdAt: lead.created_at,
+  };
 }
 
-function formatInputDate(dateValue: string) {
+function formatInputDate(dateValue: string | null) {
   if (!dateValue) return "";
   return dateValue.slice(0, 10);
+}
+
+function getCustomerLabel(customer: CustomerOption) {
+  return customer.company_name
+    ? `${customer.customer_name} (${customer.company_name})`
+    : customer.customer_name;
 }
 
 export default function LeadsPage() {
@@ -68,40 +114,147 @@ export default function LeadsPage() {
   const [followUpDate, setFollowUpDate] = useState("");
   const [reminderNote, setReminderNote] = useState("");
   const [notes, setNotes] = useState("");
-  const [leads, setLeads] = useState<LeadRecord[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [autoCreateCustomer, setAutoCreateCustomer] = useState(true);
+  const [userId, setUserId] = useState("");
+  const [leads, setLeads] = useState<LeadRow[]>([]);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [mappingAreas, setMappingAreas] = useState<MappingArea[]>([]);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setLeads(getSavedLeads());
+  const supabase = useMemo(() => createClient(), []);
+  const estimatedValueNumber = Number(estimatedValue) || 0;
 
+  const loadData = useCallback(async (successMessage?: string) => {
+    setError("");
+
+    const { data: leadsData, error: leadsError } = await supabase
+      .from("leads")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const { data: customersData, error: customersError } = await supabase
+      .from("customers")
+      .select("id, customer_name, phone, email, address, company_name")
+      .order("customer_name", { ascending: true });
+
+    const { data: mappingData } = await supabase
+      .from("sales_mapping_areas")
+      .select("id, name, homes, close_rate, estimated_sales, avg_job_price, estimated_revenue, doors_knocked, actual_sales, status, notes, created_at")
+      .order("created_at", { ascending: false });
+
+    if (leadsError) {
+      setError(leadsError.message);
+      setLeads([]);
+    } else {
+      setLeads((leadsData ?? []) as LeadRow[]);
+    }
+
+    if (customersError) {
+      setError((current) => current || customersError.message);
+      setCustomers([]);
+    } else {
+      setCustomers((customersData ?? []) as CustomerOption[]);
+    }
+
+    if (mappingData) {
+      setMappingAreas(
+        mappingData.map((item) => ({
+          id: item.id as string,
+          name: (item.name as string) || "",
+          homes: Number(item.homes) || 0,
+          closeRate: Number(item.close_rate) || 0,
+          estimatedSales: Number(item.estimated_sales) || 0,
+          avgJobPrice: Number(item.avg_job_price) || 0,
+          estimatedRevenue: Number(item.estimated_revenue) || 0,
+          doorsKnocked: Number(item.doors_knocked) || 0,
+          actualSales: Number(item.actual_sales) || 0,
+          status: (item.status as MappingArea["status"]) || "Not Started",
+          notes: (item.notes as string) || "",
+          createdAt: (item.created_at as string) || new Date().toISOString(),
+        }))
+      );
+    } else {
       const rawMappingAreas = localStorage.getItem(MAPPING_STORAGE_KEY);
-
       if (rawMappingAreas) {
         try {
-          const parsedAreas = JSON.parse(rawMappingAreas) as MappingArea[];
-          const filteredAreas = getActiveMappingAreas(parsedAreas);
-          setMappingAreas(filteredAreas);
-          localStorage.setItem(MAPPING_STORAGE_KEY, JSON.stringify(filteredAreas));
+          setMappingAreas(JSON.parse(rawMappingAreas) as MappingArea[]);
         } catch {
           setMappingAreas([]);
-          localStorage.removeItem(MAPPING_STORAGE_KEY);
         }
       }
-    }, 0);
+    }
 
-    return () => window.clearTimeout(timeoutId);
-  }, []);
+    if (successMessage) setMessage(successMessage);
+  }, [supabase]);
 
-  const estimatedValueNumber = Number(estimatedValue) || 0;
+  useEffect(() => {
+    let isMounted = true;
+
+    async function init() {
+      setIsLoading(true);
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (!isMounted) return;
+
+      if (userError || !user) {
+        setError("Log in to view and manage your leads.");
+        setIsLoading(false);
+        return;
+      }
+
+      setUserId(user.id);
+      await loadData();
+
+      if (localStorage.getItem(LOCAL_LEADS_IMPORT_KEY) !== "true") {
+        const localLeads = getSavedLeads();
+        if (localLeads.length > 0) {
+          await supabase.from("leads").upsert(
+            localLeads.map((lead) => ({
+              id: lead.id,
+              user_id: user.id,
+              full_name: lead.fullName,
+              phone: cleanOptional(lead.phone),
+              email: cleanOptional(lead.email),
+              address: cleanOptional(lead.address),
+              area: cleanOptional(lead.area),
+              service_type: lead.serviceType,
+              status: lead.status,
+              estimated_value: lead.estimatedValue,
+              follow_up_date: cleanOptional(lead.followUpDate),
+              reminder_note: cleanOptional(lead.reminderNote),
+              notes: cleanOptional(lead.notes),
+              created_at: lead.createdAt,
+            })),
+            { onConflict: "id" }
+          );
+          await loadData("Existing local leads were linked to your account.");
+        }
+        localStorage.setItem(LOCAL_LEADS_IMPORT_KEY, "true");
+      }
+
+      setIsLoading(false);
+    }
+
+    init();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [loadData, supabase]);
+
+  const leadRecords = useMemo(() => leads.map(toLeadRecord), [leads]);
 
   const areaSuggestions = useMemo(() => {
     const uniqueNames = Array.from(
-      new Set(
-        mappingAreas.map((mappingArea) => mappingArea.name.trim()).filter(Boolean)
-      )
+      new Set(mappingAreas.map((mappingArea) => mappingArea.name.trim()).filter(Boolean))
     );
 
     return uniqueNames.sort((a, b) => a.localeCompare(b));
@@ -110,120 +263,68 @@ export default function LeadsPage() {
   const filteredLeads = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
-    if (!term) return leads;
+    if (!term) return leadRecords;
 
-    return leads.filter((lead) => {
-      return (
-        lead.fullName.toLowerCase().includes(term) ||
-        lead.phone.toLowerCase().includes(term) ||
-        lead.email.toLowerCase().includes(term) ||
-        lead.address.toLowerCase().includes(term) ||
-        lead.area.toLowerCase().includes(term) ||
-        lead.serviceType.toLowerCase().includes(term) ||
-        lead.status.toLowerCase().includes(term) ||
-        lead.notes.toLowerCase().includes(term) ||
-        lead.reminderNote.toLowerCase().includes(term)
-      );
-    });
-  }, [leads, searchTerm]);
+    return leadRecords.filter((lead) =>
+      [
+        lead.fullName,
+        lead.phone,
+        lead.email,
+        lead.address,
+        lead.area,
+        lead.serviceType,
+        lead.status,
+        lead.notes,
+        lead.reminderNote,
+      ].some((value) => value.toLowerCase().includes(term))
+    );
+  }, [leadRecords, searchTerm]);
 
-  const totalLeadValue = useMemo(() => {
-    return filteredLeads.reduce((sum, lead) => sum + lead.estimatedValue, 0);
-  }, [filteredLeads]);
-
-  const wonLeadsCount = useMemo(() => {
-    return filteredLeads.filter((lead) => lead.status === "Won").length;
-  }, [filteredLeads]);
-
-  const estimateSentCount = useMemo(() => {
-    return filteredLeads.filter((lead) => lead.status === "Estimate Sent").length;
-  }, [filteredLeads]);
-
-  const dueTodayCount = useMemo(() => {
-    return getFollowUpsDueToday(filteredLeads).length;
-  }, [filteredLeads]);
+  const totalLeadValue = useMemo(
+    () => filteredLeads.reduce((sum, lead) => sum + lead.estimatedValue, 0),
+    [filteredLeads]
+  );
+  const wonLeadsCount = useMemo(
+    () => filteredLeads.filter((lead) => lead.status === "Won").length,
+    [filteredLeads]
+  );
+  const estimateSentCount = useMemo(
+    () => filteredLeads.filter((lead) => lead.status === "Estimate Sent").length,
+    [filteredLeads]
+  );
+  const dueTodayCount = useMemo(
+    () => getFollowUpsDueToday(filteredLeads).length,
+    [filteredLeads]
+  );
 
   const areaSummaries = useMemo(() => {
     const grouped = new Map<string, AreaSummary>();
 
     for (const lead of filteredLeads) {
       const key = lead.area.trim() || "Unassigned Area";
-
-      if (!grouped.has(key)) {
-        grouped.set(key, {
+      const current =
+        grouped.get(key) ??
+        ({
           area: key,
           totalLeads: 0,
           wonLeads: 0,
           estimateSent: 0,
           scheduledFollowUps: 0,
           totalEstimatedValue: 0,
-        });
-      }
+        } satisfies AreaSummary);
 
-      const current = grouped.get(key)!;
       current.totalLeads += 1;
       current.totalEstimatedValue += lead.estimatedValue;
-
-      if (lead.status === "Won") {
-        current.wonLeads += 1;
-      }
-
-      if (lead.status === "Estimate Sent") {
-        current.estimateSent += 1;
-      }
-
-      if (lead.followUpDate) {
-        current.scheduledFollowUps += 1;
-      }
+      if (lead.status === "Won") current.wonLeads += 1;
+      if (lead.status === "Estimate Sent") current.estimateSent += 1;
+      if (lead.followUpDate) current.scheduledFollowUps += 1;
+      grouped.set(key, current);
     }
 
     return Array.from(grouped.values()).sort(
       (a, b) => b.totalEstimatedValue - a.totalEstimatedValue
     );
   }, [filteredLeads]);
-
-  function refreshLeads(messageText?: string) {
-    setLeads(getSavedLeads());
-    if (messageText) {
-      setMessage(messageText);
-    }
-  }
-
-  function saveLead() {
-    if (!fullName.trim()) {
-      setMessage("Enter a lead name first.");
-      return;
-    }
-
-    saveLeadRecord({
-      id: crypto.randomUUID(),
-      fullName: fullName.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-      address: address.trim(),
-      area: area.trim(),
-      serviceType,
-      status,
-      estimatedValue: estimatedValueNumber,
-      followUpDate: followUpDate ? new Date(followUpDate).toISOString() : "",
-      reminderNote: reminderNote.trim(),
-      notes: notes.trim(),
-      createdAt: new Date().toISOString(),
-    });
-
-    refreshLeads("Lead saved.");
-    clearForm(false);
-  }
-
-  function deleteLead(id: string) {
-    setLeads(deleteLeadRecord(id));
-    setMessage("Lead deleted.");
-  }
-
-  function updateLeadField(id: string, updates: Partial<LeadRecord>) {
-    setLeads(updateLeadRecord(id, updates));
-    setMessage("Lead updated.");
-  }
 
   function clearForm(clearMessage = true) {
     setFullName("");
@@ -237,17 +338,124 @@ export default function LeadsPage() {
     setFollowUpDate("");
     setReminderNote("");
     setNotes("");
+    setSelectedCustomerId("");
+    setAutoCreateCustomer(true);
 
-    if (clearMessage) {
-      setMessage("");
+    if (clearMessage) setMessage("");
+  }
+
+  async function findOrCreateCustomer() {
+    if (selectedCustomerId) return selectedCustomerId;
+    if (!autoCreateCustomer) return null;
+
+    const name = fullName.trim();
+    if (!name) return null;
+
+    const existing = customers.find(
+      (customer) =>
+        customer.customer_name.trim().toLowerCase() === name.toLowerCase() &&
+        (customer.phone || "") === phone.trim()
+    );
+
+    if (existing) return existing.id;
+
+    const { data, error: customerError } = await supabase
+      .from("customers")
+      .insert({
+        user_id: userId,
+        customer_name: name,
+        phone: cleanOptional(phone),
+        email: cleanOptional(email),
+        address: cleanOptional(address),
+        customer_type: "Residential",
+        service_needed: cleanOptional(serviceType),
+        lead_source: "Other",
+        sales_status: status === "Won" ? "Won" : status === "Lost" ? "Lost" : "New Lead",
+        follow_up_date: followUpDate || null,
+        notes: cleanOptional(notes),
+      })
+      .select("id")
+      .single();
+
+    if (customerError) throw new Error(customerError.message);
+    return data.id as string;
+  }
+
+  async function saveLead() {
+    if (!userId) {
+      setError("Log in before saving leads.");
+      return;
+    }
+
+    if (!fullName.trim()) {
+      setMessage("Enter a lead name first.");
+      return;
+    }
+
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const customerId = await findOrCreateCustomer();
+
+      const { error: saveError } = await supabase.from("leads").insert({
+        user_id: userId,
+        customer_id: customerId,
+        full_name: fullName.trim(),
+        phone: cleanOptional(phone),
+        email: cleanOptional(email),
+        address: cleanOptional(address),
+        area: cleanOptional(area),
+        service_type: serviceType,
+        status,
+        estimated_value: estimatedValueNumber,
+        follow_up_date: followUpDate ? new Date(followUpDate).toISOString() : null,
+        reminder_note: cleanOptional(reminderNote),
+        notes: cleanOptional(notes),
+      });
+
+      if (saveError) throw new Error(saveError.message);
+
+      await loadData("Lead saved.");
+      clearForm(false);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Lead could not be saved.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
-  function handlePrint() {
-    window.print();
+  async function deleteLead(id: string) {
+    const { error: deleteError } = await supabase
+      .from("leads")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+
+    await loadData("Lead deleted.");
   }
 
-  function handleDownloadPdf() {
+  async function updateLeadField(id: string, updates: Partial<LeadRow>) {
+    const { error: updateError } = await supabase
+      .from("leads")
+      .update(updates)
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    await loadData("Lead updated.");
+  }
+
+  function handlePrint() {
     window.print();
   }
 
@@ -297,89 +505,77 @@ export default function LeadsPage() {
             </p>
 
             <h1 className="mt-2 text-3xl font-bold">Lead Tracking</h1>
-
             <p className="mt-2 text-[var(--color-text-secondary)]">
-              Store leads, pipeline status, follow-up dates, and notes in one
-              contractor-friendly CRM view.
+              Store leads, pipeline status, follow-up dates, customer links, and
+              notes in one contractor-friendly CRM view.
             </p>
 
             <div className="us-notice-info mt-3 text-sm print-hide">
-              Area suggestions below are pulled from your saved Mapping areas.
-              Use those same names to keep territory tracking consistent.
+              Area suggestions come from Sales Mapping. Customer links stay
+              scoped to your logged-in account.
             </div>
+
+            {error ? <div className="us-notice-danger mt-3 text-sm">{error}</div> : null}
+            {message ? <p className="mt-4 text-sm font-semibold text-[var(--color-success)] print-hide">{message}</p> : null}
 
             <div className="print-hide mt-4 flex flex-wrap gap-3">
               <button onClick={handlePrint} className="us-btn-primary">
                 Print Page
               </button>
-
-              <button onClick={handleDownloadPdf} className="us-btn-primary">
+              <button onClick={handlePrint} className="us-btn-primary">
                 Download PDF
               </button>
             </div>
 
             <div className="print-hide mt-8 grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-semibold">
-                  Full Name
-                </label>
-                <input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="John Smith"
+                <label className="mb-2 block text-sm font-semibold">Link Customer</label>
+                <select
+                  value={selectedCustomerId}
+                  onChange={(event) => setSelectedCustomerId(event.target.value)}
                   className="us-input"
+                >
+                  <option value="">Auto-create or leave unlinked</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {getCustomerLabel(customer)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <label className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={autoCreateCustomer}
+                  onChange={(event) => setAutoCreateCustomer(event.target.checked)}
                 />
+                Create customer automatically when no customer is selected
+              </label>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold">Full Name</label>
+                <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Smith" className="us-input" />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold">
-                  Phone
-                </label>
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="555-555-5555"
-                  className="us-input"
-                />
+                <label className="mb-2 block text-sm font-semibold">Phone</label>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="555-555-5555" className="us-input" />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold">
-                  Email
-                </label>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="john@email.com"
-                  className="us-input"
-                />
+                <label className="mb-2 block text-sm font-semibold">Email</label>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@email.com" className="us-input" />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold">
-                  Address
-                </label>
-                <input
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="123 Main St"
-                  className="us-input"
-                />
+                <label className="mb-2 block text-sm font-semibold">Address</label>
+                <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St" className="us-input" />
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-semibold">Area</label>
-                <input
-                  list="mapping-area-suggestions"
-                  value={area}
-                  onChange={(e) => setArea(e.target.value)}
-                  placeholder={
-                    areaSuggestions.length > 0
-                      ? "Choose or type an area"
-                      : "No mapping areas saved yet"
-                  }
-                  className="us-input"
-                />
+                <input list="mapping-area-suggestions" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Choose or type an area" className="us-input" />
                 <datalist id="mapping-area-suggestions">
                   {areaSuggestions.map((areaNameOption) => (
                     <option key={areaNameOption} value={areaNameOption} />
@@ -388,14 +584,8 @@ export default function LeadsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold">
-                  Service Type
-                </label>
-                <select
-                  value={serviceType}
-                  onChange={(e) => setServiceType(e.target.value)}
-                  className="us-input"
-                >
+                <label className="mb-2 block text-sm font-semibold">Service Type</label>
+                <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="us-input">
                   <option>Gutter Cleaning</option>
                   <option>Pressure Washing</option>
                   <option>Lawn Care</option>
@@ -409,11 +599,7 @@ export default function LeadsPage() {
 
               <div>
                 <label className="mb-2 block text-sm font-semibold">Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as LeadStatus)}
-                  className="us-input"
-                >
+                <select value={status} onChange={(e) => setStatus(e.target.value as LeadStatus)} className="us-input">
                   <option value="New">New</option>
                   <option value="Contacted">Contacted</option>
                   <option value="Estimate Sent">Estimate Sent</option>
@@ -423,190 +609,86 @@ export default function LeadsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold">
-                  Estimated Value ($)
-                </label>
-                <input
-                  type="number"
-                  value={estimatedValue}
-                  onChange={(e) => setEstimatedValue(e.target.value)}
-                  className="us-input"
-                />
+                <label className="mb-2 block text-sm font-semibold">Estimated Value ($)</label>
+                <input type="number" value={estimatedValue} onChange={(e) => setEstimatedValue(e.target.value)} className="us-input" />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold">
-                  Follow-Up Date
-                </label>
-                <input
-                  type="date"
-                  value={followUpDate}
-                  onChange={(e) => setFollowUpDate(e.target.value)}
-                  className="us-input"
-                />
+                <label className="mb-2 block text-sm font-semibold">Follow-Up Date</label>
+                <input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} className="us-input" />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold">
-                  Reminder Note
-                </label>
-                <input
-                  value={reminderNote}
-                  onChange={(e) => setReminderNote(e.target.value)}
-                  placeholder="Call after 5 PM, text first, send estimate..."
-                  className="us-input"
-                />
+                <label className="mb-2 block text-sm font-semibold">Reminder Note</label>
+                <input value={reminderNote} onChange={(e) => setReminderNote(e.target.value)} placeholder="Call after 5 PM, text first, send estimate..." className="us-input" />
               </div>
 
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-semibold">Notes</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Interested, wants quote next week, older gutters, prefers text message..."
-                  className="us-textarea min-h-[120px]"
-                />
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Interested, wants quote next week, older gutters, prefers text message..." className="us-textarea min-h-[120px]" />
               </div>
             </div>
 
             <div className="print-hide mt-8">
               <AIAssistantPanel
                 title="Lead AI Assistant"
-                description="Turn rough lead notes into polished CRM summaries, follow-up messages, and next-step guidance without changing any existing lead data unless you choose to insert it."
+                description="Turn rough lead notes into polished CRM summaries, follow-up messages, and next-step guidance without changing existing lead data unless you choose to insert it."
                 category="lead"
                 defaultAction="summarize_lead_notes"
                 inputLabel="Lead notes or outreach context"
                 inputPlaceholder="Example: No answer, house needs gutters, try again Friday"
                 actions={[
-                  {
-                    value: "summarize_lead_notes",
-                    label: "Summarize Notes",
-                    description: "Clean up rough notes into a CRM-style summary.",
-                  },
-                  {
-                    value: "follow_up_sms",
-                    label: "Follow-Up SMS",
-                    description: "Draft a short text follow-up.",
-                  },
-                  {
-                    value: "follow_up_email",
-                    label: "Follow-Up Email",
-                    description: "Draft a short follow-up email.",
-                  },
-                  {
-                    value: "call_script",
-                    label: "Call Script",
-                    description: "Generate a short phone script.",
-                  },
-                  {
-                    value: "next_best_action",
-                    label: "Next Best Action",
-                    description: "Recommend the best practical next step.",
-                  },
+                  { value: "summarize_lead_notes", label: "Summarize Notes", description: "Clean up rough notes into a CRM-style summary." },
+                  { value: "follow_up_sms", label: "Follow-Up SMS", description: "Draft a short text follow-up." },
+                  { value: "follow_up_email", label: "Follow-Up Email", description: "Draft a short follow-up email." },
+                  { value: "call_script", label: "Call Script", description: "Generate a short phone script." },
+                  { value: "next_best_action", label: "Next Best Action", description: "Recommend the best practical next step." },
                 ]}
                 promptSuggestions={[
-                  {
-                    label: "Clean up rough notes",
-                    prompt: "No answer, house needs gutters, try again Friday",
-                    action: "summarize_lead_notes",
-                  },
-                  {
-                    label: "Write a text follow-up",
-                    prompt: "Requested quote last week, seemed interested, preferred text",
-                    action: "follow_up_sms",
-                  },
-                  {
-                    label: "Recommend next step",
-                    prompt: "Estimate sent already, no reply yet, exterior cleaning interest",
-                    action: "next_best_action",
-                  },
+                  { label: "Clean up rough notes", prompt: "No answer, house needs gutters, try again Friday", action: "summarize_lead_notes" },
+                  { label: "Write a text follow-up", prompt: "Requested quote last week, seemed interested, preferred text", action: "follow_up_sms" },
+                  { label: "Recommend next step", prompt: "Estimate sent already, no reply yet, exterior cleaning interest", action: "next_best_action" },
                 ]}
-                context={{
-                  fullName,
-                  serviceType,
-                  status,
-                  area,
-                  estimatedValue: estimatedValueNumber,
-                  followUpDate,
-                  reminderNote,
-                  currentNotes: notes,
-                }}
+                context={{ fullName, serviceType, status, area, estimatedValue: estimatedValueNumber, followUpDate, reminderNote, currentNotes: notes }}
                 initialInput={notes}
                 onInsertText={appendAiTextToNotes}
               />
             </div>
 
             <div className="print-hide mt-8 flex flex-wrap gap-3">
-              <button onClick={saveLead} className="us-btn-primary">
-                Save Lead
+              <button onClick={saveLead} disabled={isSaving || isLoading} className="us-btn-primary">
+                {isSaving ? "Saving..." : "Save Lead"}
               </button>
-
               <button onClick={() => clearForm()} className="us-btn-secondary">
                 Clear Form
               </button>
             </div>
-
-            {message ? (
-              <p className="mt-4 text-sm font-semibold text-[var(--color-success)] print-hide">
-                {message}
-              </p>
-            ) : null}
           </section>
 
           <aside className="space-y-6 print-hide">
             <div className="rounded-[1.6rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-7 shadow-[var(--shadow-card)]">
               <h2 className="text-2xl font-bold">Quick Stats</h2>
-
               <div className="mt-5 space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Total Leads</span>
-                  <span className="font-semibold">{filteredLeads.length}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Won Leads</span>
-                  <span className="font-semibold">{wonLeadsCount}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Estimate Sent</span>
-                  <span className="font-semibold">{estimateSentCount}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Due Today</span>
-                  <span className="font-semibold">{dueTodayCount}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Mapped Areas</span>
-                  <span className="font-semibold">{areaSuggestions.length}</span>
-                </div>
-
+                <div className="flex items-center justify-between"><span className="text-slate-600">Total Leads</span><span className="font-semibold">{filteredLeads.length}</span></div>
+                <div className="flex items-center justify-between"><span className="text-slate-600">Won Leads</span><span className="font-semibold">{wonLeadsCount}</span></div>
+                <div className="flex items-center justify-between"><span className="text-slate-600">Estimate Sent</span><span className="font-semibold">{estimateSentCount}</span></div>
+                <div className="flex items-center justify-between"><span className="text-slate-600">Due Today</span><span className="font-semibold">{dueTodayCount}</span></div>
+                <div className="flex items-center justify-between"><span className="text-slate-600">Customers</span><span className="font-semibold">{customers.length}</span></div>
                 <div className="rounded-2xl bg-green-100 px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-green-800">
-                      Total Lead Value
-                    </span>
-                    <span className="text-lg font-bold text-green-800">
-                      ${totalLeadValue.toLocaleString()}
-                    </span>
+                    <span className="font-semibold text-green-800">Total Lead Value</span>
+                    <span className="text-lg font-bold text-green-800">${totalLeadValue.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
             </div>
-
           </aside>
         </div>
 
         <section className="mt-8 rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-9 shadow-[var(--shadow-card)] print:mt-6 print:rounded-none print:p-0 print:shadow-none">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h2 className="text-3xl font-bold">Area Performance</h2>
-
-            <div className="text-sm text-[var(--color-text-secondary)]">
-              Use the same area name here as your mapping page to keep territory
-              tracking consistent.
-            </div>
+            <div className="text-sm text-[var(--color-text-secondary)]">Use the same area name here as Sales Mapping.</div>
           </div>
 
           {areaSummaries.length === 0 ? (
@@ -614,41 +696,14 @@ export default function LeadsPage() {
           ) : (
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {areaSummaries.map((summary) => (
-                <div
-                  key={summary.area}
-                  className="print-card rounded-[1.4rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-5"
-                >
+                <div key={summary.area} className="print-card rounded-[1.4rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-5">
                   <h3 className="text-xl font-bold">{summary.area}</h3>
-
                   <div className="mt-4 space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600">Total Leads</span>
-                      <span className="font-semibold">{summary.totalLeads}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600">Won Leads</span>
-                      <span className="font-semibold">{summary.wonLeads}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600">Estimate Sent</span>
-                      <span className="font-semibold">{summary.estimateSent}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600">Follow-Ups</span>
-                      <span className="font-semibold">
-                        {summary.scheduledFollowUps}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600">Est. Value</span>
-                      <span className="font-semibold">
-                        ${summary.totalEstimatedValue.toLocaleString()}
-                      </span>
-                    </div>
+                    <div className="flex items-center justify-between"><span className="text-slate-600">Total Leads</span><span className="font-semibold">{summary.totalLeads}</span></div>
+                    <div className="flex items-center justify-between"><span className="text-slate-600">Won Leads</span><span className="font-semibold">{summary.wonLeads}</span></div>
+                    <div className="flex items-center justify-between"><span className="text-slate-600">Estimate Sent</span><span className="font-semibold">{summary.estimateSent}</span></div>
+                    <div className="flex items-center justify-between"><span className="text-slate-600">Follow-Ups</span><span className="font-semibold">{summary.scheduledFollowUps}</span></div>
+                    <div className="flex items-center justify-between"><span className="text-slate-600">Est. Value</span><span className="font-semibold">${summary.totalEstimatedValue.toLocaleString()}</span></div>
                   </div>
                 </div>
               ))}
@@ -659,169 +714,80 @@ export default function LeadsPage() {
         <section className="mt-8 rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-9 shadow-[var(--shadow-card)] print:mt-6 print:rounded-none print:p-0 print:shadow-none">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h2 className="text-3xl font-bold">Saved Leads</h2>
-
             <div className="print-hide flex flex-wrap gap-3">
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search leads..."
-                className="us-input max-w-[220px] px-4 py-2"
-              />
-
-              <button onClick={handlePrint} className="us-btn-primary px-4 py-2">
-                Print Saved Leads
-              </button>
-
-              <button
-                onClick={handleDownloadPdf}
-                className="us-btn-primary px-4 py-2"
-              >
-                Download Saved Leads PDF
-              </button>
+              <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search leads..." className="us-input max-w-[220px] px-4 py-2" />
+              <button onClick={handlePrint} className="us-btn-primary px-4 py-2">Print Saved Leads</button>
+              <button onClick={handlePrint} className="us-btn-primary px-4 py-2">Download Saved Leads PDF</button>
             </div>
           </div>
 
-          {filteredLeads.length === 0 ? (
+          {isLoading ? (
+            <p className="mt-4 text-[var(--color-text-secondary)]">Loading leads...</p>
+          ) : filteredLeads.length === 0 ? (
             <p className="mt-4 text-[var(--color-text-secondary)]">No saved leads yet.</p>
           ) : (
             <div className="mt-6 grid gap-4">
-              {filteredLeads.map((lead) => (
-                <div
-                  key={lead.id}
-                  className="print-card rounded-[1.4rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card)]"
-                >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-2xl font-bold">{lead.fullName}</h3>
-                        <span
-                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${getLeadStatusClasses(
-                            lead.status
-                          )}`}
-                        >
-                          {lead.status}
-                        </span>
+              {filteredLeads.map((lead) => {
+                const customer = customers.find((item) => item.id === lead.customerId);
+                return (
+                  <div key={lead.id} className="print-card rounded-[1.4rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card)]">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h3 className="text-2xl font-bold">{lead.fullName}</h3>
+                          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${getLeadStatusClasses(lead.status)}`}>{lead.status}</span>
+                        </div>
+                        {customer ? <p className="mt-2 text-sm font-semibold text-[var(--color-primary)]">Linked customer: {getCustomerLabel(customer)}</p> : null}
+                        <div className="mt-3 space-y-1 text-sm text-slate-600">
+                          <p><span className="font-semibold text-slate-800">Phone:</span> {lead.phone || "-"}</p>
+                          <p><span className="font-semibold text-slate-800">Email:</span> {lead.email || "-"}</p>
+                          <p><span className="font-semibold text-slate-800">Address:</span> {lead.address || "-"}</p>
+                          <p><span className="font-semibold text-slate-800">Area:</span> {lead.area || "-"}</p>
+                          <p><span className="font-semibold text-slate-800">Service:</span> {lead.serviceType}</p>
+                          <p><span className="font-semibold text-slate-800">Notes:</span> {lead.notes || "No notes added."}</p>
+                          {lead.reminderNote ? <p><span className="font-semibold text-slate-800">Reminder:</span> {lead.reminderNote}</p> : null}
+                        </div>
+                        <p className="mt-3 text-xs text-slate-500">Saved on {new Date(lead.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</p>
                       </div>
 
-                      <div className="mt-3 space-y-1 text-sm text-slate-600">
-                        <p>
-                          <span className="font-semibold text-slate-800">Phone:</span>{" "}
-                          {lead.phone || "-"}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-slate-800">Email:</span>{" "}
-                          {lead.email || "-"}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-slate-800">Address:</span>{" "}
-                          {lead.address || "-"}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-slate-800">Area:</span>{" "}
-                          {lead.area || "-"}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-slate-800">Service:</span>{" "}
-                          {lead.serviceType}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-slate-800">Notes:</span>{" "}
-                          {lead.notes || "No notes added."}
-                        </p>
-                        {lead.reminderNote ? (
-                          <p>
-                            <span className="font-semibold text-slate-800">
-                              Reminder:
-                            </span>{" "}
-                            {lead.reminderNote}
-                          </p>
-                        ) : null}
-                      </div>
-
-                      <p className="mt-3 text-xs text-slate-500">
-                        Saved on{" "}
-                        {new Date(lead.createdAt).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </p>
-                    </div>
-
-                    <div className="grid min-w-[280px] gap-3 rounded-2xl border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-600">Estimated Value</span>
-                        <span className="font-semibold">
-                          ${lead.estimatedValue.toLocaleString()}
-                        </span>
-                      </div>
-
-                      <div className="print-hide">
-                        <label className="mb-2 block text-sm font-semibold">
-                          Change Status
-                        </label>
-                        <select
-                          value={lead.status}
-                          onChange={(e) =>
-                            updateLeadField(lead.id, {
-                              status: e.target.value as LeadStatus,
-                            })
-                          }
-                          className="us-input"
-                        >
-                          <option value="New">New</option>
-                          <option value="Contacted">Contacted</option>
-                          <option value="Estimate Sent">Estimate Sent</option>
-                          <option value="Won">Won</option>
-                          <option value="Lost">Lost</option>
-                        </select>
-                      </div>
-
-                      <div className="print-hide">
-                        <label className="mb-2 block text-sm font-semibold">
-                          Follow-Up Date
-                        </label>
-                        <input
-                          type="date"
-                          value={formatInputDate(lead.followUpDate)}
-                          onChange={(e) =>
-                            updateLeadField(lead.id, {
-                              followUpDate: e.target.value
-                                ? new Date(e.target.value).toISOString()
-                                : "",
-                            })
-                          }
-                          className="us-input"
-                        />
-                      </div>
-
-                      <div className="print-hide">
-                        <label className="mb-2 block text-sm font-semibold">
-                          Reminder Note
-                        </label>
-                        <input
-                          value={lead.reminderNote}
-                          onChange={(e) =>
-                            updateLeadField(lead.id, {
-                              reminderNote: e.target.value,
-                            })
-                          }
-                          className="us-input"
-                        />
+                      <div className="grid min-w-[280px] gap-3 rounded-2xl border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm">
+                        <div className="flex items-center justify-between"><span className="text-slate-600">Estimated Value</span><span className="font-semibold">${lead.estimatedValue.toLocaleString()}</span></div>
+                        <div className="print-hide">
+                          <label className="mb-2 block text-sm font-semibold">Linked Customer</label>
+                          <select value={lead.customerId} onChange={(e) => updateLeadField(lead.id, { customer_id: e.target.value || null })} className="us-input">
+                            <option value="">No customer</option>
+                            {customers.map((customerOption) => (
+                              <option key={customerOption.id} value={customerOption.id}>{getCustomerLabel(customerOption)}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="print-hide">
+                          <label className="mb-2 block text-sm font-semibold">Change Status</label>
+                          <select value={lead.status} onChange={(e) => updateLeadField(lead.id, { status: e.target.value as LeadStatus })} className="us-input">
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Estimate Sent">Estimate Sent</option>
+                            <option value="Won">Won</option>
+                            <option value="Lost">Lost</option>
+                          </select>
+                        </div>
+                        <div className="print-hide">
+                          <label className="mb-2 block text-sm font-semibold">Follow-Up Date</label>
+                          <input type="date" value={formatInputDate(lead.followUpDate)} onChange={(e) => updateLeadField(lead.id, { follow_up_date: e.target.value ? new Date(e.target.value).toISOString() : null })} className="us-input" />
+                        </div>
+                        <div className="print-hide">
+                          <label className="mb-2 block text-sm font-semibold">Reminder Note</label>
+                          <input value={lead.reminderNote} onChange={(e) => updateLeadField(lead.id, { reminder_note: e.target.value })} className="us-input" />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="print-hide mt-4">
-                    <button
-                      onClick={() => deleteLead(lead.id)}
-                      className="us-btn-danger px-4 py-2"
-                    >
-                      Delete Lead
-                    </button>
+                    <div className="print-hide mt-4">
+                      <button onClick={() => deleteLead(lead.id)} className="us-btn-danger px-4 py-2">Delete Lead</button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
