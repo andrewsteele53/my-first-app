@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import AIActionPreviewCard from "@/components/ai-action-preview-card";
+import AILeadResultsTable from "@/components/ai-lead-results-table";
+import {
+  CUSTOMER_FINDER_BUSINESS_TYPES,
+  getDefaultCustomerFinderBusinessType,
+  type CustomerFinderBusinessType,
+  type CustomerFinderLead,
+} from "@/lib/customer-finder";
 import { getSavedQuotes } from "@/lib/quotes";
 import type { AIActionPreview } from "@/lib/ai/schemas";
 
@@ -13,6 +20,67 @@ type AIUsage = {
   resetDate: string | null;
 };
 
+const BATCH_LEAD_TRIGGERS = [
+  /\bfind\s+(?:\d+\s+)?leads?\b/i,
+  /\bfind\s+(?:\d+\s+)?customers?\b/i,
+  /\bgenerate\s+(?:\d+\s+)?leads?\b/i,
+  /\bget\s+\d+\s+leads?\b/i,
+  /\bfind\s+\d+\s+customers?\b/i,
+];
+
+const BUSINESS_TYPE_ALIASES: Array<{
+  pattern: RegExp;
+  businessType: CustomerFinderBusinessType;
+}> = [
+  { pattern: /\broof/i, businessType: "Roofing" },
+  { pattern: /\bsiding/i, businessType: "Siding" },
+  { pattern: /\bgutters?\b/i, businessType: "Gutters" },
+  { pattern: /\blandscap|lawn/i, businessType: "Landscaping / Lawn Care" },
+  { pattern: /\bhvac|heating|cooling/i, businessType: "HVAC" },
+  { pattern: /\bplumb/i, businessType: "Plumbing" },
+  { pattern: /\belectric/i, businessType: "Electrical" },
+  { pattern: /\bdetail/i, businessType: "Auto Detailing" },
+  { pattern: /\bauto repair|mechanic\b/i, businessType: "Auto Repair" },
+  { pattern: /\bpower sports|powersports|atv|utv|motorcycle/i, businessType: "Power Sports Mechanic" },
+  { pattern: /\btowing|tow\b/i, businessType: "Towing" },
+  { pattern: /\bclean/i, businessType: "Residential / Commercial Cleaning" },
+  { pattern: /\bjunk/i, businessType: "Junk Removal" },
+  { pattern: /\bhandyman/i, businessType: "Handyman" },
+  { pattern: /\bgeneral contractor|contractor|construction/i, businessType: "General Contractor" },
+];
+
+function isBatchLeadGenerationRequest(value: string) {
+  return BATCH_LEAD_TRIGGERS.some((trigger) => trigger.test(value));
+}
+
+function getRequestedLeadCount(value: string) {
+  const match = value.match(/\b(?:get|find|generate)\s+(\d+)\s+(?:leads?|customers?)\b/i);
+  const count = match ? Number.parseInt(match[1], 10) : 10;
+  return Number.isFinite(count) ? Math.min(Math.max(count, 1), 20) : 10;
+}
+
+function getRequestedBusinessType(value: string) {
+  const exactMatch = CUSTOMER_FINDER_BUSINESS_TYPES.find((businessType) =>
+    value.toLowerCase().includes(businessType.toLowerCase())
+  );
+
+  if (exactMatch) return exactMatch;
+
+  return BUSINESS_TYPE_ALIASES.find((alias) => alias.pattern.test(value))
+    ?.businessType;
+}
+
+function getRequestedLocation(value: string) {
+  const match = value.match(/\b(?:near|in|around)\s+(.+)$/i);
+  if (!match) return "Hanover Park, IL";
+
+  const location = match[1]
+    .split(/\s+for\s+|\s+within\s+|\s+radius\b|\.|\?/i)[0]
+    .trim();
+
+  return location || "Hanover Park, IL";
+}
+
 export default function AIAssistantPage() {
   const [message, setMessage] = useState("");
   const [answer, setAnswer] = useState("");
@@ -21,6 +89,9 @@ export default function AIAssistantPage() {
   const [loading, setLoading] = useState(false);
   const [usage, setUsage] = useState<AIUsage | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
+  const [batchLeads, setBatchLeads] = useState<CustomerFinderLead[]>([]);
+  const [batchBusinessType, setBatchBusinessType] =
+    useState<CustomerFinderBusinessType>("Gutters");
 
   async function refreshUsage() {
     try {
@@ -66,6 +137,7 @@ export default function AIAssistantPage() {
     setError("");
     setAnswer("");
     setActionPreview(null);
+    setBatchLeads([]);
     setStatusMessage("");
 
     const trimmedMessage = message.trim();
@@ -77,6 +149,46 @@ export default function AIAssistantPage() {
 
     try {
       setLoading(true);
+
+      if (isBatchLeadGenerationRequest(trimmedMessage)) {
+        const profileResponse = await fetch("/api/business-profile");
+        const profileData = (await profileResponse.json().catch(() => null)) as
+          | { profile?: { industry?: string | null; custom_industry?: string | null } | null }
+          | null;
+        const profileIndustry =
+          profileData?.profile?.industry === "Other"
+            ? profileData.profile.custom_industry
+            : profileData?.profile?.industry;
+        const businessType =
+          getRequestedBusinessType(trimmedMessage) ||
+          getDefaultCustomerFinderBusinessType(profileIndustry);
+
+        const response = await fetch("/api/ai/customer-finder", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            businessType,
+            location: getRequestedLocation(trimmedMessage),
+            radius: 10,
+            count: getRequestedLeadCount(trimmedMessage),
+          }),
+        });
+
+        const data = (await response.json().catch(() => null)) as
+          | { leads?: CustomerFinderLead[]; error?: string }
+          | null;
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Could not generate customer leads. Try again.");
+        }
+
+        setBatchBusinessType(businessType);
+        setBatchLeads(Array.isArray(data?.leads) ? data.leads : []);
+        await refreshUsage();
+        return;
+      }
 
       const response = await fetch("/api/ai/assist", {
         method: "POST",
@@ -213,6 +325,15 @@ export default function AIAssistantPage() {
               preview={actionPreview}
               onCancel={() => setActionPreview(null)}
               onSaved={setStatusMessage}
+            />
+          ) : null}
+
+          {batchLeads.length > 0 ? (
+            <AILeadResultsTable
+              leads={batchLeads}
+              businessType={batchBusinessType}
+              onCancel={() => setBatchLeads([])}
+              onImported={setStatusMessage}
             />
           ) : null}
 

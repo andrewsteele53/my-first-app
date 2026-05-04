@@ -19,6 +19,24 @@ export const CUSTOMER_FINDER_BUSINESS_TYPES = [
 export type CustomerFinderBusinessType =
   (typeof CUSTOMER_FINDER_BUSINESS_TYPES)[number];
 
+export type CustomerFinderLead = {
+  company_name: string;
+  customer_type: string;
+  recommended_service_need: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  weekday_hours: string;
+  lead_source: "AI Customer Finder";
+  status: "New";
+  follow_up_date: string;
+  notes: string;
+};
+
 export const CUSTOMER_FINDER_RADII = ["5", "10", "15", "25"] as const;
 export const CUSTOMER_FINDER_COUNTS = [5, 10, 20] as const;
 export const DEFAULT_CUSTOMER_FINDER_BUSINESS_TYPE = "Gutters";
