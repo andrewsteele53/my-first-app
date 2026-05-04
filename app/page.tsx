@@ -537,6 +537,16 @@ export default async function Dashboard() {
   const primarySections = sections.filter((section) => section.tone === "primary");
   const secondarySections = sections.filter((section) => section.tone === "secondary");
   const hasNoSalesRecords = (newLeadsCount ?? 0) === 0 && (customerCount ?? 0) === 0;
+  const hasNoFocusActivity =
+    (newLeadsCount ?? 0) === 0 &&
+    (followUpsDueCount ?? 0) === 0 &&
+    (openQuotesCount ?? 0) === 0;
+  const hasNoPipelineActivity =
+    (leadsCreatedCount ?? 0) === 0 &&
+    (wonLeadsCount ?? 0) === 0 &&
+    (lostLeadsCount ?? 0) === 0 &&
+    (scheduledFollowUpsCount ?? 0) === 0 &&
+    (openQuotesCount ?? 0) === 0;
 
   return (
     <main className="us-page">
@@ -559,7 +569,7 @@ export default async function Dashboard() {
               <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">Industry: {industryLabel}</span>
             </div>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link href="/leads" className="us-btn-primary min-h-16 px-8 text-lg shadow-[0_18px_34px_rgba(47,93,138,0.3)]">
+              <Link href="/leads" className="us-btn-primary min-h-[4.5rem] px-10 text-xl shadow-[0_20px_38px_rgba(47,93,138,0.34)]">
                 + Add Lead
               </Link>
               <Link href={defaultQuoteHref} className="us-btn-secondary">
@@ -569,12 +579,34 @@ export default async function Dashboard() {
                 Create {invoiceLabel} Invoice
               </Link>
             </div>
+
+            <div className="mt-8 rounded-[1.2rem] border border-[var(--color-border)] bg-white/75 p-5">
+              <p className="text-sm font-extrabold text-[var(--color-text)]">Getting started:</p>
+              <div className="mt-3 grid gap-2 text-sm font-semibold text-[var(--color-text-secondary)] sm:grid-cols-3">
+                {["Add first lead", "Create first quote", "Close first job"].map((item) => (
+                  <div key={item} className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-primary)] text-xs font-extrabold text-[var(--color-primary)]">
+                      ✓
+                    </span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
         <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
           <p className="us-kicker">Today&apos;s Focus</p>
           <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">Today&apos;s Focus</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
+            Stay on top of your leads and follow-ups.
+          </p>
+          {hasNoFocusActivity ? (
+            <p className="mt-4 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-secondary)]">
+              No leads yet — start by adding your first lead to begin tracking your sales.
+            </p>
+          ) : null}
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             {[
               { label: "New Leads", value: newLeadsCount ?? 0 },
@@ -592,6 +624,11 @@ export default async function Dashboard() {
         <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
           <p className="us-kicker">Sales Pipeline</p>
           <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">Sales Pipeline</h2>
+          {hasNoPipelineActivity ? (
+            <p className="mt-4 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-secondary)]">
+              Your pipeline will appear here once you start adding leads and quotes.
+            </p>
+          ) : null}
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { label: "Leads Created", value: leadsCreatedCount ?? 0 },
@@ -609,8 +646,8 @@ export default async function Dashboard() {
 
         <section>
           <div className="mb-4">
-            <p className="us-kicker">Core Tools</p>
-            <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">Core Tools</h2>
+            <p className="us-kicker">Run Your Business</p>
+            <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">Run Your Business</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {primarySections.map((section) => (
@@ -660,30 +697,37 @@ export default async function Dashboard() {
           </div>
         </section>
 
-        <DashboardAIWidget
-          context={{
-            isSubscribed,
-            hasCoreAccess,
-            hasAiAccess,
-            subscriptionStatus,
-            trialDaysRemaining,
-            businessProfile: {
-              businessName: businessProfile.business_name,
-              industry: industryLabel,
-              customIndustry: businessProfile.custom_industry,
-              servicesOffered: businessProfile.services_offered,
-              defaultQuoteType: businessProfile.default_quote_type,
-              defaultInvoiceType: businessProfile.default_invoice_type,
-            },
-            stats: [
-              { label: "New Leads", value: String(newLeadsCount ?? 0) },
-              { label: "Follow Ups Due", value: String(followUpsDueCount ?? 0) },
-              { label: "Open Quotes", value: String(openQuotesCount ?? 0) },
-              { label: "Customers", value: String(customerCount ?? 0) },
-            ],
-            sections,
-          }}
-        />
+        <details className="rounded-[1.2rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]">
+          <summary className="cursor-pointer text-sm font-extrabold uppercase tracking-[0.16em] text-[var(--color-accent)]">
+            AI Assistant
+          </summary>
+          <div className="mt-5">
+            <DashboardAIWidget
+              context={{
+                isSubscribed,
+                hasCoreAccess,
+                hasAiAccess,
+                subscriptionStatus,
+                trialDaysRemaining,
+                businessProfile: {
+                  businessName: businessProfile.business_name,
+                  industry: industryLabel,
+                  customIndustry: businessProfile.custom_industry,
+                  servicesOffered: businessProfile.services_offered,
+                  defaultQuoteType: businessProfile.default_quote_type,
+                  defaultInvoiceType: businessProfile.default_invoice_type,
+                },
+                stats: [
+                  { label: "New Leads", value: String(newLeadsCount ?? 0) },
+                  { label: "Follow Ups Due", value: String(followUpsDueCount ?? 0) },
+                  { label: "Open Quotes", value: String(openQuotesCount ?? 0) },
+                  { label: "Customers", value: String(customerCount ?? 0) },
+                ],
+                sections,
+              }}
+            />
+          </div>
+        </details>
       </div>
     </main>
   );
