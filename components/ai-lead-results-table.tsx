@@ -11,6 +11,7 @@ type Props = {
   leads: CustomerFinderLead[];
   businessType: CustomerFinderBusinessType;
   onCancel: () => void;
+  onGenerateAgain?: () => void;
   onImported?: (message: string) => void;
 };
 
@@ -48,6 +49,7 @@ export default function AILeadResultsTable({
   leads,
   businessType,
   onCancel,
+  onGenerateAgain,
   onImported,
 }: Props) {
   const [selectedIndexes, setSelectedIndexes] = useState(() =>
@@ -176,6 +178,16 @@ export default function AILeadResultsTable({
             >
               {isImporting ? "Importing selected leads..." : "Import Selected Leads"}
             </button>
+            {onGenerateAgain ? (
+              <button
+                type="button"
+                onClick={onGenerateAgain}
+                disabled={isImporting}
+                className="us-btn-secondary px-4 py-2"
+              >
+                Generate Again
+              </button>
+            ) : null}
             <button type="button" onClick={onCancel} className="us-btn-secondary px-4 py-2">
               Cancel
             </button>
@@ -187,11 +199,13 @@ export default function AILeadResultsTable({
             <thead className="bg-white text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
               <tr>
                 <th className="px-4 py-3">Select</th>
-                <th className="px-4 py-3">Company Name</th>
+                <th className="px-4 py-3">Company/customer name</th>
+                <th className="px-4 py-3">Customer Type</th>
+                <th className="px-4 py-3">Recommended Service Need</th>
                 <th className="px-4 py-3">Phone</th>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Address</th>
-                <th className="px-4 py-3">Service Needed</th>
+                <th className="px-4 py-3">Weekday Hours</th>
                 <th className="px-4 py-3">Notes</th>
               </tr>
             </thead>
@@ -208,10 +222,12 @@ export default function AILeadResultsTable({
                   <td className="px-4 py-3 align-top font-semibold text-[var(--color-text)]">
                     {lead.company_name}
                   </td>
+                  <td className="px-4 py-3 align-top">{lead.customer_type}</td>
+                  <td className="px-4 py-3 align-top">{lead.recommended_service_need}</td>
                   <td className="px-4 py-3 align-top">{lead.phone}</td>
                   <td className="px-4 py-3 align-top">{lead.email}</td>
                   <td className="px-4 py-3 align-top">{formatAddress(lead) || "n/a"}</td>
-                  <td className="px-4 py-3 align-top">{lead.recommended_service_need}</td>
+                  <td className="px-4 py-3 align-top">{lead.weekday_hours}</td>
                   <td className="px-4 py-3 align-top">{lead.notes}</td>
                 </tr>
               ))}

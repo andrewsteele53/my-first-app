@@ -21,6 +21,7 @@ type AIUsage = {
 };
 
 const BATCH_LEAD_TRIGGERS = [
+  /\bgenerate\s+multiple\s+leads?\b/i,
   /\bfind(?:\s+me)?\s+(?:\d+\s+)?leads?\b/i,
   /\bfind(?:\s+me)?\s+(?:\d+\s+)?customers?\b/i,
   /\bgenerate\s+(?:\d+\s+)?leads?\b/i,
@@ -134,6 +135,9 @@ export default function AIAssistantPage() {
   const [batchLeads, setBatchLeads] = useState<CustomerFinderLead[]>([]);
   const [batchBusinessType, setBatchBusinessType] =
     useState<CustomerFinderBusinessType>("Gutters");
+  const [batchGenerationKey, setBatchGenerationKey] = useState(0);
+  const [isGeneratingCustomerLeads, setIsGeneratingCustomerLeads] =
+    useState(false);
 
   async function refreshUsage() {
     try {
@@ -174,6 +178,75 @@ export default function AIAssistantPage() {
     };
   }, []);
 
+  async function getProfileBusinessType(messageValue: string) {
+    const profileResponse = await fetch("/api/business-profile");
+    const profileData = (await profileResponse.json().catch(() => null)) as
+      | { profile?: { industry?: string | null; custom_industry?: string | null } | null }
+      | null;
+    const profileIndustry =
+      profileData?.profile?.industry === "Other"
+        ? profileData.profile.custom_industry
+        : profileData?.profile?.industry;
+
+    return (
+      getRequestedBusinessType(messageValue) ||
+      getDefaultCustomerFinderBusinessType(profileIndustry)
+    );
+  }
+
+  async function generateMultipleLeads(messageValue: string) {
+    setActionPreview(null);
+    setAnswer("");
+    setBatchLeads([]);
+    setError("");
+    setStatusMessage("Generating customer leads...");
+    setIsGeneratingCustomerLeads(true);
+
+    try {
+      const businessType = await getProfileBusinessType(messageValue);
+      const response = await fetch("/api/ai/customer-finder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          businessType,
+          location: getRequestedLocation(messageValue),
+          radius: getRequestedRadius(messageValue),
+          count: getRequestedLeadCount(messageValue),
+        }),
+      });
+
+      const data = (await response.json().catch(() => null)) as
+        | { leads?: CustomerFinderLead[]; error?: string }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Could not generate customer leads. Try again.");
+      }
+
+      const leads = Array.isArray(data?.leads) ? data.leads : [];
+      setBatchBusinessType(businessType);
+      setBatchLeads(leads);
+      setBatchGenerationKey((current) => current + 1);
+      setStatusMessage(
+        leads.length > 0
+          ? ""
+          : "No leads found. Try a different location, radius, or business type."
+      );
+      await refreshUsage();
+    } catch (err) {
+      setStatusMessage("");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not generate customer leads. Try again."
+      );
+    } finally {
+      setIsGeneratingCustomerLeads(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -193,42 +266,7 @@ export default function AIAssistantPage() {
       setLoading(true);
 
       if (isBatchLeadGenerationRequest(trimmedMessage)) {
-        const profileResponse = await fetch("/api/business-profile");
-        const profileData = (await profileResponse.json().catch(() => null)) as
-          | { profile?: { industry?: string | null; custom_industry?: string | null } | null }
-          | null;
-        const profileIndustry =
-          profileData?.profile?.industry === "Other"
-            ? profileData.profile.custom_industry
-            : profileData?.profile?.industry;
-        const businessType =
-          getRequestedBusinessType(trimmedMessage) ||
-          getDefaultCustomerFinderBusinessType(profileIndustry);
-
-        const response = await fetch("/api/ai/customer-finder", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            businessType,
-            location: getRequestedLocation(trimmedMessage),
-            radius: getRequestedRadius(trimmedMessage),
-            count: getRequestedLeadCount(trimmedMessage),
-          }),
-        });
-
-        const data = (await response.json().catch(() => null)) as
-          | { leads?: CustomerFinderLead[]; error?: string }
-          | null;
-
-        if (!response.ok) {
-          throw new Error(data?.error || "Could not generate customer leads. Try again.");
-        }
-
-        setBatchBusinessType(businessType);
-        setBatchLeads(Array.isArray(data?.leads) ? data.leads : []);
-        await refreshUsage();
+        await generateMultipleLeads(trimmedMessage);
         return;
       }
 
@@ -259,13 +297,23 @@ export default function AIAssistantPage() {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        mode?: string;
+        preview?: AIActionPreview;
+        answer?: string;
+        error?: string;
+      };
 
       if (!response.ok) {
         throw new Error(data.error || "AI request failed.");
       }
 
       if (data.mode === "action" && data.preview) {
+        if (data.preview.intent === "generate_multiple_leads") {
+          await generateMultipleLeads(trimmedMessage);
+          return;
+        }
+
         setActionPreview(data.preview);
       } else {
         setAnswer(data.answer || "No answer was returned.");
@@ -332,7 +380,11 @@ export default function AIAssistantPage() {
               disabled={loading}
               className="us-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Thinking..." : "Start Running Your Business Smarter"}
+              {isGeneratingCustomerLeads
+                ? "Generating customer leads..."
+                : loading
+                ? "Thinking..."
+                : "Start Running Your Business Smarter"}
             </button>
           </form>
 
@@ -372,9 +424,13 @@ export default function AIAssistantPage() {
 
           {batchLeads.length > 0 ? (
             <AILeadResultsTable
+              key={batchGenerationKey}
               leads={batchLeads}
               businessType={batchBusinessType}
               onCancel={() => setBatchLeads([])}
+              onGenerateAgain={() =>
+                void generateMultipleLeads(message.trim() || "find 5 leads near Hanover Park, IL")
+              }
               onImported={setStatusMessage}
             />
           ) : null}
