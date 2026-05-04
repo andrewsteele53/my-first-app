@@ -16,6 +16,14 @@ import {
   isLeadServiceType,
   LEAD_SERVICE_TYPES,
 } from "@/lib/service-types";
+import {
+  CUSTOMER_FINDER_BUSINESS_TYPES,
+  CUSTOMER_FINDER_COUNTS,
+  CUSTOMER_FINDER_RADII,
+  DEFAULT_CUSTOMER_FINDER_BUSINESS_TYPE,
+  getDefaultCustomerFinderBusinessType,
+  type CustomerFinderBusinessType,
+} from "@/lib/customer-finder";
 
 type CustomerOption = {
   id: string;
@@ -71,6 +79,24 @@ type MappingArea = {
   status: "Not Started" | "In Progress" | "Completed";
   notes: string;
   createdAt: string;
+};
+
+type CustomerFinderLead = {
+  company_name: string;
+  customer_type: string;
+  recommended_service_need: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  weekday_hours: string;
+  lead_source: "AI Customer Finder";
+  status: "New";
+  follow_up_date: string;
+  notes: string;
 };
 
 const MAPPING_STORAGE_KEY = "sales_mapping_areas_v3";
@@ -136,6 +162,34 @@ function buildLeadNotes(notes: string, reminderNote: string) {
     : `Reminder: ${cleanReminder}`;
 }
 
+function isPresentAiValue(value: string) {
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 0 && normalized !== "n/a";
+}
+
+function formatCustomerFinderAddress(lead: CustomerFinderLead) {
+  return [lead.address, lead.city, lead.state, lead.zip]
+    .filter(isPresentAiValue)
+    .join(", ");
+}
+
+function buildCustomerFinderNotes(
+  lead: CustomerFinderLead,
+  businessType: CustomerFinderBusinessType
+) {
+  return [
+    `AI Customer Finder business type: ${businessType}`,
+    `Customer type: ${lead.customer_type}`,
+    `Recommended service need: ${lead.recommended_service_need}`,
+    `Weekday hours: ${lead.weekday_hours}`,
+    `Lead source: ${lead.lead_source}`,
+    lead.notes,
+    "AI-generated customer leads should be verified before outreach.",
+  ]
+    .filter((item) => item.trim().length > 0)
+    .join("\n");
+}
+
 export default function LeadsPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -159,6 +213,20 @@ export default function LeadsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [customerFinderOpen, setCustomerFinderOpen] = useState(false);
+  const [customerFinderLocked, setCustomerFinderLocked] = useState(false);
+  const [customerFinderBusinessType, setCustomerFinderBusinessType] =
+    useState<CustomerFinderBusinessType>(DEFAULT_CUSTOMER_FINDER_BUSINESS_TYPE);
+  const [customerFinderLocation, setCustomerFinderLocation] = useState("");
+  const [customerFinderRadius, setCustomerFinderRadius] = useState("10");
+  const [customerFinderCount, setCustomerFinderCount] = useState(5);
+  const [customerFinderLeads, setCustomerFinderLeads] = useState<CustomerFinderLead[]>([]);
+  const [selectedCustomerFinderLeads, setSelectedCustomerFinderLeads] = useState<number[]>([]);
+  const [customerFinderMessage, setCustomerFinderMessage] = useState("");
+  const [customerFinderError, setCustomerFinderError] = useState("");
+  const [isCheckingCustomerFinderAccess, setIsCheckingCustomerFinderAccess] = useState(false);
+  const [isGeneratingCustomerFinderLeads, setIsGeneratingCustomerFinderLeads] = useState(false);
+  const [isImportingCustomerFinderLeads, setIsImportingCustomerFinderLeads] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
   const estimatedValueNumber = Number(estimatedValue) || 0;
@@ -509,6 +577,184 @@ export default function LeadsPage() {
     setNotes((current) => (current ? `${current}\n\n${text}` : text));
   }
 
+  function resetCustomerFinderPreview() {
+    setCustomerFinderLeads([]);
+    setSelectedCustomerFinderLeads([]);
+    setCustomerFinderMessage("");
+    setCustomerFinderError("");
+  }
+
+  async function openCustomerFinder() {
+    setIsCheckingCustomerFinderAccess(true);
+    resetCustomerFinderPreview();
+
+    try {
+      const accessResponse = await fetch("/api/billing/access");
+      const accessData = (await accessResponse.json().catch(() => null)) as
+        | { hasAiAccess?: boolean; error?: string }
+        | null;
+
+      if (!accessResponse.ok || !accessData?.hasAiAccess) {
+        setCustomerFinderLocked(true);
+        setCustomerFinderOpen(true);
+        return;
+      }
+
+      const profileResponse = await fetch("/api/business-profile");
+      const profileData = (await profileResponse.json().catch(() => null)) as
+        | { profile?: { industry?: string | null; custom_industry?: string | null } | null }
+        | null;
+
+      const profileIndustry =
+        profileData?.profile?.industry === "Other"
+          ? profileData.profile.custom_industry
+          : profileData?.profile?.industry;
+
+      setCustomerFinderBusinessType(
+        getDefaultCustomerFinderBusinessType(profileIndustry)
+      );
+      setCustomerFinderLocked(false);
+      setCustomerFinderOpen(true);
+    } catch (customerFinderAccessError) {
+      setCustomerFinderLocked(true);
+      setCustomerFinderOpen(true);
+      setCustomerFinderError(
+        customerFinderAccessError instanceof Error
+          ? customerFinderAccessError.message
+          : "Could not check AI Customer Finder access."
+      );
+    } finally {
+      setIsCheckingCustomerFinderAccess(false);
+    }
+  }
+
+  async function generateCustomerFinderLeads() {
+    setIsGeneratingCustomerFinderLeads(true);
+    setCustomerFinderError("");
+    setCustomerFinderMessage("");
+
+    try {
+      const response = await fetch("/api/ai/customer-finder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessType: customerFinderBusinessType,
+          location: customerFinderLocation,
+          radius: customerFinderRadius,
+          count: customerFinderCount,
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as
+        | { leads?: CustomerFinderLead[]; error?: string }
+        | null;
+
+      if (response.status === 403) {
+        setCustomerFinderLocked(true);
+        throw new Error("AI Customer Finder is available on the Pro plan.");
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Could not generate customer leads. Try again.");
+      }
+
+      const generatedLeads = Array.isArray(data?.leads) ? data.leads : [];
+      setCustomerFinderLeads(generatedLeads);
+      setSelectedCustomerFinderLeads(generatedLeads.map((_, index) => index));
+      setCustomerFinderMessage(
+        generatedLeads.length > 0
+          ? "Review and select the customer leads you want to import."
+          : "Could not generate customer leads. Try again."
+      );
+    } catch (customerFinderGenerateError) {
+      setCustomerFinderError(
+        customerFinderGenerateError instanceof Error
+          ? customerFinderGenerateError.message
+          : "Could not generate customer leads. Try again."
+      );
+    } finally {
+      setIsGeneratingCustomerFinderLeads(false);
+    }
+  }
+
+  function toggleCustomerFinderLead(index: number) {
+    setSelectedCustomerFinderLeads((current) =>
+      current.includes(index)
+        ? current.filter((item) => item !== index)
+        : [...current, index]
+    );
+  }
+
+  function toggleAllCustomerFinderLeads() {
+    setSelectedCustomerFinderLeads((current) =>
+      current.length === customerFinderLeads.length
+        ? []
+        : customerFinderLeads.map((_, index) => index)
+    );
+  }
+
+  async function importSelectedCustomerFinderLeads() {
+    if (!userId) {
+      setCustomerFinderError("Log in before importing customer leads.");
+      return;
+    }
+
+    const selectedLeads = customerFinderLeads.filter((_, index) =>
+      selectedCustomerFinderLeads.includes(index)
+    );
+
+    if (selectedLeads.length === 0) {
+      setCustomerFinderError("No leads selected.");
+      return;
+    }
+
+    setIsImportingCustomerFinderLeads(true);
+    setCustomerFinderError("");
+    setCustomerFinderMessage("");
+
+    const rows = selectedLeads.map((lead) => {
+      const customerName = isPresentAiValue(lead.company_name)
+        ? lead.company_name
+        : isPresentAiValue(lead.contact_name)
+        ? lead.contact_name
+        : "AI Customer Finder Lead";
+      const addressValue = formatCustomerFinderAddress(lead);
+
+      return {
+        user_id: userId,
+        customer_id: null,
+        full_name: customerName,
+        name: customerName,
+        phone: isPresentAiValue(lead.phone) ? lead.phone : null,
+        email: isPresentAiValue(lead.email) ? lead.email : null,
+        address: addressValue || null,
+        area: customerFinderLocation.trim() || null,
+        service_type: customerFinderBusinessType,
+        service_needed: lead.recommended_service_need,
+        source: lead.lead_source,
+        lead_source: lead.lead_source,
+        status: "New" as LeadStatus,
+        estimated_value: 0,
+        probability: getLeadProbability("New"),
+        follow_up_date: lead.follow_up_date || null,
+        notes: buildCustomerFinderNotes(lead, customerFinderBusinessType),
+      };
+    });
+
+    const { error: importError } = await supabase.from("leads").insert(rows);
+
+    if (importError) {
+      setCustomerFinderError(importError.message);
+      setIsImportingCustomerFinderLeads(false);
+      return;
+    }
+
+    await loadData("Customer leads imported successfully.");
+    setCustomerFinderMessage("Customer leads imported successfully.");
+    setCustomerFinderLeads([]);
+    setSelectedCustomerFinderLeads([]);
+    setIsImportingCustomerFinderLeads(false);
+  }
+
   return (
     <main className="us-page px-6 py-10 text-[var(--color-text)] print:bg-white print:px-0 print:py-0">
       <style jsx global>{`
@@ -565,6 +811,16 @@ export default function LeadsPage() {
             {message ? <p className="mt-4 text-sm font-semibold text-[var(--color-success)] print-hide">{message}</p> : null}
 
             <div className="print-hide mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={openCustomerFinder}
+                disabled={isCheckingCustomerFinderAccess}
+                className="us-btn-primary"
+              >
+                {isCheckingCustomerFinderAccess
+                  ? "Checking Access..."
+                  : "Find Customers with AI"}
+              </button>
               <button onClick={handlePrint} className="us-btn-primary">
                 Print Page
               </button>
@@ -859,6 +1115,253 @@ export default function LeadsPage() {
             </div>
           )}
         </section>
+
+        {customerFinderOpen ? (
+          <div className="print-hide fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-6 backdrop-blur-sm md:items-center">
+            <div className="w-full max-w-6xl rounded-[1.6rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-2xl md:p-7">
+              <div className="flex flex-col gap-4 border-b border-[var(--color-border-muted)] pb-5 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+                    Find Customers with AI
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold">AI Customer Finder</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)]">
+                    Find potential customers based on your business type and service area.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCustomerFinderOpen(false)}
+                  className="us-btn-secondary px-4 py-2"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {customerFinderLocked ? (
+                <div className="mt-6 rounded-[1.4rem] border border-[rgba(47,93,138,0.18)] bg-[rgba(47,93,138,0.08)] p-6">
+                  <h3 className="text-xl font-bold">
+                    AI Customer Finder is available on the Pro plan.
+                  </h3>
+                  <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+                    Upgrade to Pro to generate potential customer leads for your service business.
+                  </p>
+                  {customerFinderError ? (
+                    <div className="us-notice-danger mt-4 text-sm">
+                      {customerFinderError}
+                    </div>
+                  ) : null}
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Link href="/subscribe" className="us-btn-primary">
+                      Upgrade to Pro
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setCustomerFinderOpen(false)}
+                      className="us-btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-6 space-y-6">
+                  {customerFinderError ? (
+                    <div className="us-notice-danger text-sm">
+                      {customerFinderError}
+                    </div>
+                  ) : null}
+                  {customerFinderMessage ? (
+                    <div className="us-notice-info text-sm">
+                      {customerFinderMessage}
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Business Type
+                      </label>
+                      <select
+                        value={customerFinderBusinessType}
+                        onChange={(event) =>
+                          setCustomerFinderBusinessType(
+                            event.target.value as CustomerFinderBusinessType
+                          )
+                        }
+                        className="us-input"
+                      >
+                        {CUSTOMER_FINDER_BUSINESS_TYPES.map((businessType) => (
+                          <option key={businessType} value={businessType}>
+                            {businessType}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Service Area / Location
+                      </label>
+                      <input
+                        value={customerFinderLocation}
+                        onChange={(event) =>
+                          setCustomerFinderLocation(event.target.value)
+                        }
+                        placeholder="Hanover Park, IL"
+                        className="us-input"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Radius</label>
+                      <select
+                        value={customerFinderRadius}
+                        onChange={(event) =>
+                          setCustomerFinderRadius(event.target.value)
+                        }
+                        className="us-input"
+                      >
+                        {CUSTOMER_FINDER_RADII.map((radius) => (
+                          <option key={radius} value={radius}>
+                            {radius} miles
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Lead Count
+                      </label>
+                      <select
+                        value={customerFinderCount}
+                        onChange={(event) =>
+                          setCustomerFinderCount(Number(event.target.value))
+                        }
+                        className="us-input"
+                      >
+                        {CUSTOMER_FINDER_COUNTS.map((countOption) => (
+                          <option key={countOption} value={countOption}>
+                            {countOption}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <p className="text-sm font-semibold text-[var(--color-text-secondary)]">
+                    AI-generated customer leads should be verified before outreach.
+                  </p>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={generateCustomerFinderLeads}
+                      disabled={isGeneratingCustomerFinderLeads}
+                      className="us-btn-primary"
+                    >
+                      {isGeneratingCustomerFinderLeads
+                        ? "Generating customer leads..."
+                        : "Generate Customer Leads"}
+                    </button>
+                    {customerFinderLeads.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={generateCustomerFinderLeads}
+                        disabled={isGeneratingCustomerFinderLeads}
+                        className="us-btn-secondary"
+                      >
+                        Generate Again
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setCustomerFinderOpen(false)}
+                      className="us-btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  {customerFinderLeads.length > 0 ? (
+                    <div className="overflow-hidden rounded-[1.4rem] border border-[var(--color-border)]">
+                      <div className="flex flex-col gap-3 border-b border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 md:flex-row md:items-center md:justify-between">
+                        <button
+                          type="button"
+                          onClick={toggleAllCustomerFinderLeads}
+                          className="us-btn-secondary px-4 py-2"
+                        >
+                          {selectedCustomerFinderLeads.length ===
+                          customerFinderLeads.length
+                            ? "Clear Selection"
+                            : "Select All"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={importSelectedCustomerFinderLeads}
+                          disabled={isImportingCustomerFinderLeads}
+                          className="us-btn-primary px-4 py-2"
+                        >
+                          {isImportingCustomerFinderLeads
+                            ? "Importing selected leads..."
+                            : "Import Selected Leads"}
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[980px] text-left text-sm">
+                          <thead className="bg-white text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                            <tr>
+                              <th className="px-4 py-3">Select</th>
+                              <th className="px-4 py-3">Company/customer name</th>
+                              <th className="px-4 py-3">Customer type</th>
+                              <th className="px-4 py-3">Recommended service need</th>
+                              <th className="px-4 py-3">Phone</th>
+                              <th className="px-4 py-3">Email</th>
+                              <th className="px-4 py-3">Address</th>
+                              <th className="px-4 py-3">Weekday hours</th>
+                              <th className="px-4 py-3">Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--color-border-muted)] bg-white">
+                            {customerFinderLeads.map((lead, index) => (
+                              <tr key={`${lead.company_name}-${index}`}>
+                                <td className="px-4 py-3 align-top">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCustomerFinderLeads.includes(index)}
+                                    onChange={() => toggleCustomerFinderLead(index)}
+                                  />
+                                </td>
+                                <td className="px-4 py-3 align-top font-semibold text-[var(--color-text)]">
+                                  {lead.company_name}
+                                </td>
+                                <td className="px-4 py-3 align-top">{lead.customer_type}</td>
+                                <td className="px-4 py-3 align-top">
+                                  {lead.recommended_service_need}
+                                </td>
+                                <td className="px-4 py-3 align-top">{lead.phone}</td>
+                                <td className="px-4 py-3 align-top">{lead.email}</td>
+                                <td className="px-4 py-3 align-top">
+                                  {formatCustomerFinderAddress(lead) || "n/a"}
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  {lead.weekday_hours}
+                                </td>
+                                <td className="px-4 py-3 align-top">{lead.notes}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
     </main>
   );
