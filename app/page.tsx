@@ -475,6 +475,7 @@ export default async function Dashboard() {
   const [
     { count: newLeadsCount },
     { count: followUpsDueCount },
+    { count: upcomingFollowUpsCount },
     { count: openQuotesCount },
     { count: customerCount },
     { count: leadsCreatedCount },
@@ -494,6 +495,12 @@ export default async function Dashboard() {
         .eq("user_id", user.id)
         .not("follow_up_date", "is", null)
         .lte("follow_up_date", new Date().toISOString()),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .not("follow_up_date", "is", null)
+        .gt("follow_up_date", new Date().toISOString()),
       supabase
         .from("quotes")
         .select("id", { count: "exact", head: true })
@@ -540,6 +547,7 @@ export default async function Dashboard() {
   const hasNoFocusActivity =
     (newLeadsCount ?? 0) === 0 &&
     (followUpsDueCount ?? 0) === 0 &&
+    (upcomingFollowUpsCount ?? 0) === 0 &&
     (openQuotesCount ?? 0) === 0;
   const hasNoPipelineActivity =
     (leadsCreatedCount ?? 0) === 0 &&
@@ -565,6 +573,12 @@ export default async function Dashboard() {
       value: followUpsDueCount ?? 0,
       href: "/leads?filter=followups",
       colorClass: "border-[rgba(183,121,31,0.25)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]",
+    },
+    {
+      label: "Upcoming Follow Ups",
+      value: upcomingFollowUpsCount ?? 0,
+      href: "/leads?filter=upcoming",
+      colorClass: "border-[rgba(47,93,138,0.22)] bg-[rgba(47,93,138,0.08)] text-[var(--color-primary)]",
     },
     {
       label: "Open Quotes",
@@ -663,7 +677,7 @@ export default async function Dashboard() {
           <p className="mt-4 text-sm font-extrabold text-[var(--color-primary)]">
             Next step: {nextStepGuidance}
           </p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {focusCards.map((item) => (
               <Link
                 key={item.label}
@@ -771,6 +785,7 @@ export default async function Dashboard() {
                 stats: [
                   { label: "New Leads", value: String(newLeadsCount ?? 0) },
                   { label: "Follow Ups Due", value: String(followUpsDueCount ?? 0) },
+                  { label: "Upcoming Follow Ups", value: String(upcomingFollowUpsCount ?? 0) },
                   { label: "Open Quotes", value: String(openQuotesCount ?? 0) },
                   { label: "Customers", value: String(customerCount ?? 0) },
                 ],
