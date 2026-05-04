@@ -473,11 +473,34 @@ export default async function Dashboard() {
   const invoiceLabel = getProfileInvoiceLabel(businessProfile);
   const defaultQuoteHref = `/quotes/${getProfileDefaultQuoteSlug(businessProfile)}`;
   const defaultInvoiceHref = `/invoices/${getProfileDefaultInvoiceSlug(businessProfile)}`;
+  const [{ count: newLeadsCount }, { count: followUpsDueCount }, { count: openQuotesCount }, { count: customerCount }] =
+    await Promise.all([
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "New"),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .not("follow_up_date", "is", null)
+        .lte("follow_up_date", new Date().toISOString()),
+      supabase
+        .from("quotes")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .in("status", ["Draft", "Sent"]),
+      supabase
+        .from("customers")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+    ]);
 
   const stats = [
-    { label: "Total Customers", value: "0", note: "Track saved customers and opportunities." },
-    { label: "New Leads", value: "0", note: "Track new opportunities as they come in." },
-    { label: "Follow Ups", value: "0", note: "Stay on top of callbacks and pending conversations." },
+    { label: "Total Customers", value: String(customerCount ?? 0), note: "Track saved customers and opportunities." },
+    { label: "New Leads", value: String(newLeadsCount ?? 0), note: "Track new opportunities as they come in." },
+    { label: "Follow Ups", value: String(followUpsDueCount ?? 0), note: "Stay on top of callbacks and pending conversations." },
     {
       label: "Core Access",
       value: hasCoreAccess ? "Unlocked" : "Locked",
@@ -488,56 +511,85 @@ export default async function Dashboard() {
   ];
 
   const sections = [
-    { title: "Invoices", description: "Create, save, and manage customer-ready invoices for every service type.", href: defaultInvoiceHref, cta: `Create ${invoiceLabel} Invoice`, tone: "primary" },
+    { title: "Leads Database", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Add / View Leads", tone: "primary" },
+    { title: "Customers", description: "Store customer records, follow-up dates, sales status, notes, and quick outreach actions in one CRM view.", href: "/customers", cta: "Add / View Customers", tone: "primary" },
     { title: "Quotes", description: "Create estimates and proposals, manage quote statuses, and convert approved quotes into invoices.", href: defaultQuoteHref, cta: `Create ${quoteLabel} Quote`, tone: "primary" },
-    { title: "Customers", description: "Store customer records, follow-up dates, sales status, notes, and quick outreach actions in one CRM view.", href: "/customers", cta: "Open Customers", tone: "primary" },
-    { title: "Leads Database", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Open Leads", tone: "primary" },
+    { title: "Invoices", description: "Create, save, and manage customer-ready invoices for every service type.", href: defaultInvoiceHref, cta: `Create ${invoiceLabel} Invoice`, tone: "primary" },
+    { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: "View Sales Mapping", tone: "secondary" },
     { title: "AI Assistant", description: "Get paid-plan help with customer follow-ups, invoice wording, route planning, and daily business priorities.", href: "/ai", cta: "Open AI Assistant", tone: "secondary" },
-    { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: "Open Mapping", tone: "secondary" },
     { title: "Support", description: "Reach support quickly if you need help with your account, billing, or day-to-day use of the app.", href: "/support", cta: "Contact Support", tone: "secondary" },
   ] as const;
+  const primarySections = sections.filter((section) => section.tone === "primary");
+  const secondarySections = sections.filter((section) => section.tone === "secondary");
+  const hasNoSalesRecords = (newLeadsCount ?? 0) === 0 && (customerCount ?? 0) === 0;
 
   return (
     <main className="us-page">
       <div className="us-shell space-y-10">
         <section className="us-hero">
-          <div className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
-            <div>
-              <p className="us-kicker">Unified Steele</p>
-              <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-[var(--color-text)] md:text-6xl">Welcome back, {businessName}</h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">
-                A cleaner operating view for your {industryLabel.toLowerCase()} business:
-                invoices, quotes, leads, mapping, and business follow-up.
+          <div>
+            <p className="us-kicker">Unified Steele</p>
+            <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-[var(--color-text)] md:text-6xl">Welcome back, {businessName}</h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text-secondary)]">
+              A cleaner operating view for your {industryLabel.toLowerCase()} business:
+              invoices, quotes, leads, mapping, and business follow-up.
+            </p>
+            {hasNoSalesRecords ? (
+              <p className="mt-5 rounded-[1rem] border border-[rgba(47,93,138,0.18)] bg-white/70 px-4 py-3 text-sm font-bold text-[var(--color-primary-active)]">
+                Start by adding your first lead to begin tracking your sales.
               </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">{planLabel}</span>
-                <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">Status: {subscriptionStatus}</span>
-                <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">Industry: {industryLabel}</span>
-                {access.isTrialing ? <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">AI Assistant unlocks after your paid subscription begins.</span> : null}
-              </div>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link href={defaultQuoteHref} className="us-btn-primary">
-                  Create {quoteLabel} Quote
-                </Link>
-                <Link href={defaultInvoiceHref} className="us-btn-secondary">
-                  Create {invoiceLabel} Invoice
-                </Link>
-              </div>
+            ) : null}
+            <div className="mt-7 flex flex-wrap gap-3">
+              <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">{planLabel}</span>
+              <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">Industry: {industryLabel}</span>
             </div>
-            <div className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">Account Snapshot</p>
-              <p className="mt-3 text-2xl font-bold text-[var(--color-text)]">{access.isTrialing ? "30-Day Trial" : isSubscribed ? "$14.99/month" : "No Active Access"}</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">{billingMessage}</p>
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <BillingActions isSubscribed={isSubscribed} isTrialing={access.isTrialing} />
-                <Link href="/settings" className="us-btn-secondary min-w-36 text-sm">
-                  Settings
-                </Link>
-                <LogoutButton />
-              </div>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Link href="/leads" className="us-btn-primary min-h-16 px-8 text-lg shadow-[0_18px_34px_rgba(47,93,138,0.3)]">
+                + Add Lead
+              </Link>
+              <Link href={defaultQuoteHref} className="us-btn-secondary">
+                Create {quoteLabel} Quote
+              </Link>
+              <Link href={defaultInvoiceHref} className="us-btn-secondary">
+                Create {invoiceLabel} Invoice
+              </Link>
             </div>
           </div>
         </section>
+
+        <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+          <p className="us-kicker">Today&apos;s Focus</p>
+          <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">What needs attention</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            {[
+              { label: "New Leads", value: newLeadsCount ?? 0 },
+              { label: "Follow Ups Due", value: followUpsDueCount ?? 0 },
+              { label: "Open Quotes", value: openQuotesCount ?? 0 },
+            ].map((item) => (
+              <div key={item.label} className="rounded-[1.2rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] p-5">
+                <p className="text-sm font-bold text-[var(--color-text-secondary)]">{item.label}</p>
+                <p className="mt-2 text-3xl font-extrabold text-[var(--color-text)]">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+          <p className="us-kicker">Start Here</p>
+          <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">Choose the next action</h2>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <Link href="/leads" className="us-btn-primary min-h-14 text-base">
+              Add Lead
+            </Link>
+            <Link href="/customers" className="us-btn-secondary min-h-14 text-base">
+              Add Customer
+            </Link>
+            <Link href={defaultQuoteHref} className="us-btn-secondary min-h-14 text-base">
+              Create Quote
+            </Link>
+          </div>
+        </section>
+
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((item) => (
             <div key={item.label} className="rounded-[1.3rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]">
@@ -547,7 +599,7 @@ export default async function Dashboard() {
           ))}
         </section>
         <section className="grid gap-4 md:grid-cols-2">
-          {sections.map((section) => (
+          {primarySections.map((section) => (
             <div key={section.title} className="flex min-h-56 flex-col rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
               <h3 className="text-xl font-bold text-[var(--color-text)]">{section.title}</h3>
               <p className="mt-3 flex-1 text-sm leading-6 text-[var(--color-text-secondary)]">{section.description}</p>
@@ -560,6 +612,36 @@ export default async function Dashboard() {
             </div>
           ))}
         </section>
+
+        <section className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">Account</p>
+              <p className="mt-2 text-xl font-bold text-[var(--color-text)]">{access.isTrialing ? "30-Day Trial" : isSubscribed ? "$14.99/month" : "No Active Access"}</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">{billingMessage}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <BillingActions isSubscribed={isSubscribed} isTrialing={access.isTrialing} />
+              <Link href="/settings" className="us-btn-secondary min-w-36 text-sm">
+                Settings
+              </Link>
+              <LogoutButton />
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          {secondarySections.map((section) => (
+            <div key={section.title} className="flex min-h-44 flex-col rounded-[1.2rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]">
+              <h3 className="text-lg font-bold text-[var(--color-text)]">{section.title}</h3>
+              <p className="mt-3 flex-1 text-sm leading-6 text-[var(--color-text-secondary)]">{section.description}</p>
+              <Link href={section.href} className="us-btn-secondary mt-5 w-full text-sm">
+                {section.cta}
+              </Link>
+            </div>
+          ))}
+        </section>
+
         <DashboardInsights isSubscribed={hasAiAccess} />
         <DashboardAIWidget
           context={{
