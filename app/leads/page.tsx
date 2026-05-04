@@ -211,7 +211,7 @@ export default function LeadsPage() {
       createdAt: new Date().toISOString(),
     });
 
-    refreshLeads("Lead saved. Saved leads automatically delete after 45 days.");
+    refreshLeads("Lead saved.");
     clearForm(false);
   }
 
@@ -302,12 +302,6 @@ export default function LeadsPage() {
               Store leads, pipeline status, follow-up dates, and notes in one
               contractor-friendly CRM view.
             </p>
-
-            <div className="us-notice-warning mt-4 text-sm">
-              Saved leads automatically delete after 45 days. Users should print
-              records or save them as a PDF for their own files, since this app
-              is not responsible for long-term storage of saved lead data.
-            </div>
 
             <div className="us-notice-info mt-3 text-sm print-hide">
               Area suggestions below are pulled from your saved Mapping areas.
@@ -602,14 +596,6 @@ export default function LeadsPage() {
               </div>
             </div>
 
-            <div className="rounded-[1.6rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-7 shadow-[var(--shadow-card)]">
-              <h2 className="text-2xl font-bold">Storage Notice</h2>
-              <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <p>Saved leads automatically delete after 45 days.</p>
-                <p>Print your records or use Download PDF to save them.</p>
-                <p>This app is not responsible for permanent file storage.</p>
-              </div>
-            </div>
           </aside>
         </div>
 
