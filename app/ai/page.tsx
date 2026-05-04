@@ -21,11 +21,19 @@ type AIUsage = {
 };
 
 const BATCH_LEAD_TRIGGERS = [
-  /\bfind\s+(?:\d+\s+)?leads?\b/i,
-  /\bfind\s+(?:\d+\s+)?customers?\b/i,
+  /\bfind(?:\s+me)?\s+(?:\d+\s+)?leads?\b/i,
+  /\bfind(?:\s+me)?\s+(?:\d+\s+)?customers?\b/i,
   /\bgenerate\s+(?:\d+\s+)?leads?\b/i,
-  /\bget\s+\d+\s+leads?\b/i,
-  /\bfind\s+\d+\s+customers?\b/i,
+  /\bget\s+(?:\d+\s+)?leads?\b/i,
+  /\bfind(?:\s+me)?\s+\d+\s+customers?\b/i,
+  /\bshow\s+me\s+leads?\b/i,
+  /\bget\s+potential\s+customers?\b/i,
+];
+
+const SINGLE_LEAD_TRIGGERS = [
+  /\bcreate\s+(?:a\s+|one\s+|new\s+)?lead\b/i,
+  /\badd\s+(?:a\s+|one\s+|new\s+)?lead\b/i,
+  /\bmake\s+(?:a\s+|one\s+|new\s+)?lead\b/i,
 ];
 
 const BUSINESS_TYPE_ALIASES: Array<{
@@ -50,13 +58,37 @@ const BUSINESS_TYPE_ALIASES: Array<{
 ];
 
 function isBatchLeadGenerationRequest(value: string) {
-  return BATCH_LEAD_TRIGGERS.some((trigger) => trigger.test(value));
+  if (SINGLE_LEAD_TRIGGERS.some((trigger) => trigger.test(value))) {
+    return false;
+  }
+
+  const hasLeadOrCustomerPhrase = /\b(?:leads?|customers?)\b/i.test(value);
+  const hasGenerationVerb = /\b(?:find|generate|get|show\s+me)\b/i.test(value);
+  const hasNumber = /\b\d+\b/.test(value);
+
+  return (
+    BATCH_LEAD_TRIGGERS.some((trigger) => trigger.test(value)) ||
+    (hasNumber && hasGenerationVerb && hasLeadOrCustomerPhrase)
+  );
 }
 
 function getRequestedLeadCount(value: string) {
-  const match = value.match(/\b(?:get|find|generate)\s+(\d+)\s+(?:leads?|customers?)\b/i);
-  const count = match ? Number.parseInt(match[1], 10) : 10;
-  return Number.isFinite(count) ? Math.min(Math.max(count, 1), 20) : 10;
+  const numericMatch = value.match(/\b(\d+)\b/);
+  const wordMatch = value
+    .toLowerCase()
+    .match(/\b(five|ten|twenty)\b/);
+  const wordCounts: Record<string, number> = {
+    five: 5,
+    ten: 10,
+    twenty: 20,
+  };
+  const count = numericMatch
+    ? Number.parseInt(numericMatch[1], 10)
+    : wordMatch
+    ? wordCounts[wordMatch[1]]
+    : 5;
+
+  return Number.isFinite(count) ? Math.min(Math.max(count, 1), 20) : 5;
 }
 
 function getRequestedBusinessType(value: string) {
@@ -79,6 +111,16 @@ function getRequestedLocation(value: string) {
     .trim();
 
   return location || "Hanover Park, IL";
+}
+
+function getRequestedRadius(value: string) {
+  const match = value.match(/\b(\d+)\s*(?:mile|mi)\b/i);
+  const radius = match ? Number.parseInt(match[1], 10) : 10;
+
+  if (radius <= 5) return 5;
+  if (radius <= 10) return 10;
+  if (radius <= 15) return 15;
+  return 25;
 }
 
 export default function AIAssistantPage() {
@@ -171,7 +213,7 @@ export default function AIAssistantPage() {
           body: JSON.stringify({
             businessType,
             location: getRequestedLocation(trimmedMessage),
-            radius: 10,
+            radius: getRequestedRadius(trimmedMessage),
             count: getRequestedLeadCount(trimmedMessage),
           }),
         });

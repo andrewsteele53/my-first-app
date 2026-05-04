@@ -78,6 +78,7 @@ export const AI_ACTION_INTENTS = [
   "create_quote",
   "create_invoice",
   "create_lead",
+  "generate_multiple_leads",
   "create_sales_mapping_note",
   "write_follow_up_message",
   "general_assistant",

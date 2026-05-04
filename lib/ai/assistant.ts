@@ -409,6 +409,20 @@ function buildFallbackActionPreview(request: AIActionRequest): AIActionResponse 
         terms: "Due upon receipt.",
       },
     };
+  } else if (
+    /\b(?:find|generate|get|show\s+me)\b/.test(lower) &&
+    /\b(?:leads?|customers?)\b/.test(lower)
+  ) {
+    preview = {
+      intent: "generate_multiple_leads",
+      title: "Generate Multiple Leads",
+      summary:
+        "This request should use AI Customer Finder and render a selectable lead results table.",
+      data: {
+        response:
+          "Generating multiple leads is handled by the AI Customer Finder flow.",
+      },
+    };
   } else if (lower.includes("lead")) {
     preview = {
       intent: "create_lead",
@@ -474,7 +488,7 @@ function buildFallbackActionPreview(request: AIActionRequest): AIActionResponse 
 function buildAIActionPrompt(request: AIActionRequest) {
   return {
     system:
-      "You are the Unified Steele AI Action Assistant for a service-business SaaS app. Detect the user's intent and return only valid JSON. Never save records. Generate a preview for the user to review. Supported intents: create_quote, create_invoice, create_lead, create_sales_mapping_note, write_follow_up_message, general_assistant. Avoid legal, tax, accounting, or financial advice. Use professional service-business wording. For quotes/invoices, include customer details if provided, serviceType, projectTitle, lineItems with description/quantity/unitPrice/total, subtotal, tax, taxRate, discount, total, notes, and terms. For invoices, include dueDate when a due date is clear, otherwise dueTerms='Due upon receipt.'. For leads, include businessName, contactName, phone, email, address, city, serviceType, leadSource, status, priority, estimatedValue, notes, followUpDate when clear. For mapping notes, include title, location, businessType, targetCustomer, routeNotes, outreachNotes, priority, status. For follow-up messages, include channel, subject if email, and message. If asked to turn a quote into an invoice, use supplied quote context if present and set intent create_invoice.",
+      "You are the Unified Steele AI Action Assistant for a service-business SaaS app. Detect the user's intent and return only valid JSON. Never save records. Generate a preview for the user to review. Supported intents: create_quote, create_invoice, create_lead, generate_multiple_leads, create_sales_mapping_note, write_follow_up_message, general_assistant. If the user asks to find leads, find customers, generate leads, get leads, find X leads, find X customers, generate X leads, show me leads, or get potential customers, set intent to generate_multiple_leads. If the user asks create a lead, add a lead, or make a lead, keep intent create_lead. Avoid legal, tax, accounting, or financial advice. Use professional service-business wording. For quotes/invoices, include customer details if provided, serviceType, projectTitle, lineItems with description/quantity/unitPrice/total, subtotal, tax, taxRate, discount, total, notes, and terms. For invoices, include dueDate when a due date is clear, otherwise dueTerms='Due upon receipt.'. For single leads, include businessName, contactName, phone, email, address, city, serviceType, leadSource, status, priority, estimatedValue, notes, followUpDate when clear. For generate_multiple_leads, return data with response only because the frontend must call AI Customer Finder and render a selectable results table. For mapping notes, include title, location, businessType, targetCustomer, routeNotes, outreachNotes, priority, status. For follow-up messages, include channel, subject if email, and message. If asked to turn a quote into an invoice, use supplied quote context if present and set intent create_invoice.",
     user: JSON.stringify({
       message: request.message,
       currentDate: new Date().toISOString(),
