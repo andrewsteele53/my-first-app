@@ -165,6 +165,9 @@ export default async function SettingsPage() {
               <Link href="/invoices" className="us-btn-secondary flex w-full">
                 Open Invoices
               </Link>
+              <Link href="/customers" className="us-btn-secondary flex w-full">
+                Open Customers
+              </Link>
               <Link href="/leads" className="us-btn-secondary flex w-full">
                 Open Leads
               </Link>

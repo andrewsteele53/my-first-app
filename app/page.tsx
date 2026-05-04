@@ -475,14 +475,14 @@ export default async function Dashboard() {
   const defaultInvoiceHref = `/invoices/${getProfileDefaultInvoiceSlug(businessProfile)}`;
 
   const stats = [
-    { label: "Total Leads", value: "0", note: "Track new opportunities as they come in." },
-    { label: "Won Leads", value: "0", note: "Keep an eye on converted jobs and closed work." },
+    { label: "Total Customers", value: "0", note: "Track saved customers and opportunities." },
+    { label: "New Leads", value: "0", note: "Track new opportunities as they come in." },
     { label: "Follow Ups", value: "0", note: "Stay on top of callbacks and pending conversations." },
     {
       label: "Core Access",
       value: hasCoreAccess ? "Unlocked" : "Locked",
       note: hasCoreAccess
-        ? "Invoices, quotes, leads, and mapping are available."
+        ? "Invoices, quotes, customers, leads, and mapping are available."
         : "Start your trial or subscribe to unlock core tools.",
     },
   ];
@@ -490,6 +490,7 @@ export default async function Dashboard() {
   const sections = [
     { title: "Invoices", description: "Create, save, and manage customer-ready invoices for every service type.", href: defaultInvoiceHref, cta: `Create ${invoiceLabel} Invoice`, tone: "primary" },
     { title: "Quotes", description: "Create estimates and proposals, manage quote statuses, and convert approved quotes into invoices.", href: defaultQuoteHref, cta: `Create ${quoteLabel} Quote`, tone: "primary" },
+    { title: "Customers", description: "Store customer records, follow-up dates, sales status, notes, and quick outreach actions in one CRM view.", href: "/customers", cta: "Open Customers", tone: "primary" },
     { title: "Leads Database", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Open Leads", tone: "primary" },
     { title: "AI Assistant", description: "Get paid-plan help with customer follow-ups, invoice wording, route planning, and daily business priorities.", href: "/ai", cta: "Open AI Assistant", tone: "secondary" },
     { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: "Open Mapping", tone: "secondary" },
