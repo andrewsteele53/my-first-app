@@ -547,6 +547,54 @@ export default async function Dashboard() {
     (lostLeadsCount ?? 0) === 0 &&
     (scheduledFollowUpsCount ?? 0) === 0 &&
     (openQuotesCount ?? 0) === 0;
+  const nextStepGuidance =
+    (leadsCreatedCount ?? 0) === 0
+      ? "Start by adding your first lead"
+      : (openQuotesCount ?? 0) === 0
+        ? "Create a quote for your lead"
+        : "Follow up and close the deal";
+  const focusCards = [
+    {
+      label: "New Leads",
+      value: newLeadsCount ?? 0,
+      href: "/leads",
+      colorClass: "border-[rgba(47,93,138,0.22)] bg-[rgba(47,93,138,0.08)] text-[var(--color-primary)]",
+    },
+    {
+      label: "Follow Ups Due",
+      value: followUpsDueCount ?? 0,
+      href: "/leads?filter=followups",
+      colorClass: "border-[rgba(183,121,31,0.25)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]",
+    },
+    {
+      label: "Open Quotes",
+      value: openQuotesCount ?? 0,
+      href: "/quotes",
+      colorClass: "border-[rgba(47,93,138,0.22)] bg-[rgba(47,93,138,0.08)] text-[var(--color-primary)]",
+    },
+  ];
+  const pipelineCards = [
+    {
+      label: "Leads Created",
+      value: leadsCreatedCount ?? 0,
+      colorClass: "border-[rgba(47,93,138,0.22)] bg-[rgba(47,93,138,0.08)] text-[var(--color-primary)]",
+    },
+    {
+      label: "Won Leads",
+      value: wonLeadsCount ?? 0,
+      colorClass: "border-[rgba(46,125,90,0.22)] bg-[rgba(46,125,90,0.1)] text-[var(--color-success)]",
+    },
+    {
+      label: "Lost Leads",
+      value: lostLeadsCount ?? 0,
+      colorClass: "border-[rgba(199,80,80,0.22)] bg-[rgba(199,80,80,0.1)] text-[var(--color-danger)]",
+    },
+    {
+      label: "Follow-Ups",
+      value: scheduledFollowUpsCount ?? 0,
+      colorClass: "border-[rgba(183,121,31,0.25)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]",
+    },
+  ];
 
   return (
     <main className="us-page">
@@ -569,13 +617,13 @@ export default async function Dashboard() {
               <span className="inline-flex rounded-full border px-4 py-2 text-sm font-semibold">Industry: {industryLabel}</span>
             </div>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link href="/leads" className="us-btn-primary min-h-[4.5rem] px-10 text-xl shadow-[0_20px_38px_rgba(47,93,138,0.34)]">
+              <Link href="/leads" className="us-btn-primary min-h-[4.5rem] px-10 text-xl shadow-[0_20px_38px_rgba(47,93,138,0.34)] hover:scale-[1.03] hover:shadow-[0_24px_44px_rgba(47,93,138,0.38)]">
                 + Add Lead
               </Link>
-              <Link href={defaultQuoteHref} className="us-btn-secondary">
+              <Link href={defaultQuoteHref} className="us-btn-secondary hover:scale-[1.02] hover:shadow-[var(--shadow-card)]">
                 Create {quoteLabel} Quote
               </Link>
-              <Link href={defaultInvoiceHref} className="us-btn-secondary">
+              <Link href={defaultInvoiceHref} className="us-btn-secondary hover:scale-[1.02] hover:shadow-[var(--shadow-card)]">
                 Create {invoiceLabel} Invoice
               </Link>
             </div>
@@ -593,6 +641,11 @@ export default async function Dashboard() {
                 ))}
               </div>
             </div>
+            {leadsCreatedCount === 1 ? (
+              <p className="mt-5 rounded-[1rem] border border-[rgba(46,125,90,0.22)] bg-[rgba(46,125,90,0.12)] px-4 py-3 text-sm font-bold text-[var(--color-success)]">
+                🎉 First lead added — you&apos;re officially tracking your business.
+              </p>
+            ) : null}
           </div>
         </section>
 
@@ -604,19 +657,22 @@ export default async function Dashboard() {
           </p>
           {hasNoFocusActivity ? (
             <p className="mt-4 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-secondary)]">
-              No leads yet — start by adding your first lead to begin tracking your sales.
+              You don&apos;t have any leads yet. Add your first one to start tracking real jobs.
             </p>
           ) : null}
+          <p className="mt-4 text-sm font-extrabold text-[var(--color-primary)]">
+            Next step: {nextStepGuidance}
+          </p>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            {[
-              { label: "New Leads", value: newLeadsCount ?? 0 },
-              { label: "Follow Ups Due", value: followUpsDueCount ?? 0 },
-              { label: "Open Quotes", value: openQuotesCount ?? 0 },
-            ].map((item) => (
-              <div key={item.label} className="rounded-[1.2rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] p-5">
+            {focusCards.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`rounded-[1.2rem] border p-5 transition hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[var(--shadow-card)] ${item.colorClass}`}
+              >
                 <p className="text-sm font-bold text-[var(--color-text-secondary)]">{item.label}</p>
-                <p className="mt-2 text-3xl font-extrabold text-[var(--color-text)]">{item.value}</p>
-              </div>
+                <p className="mt-2 text-3xl font-extrabold">{item.value}</p>
+              </Link>
             ))}
           </div>
         </section>
@@ -630,15 +686,10 @@ export default async function Dashboard() {
             </p>
           ) : null}
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Leads Created", value: leadsCreatedCount ?? 0 },
-              { label: "Won Leads", value: wonLeadsCount ?? 0 },
-              { label: "Lost Leads", value: lostLeadsCount ?? 0 },
-              { label: "Follow-Ups", value: scheduledFollowUpsCount ?? 0 },
-            ].map((item) => (
-              <div key={item.label} className="rounded-[1.2rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] p-5">
+            {pipelineCards.map((item) => (
+              <div key={item.label} className={`rounded-[1.2rem] border p-5 ${item.colorClass}`}>
                 <p className="text-sm font-bold text-[var(--color-text-secondary)]">{item.label}</p>
-                <p className="mt-2 text-3xl font-extrabold text-[var(--color-text)]">{item.value}</p>
+                <p className="mt-2 text-3xl font-extrabold">{item.value}</p>
               </div>
             ))}
           </div>
@@ -654,7 +705,7 @@ export default async function Dashboard() {
               <div key={section.title} className="flex min-h-56 flex-col rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
                 <h3 className="text-xl font-bold text-[var(--color-text)]">{section.title}</h3>
                 <p className="mt-3 flex-1 text-sm leading-6 text-[var(--color-text-secondary)]">{section.description}</p>
-                <Link href={section.href} className="us-btn-primary mt-6 w-full text-sm">
+                <Link href={section.href} className="us-btn-primary mt-6 w-full text-sm hover:scale-[1.02] hover:shadow-[var(--shadow-card)]">
                   {section.cta}
                 </Link>
               </div>
@@ -689,7 +740,7 @@ export default async function Dashboard() {
             <div key={section.title} className="flex min-h-44 flex-col rounded-[1.2rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]">
               <h3 className="text-lg font-bold text-[var(--color-text)]">{section.title}</h3>
               <p className="mt-3 flex-1 text-sm leading-6 text-[var(--color-text-secondary)]">{section.description}</p>
-              <Link href={section.href} className="us-btn-secondary mt-5 w-full text-sm">
+              <Link href={section.href} className="us-btn-secondary mt-5 w-full text-sm hover:scale-[1.02] hover:shadow-[var(--shadow-card)]">
                 {section.cta}
               </Link>
             </div>
