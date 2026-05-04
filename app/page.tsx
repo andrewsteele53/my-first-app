@@ -21,6 +21,21 @@ export const metadata = createPageMetadata({
   path: "/",
 });
 
+export const dynamic = "force-dynamic";
+
+function getLocalDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
 export default async function Dashboard() {
   const supabase = await createClient();
 
@@ -472,16 +487,19 @@ export default async function Dashboard() {
   const invoiceLabel = getProfileInvoiceLabel(businessProfile);
   const defaultQuoteHref = `/quotes/${getProfileDefaultQuoteSlug(businessProfile)}`;
   const defaultInvoiceHref = `/invoices/${getProfileDefaultInvoiceSlug(businessProfile)}`;
+  const todayDate = getLocalDateString();
+  const tomorrowDate = getLocalDateString(addDays(new Date(), 1));
   const [
-    { count: newLeadsCount },
-    { count: followUpsDueCount },
-    { count: upcomingFollowUpsCount },
-    { count: openQuotesCount },
-    { count: customerCount },
-    { count: leadsCreatedCount },
-    { count: wonLeadsCount },
-    { count: lostLeadsCount },
-    { count: scheduledFollowUpsCount },
+    newLeadsResult,
+    followUpsDueResult,
+    overdueFollowUpsResult,
+    upcomingFollowUpsResult,
+    openQuotesResult,
+    customerResult,
+    leadsCreatedResult,
+    wonLeadsResult,
+    lostLeadsResult,
+    scheduledFollowUpsResult,
   ] =
     await Promise.all([
       supabase
@@ -494,13 +512,20 @@ export default async function Dashboard() {
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .not("follow_up_date", "is", null)
-        .lte("follow_up_date", new Date().toISOString()),
+        .gte("follow_up_date", todayDate)
+        .lt("follow_up_date", tomorrowDate),
       supabase
         .from("leads")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .not("follow_up_date", "is", null)
-        .gt("follow_up_date", new Date().toISOString()),
+        .lt("follow_up_date", todayDate),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .not("follow_up_date", "is", null)
+        .gte("follow_up_date", tomorrowDate),
       supabase
         .from("quotes")
         .select("id", { count: "exact", head: true })
@@ -530,6 +555,32 @@ export default async function Dashboard() {
         .eq("user_id", user.id)
         .not("follow_up_date", "is", null),
     ]);
+  const dashboardCountErrors = [
+    ["New leads", newLeadsResult.error],
+    ["Follow-ups due today", followUpsDueResult.error],
+    ["Overdue follow-ups", overdueFollowUpsResult.error],
+    ["Upcoming follow-ups", upcomingFollowUpsResult.error],
+    ["Open quotes", openQuotesResult.error],
+    ["Customers", customerResult.error],
+    ["Leads created", leadsCreatedResult.error],
+    ["Won leads", wonLeadsResult.error],
+    ["Lost leads", lostLeadsResult.error],
+    ["Scheduled follow-ups", scheduledFollowUpsResult.error],
+  ]
+    .filter((entry): entry is [string, NonNullable<typeof newLeadsResult.error>] =>
+      Boolean(entry[1])
+    )
+    .map(([label, countError]) => `${label}: ${countError.message}`);
+  const newLeadsCount = newLeadsResult.count;
+  const followUpsDueCount = followUpsDueResult.count;
+  const overdueFollowUpsCount = overdueFollowUpsResult.count;
+  const upcomingFollowUpsCount = upcomingFollowUpsResult.count;
+  const openQuotesCount = openQuotesResult.count;
+  const customerCount = customerResult.count;
+  const leadsCreatedCount = leadsCreatedResult.count;
+  const wonLeadsCount = wonLeadsResult.count;
+  const lostLeadsCount = lostLeadsResult.count;
+  const scheduledFollowUpsCount = scheduledFollowUpsResult.count;
 
   const sections = [
     { title: "Leads", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Add / View Leads", tone: "primary" },
@@ -547,6 +598,7 @@ export default async function Dashboard() {
   const hasNoFocusActivity =
     (newLeadsCount ?? 0) === 0 &&
     (followUpsDueCount ?? 0) === 0 &&
+    (overdueFollowUpsCount ?? 0) === 0 &&
     (upcomingFollowUpsCount ?? 0) === 0 &&
     (openQuotesCount ?? 0) === 0;
   const hasNoPipelineActivity =
@@ -574,6 +626,16 @@ export default async function Dashboard() {
       href: "/leads?filter=followups",
       colorClass: "border-[rgba(183,121,31,0.25)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]",
     },
+    ...(overdueFollowUpsCount && overdueFollowUpsCount > 0
+      ? [
+          {
+            label: "Overdue Follow Ups",
+            value: overdueFollowUpsCount,
+            href: "/leads?filter=overdue",
+            colorClass: "border-[rgba(199,80,80,0.22)] bg-[rgba(199,80,80,0.1)] text-[var(--color-danger)]",
+          },
+        ]
+      : []),
     {
       label: "Upcoming Follow Ups",
       value: upcomingFollowUpsCount ?? 0,
@@ -677,6 +739,12 @@ export default async function Dashboard() {
           <p className="mt-4 text-sm font-extrabold text-[var(--color-primary)]">
             Next step: {nextStepGuidance}
           </p>
+          {dashboardCountErrors.length > 0 ? (
+            <div className="us-notice-danger mt-4 text-sm">
+              <p className="font-bold">Dashboard count error</p>
+              <p className="mt-1">{dashboardCountErrors.join(" | ")}</p>
+            </div>
+          ) : null}
           <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {focusCards.map((item) => (
               <Link
@@ -785,6 +853,7 @@ export default async function Dashboard() {
                 stats: [
                   { label: "New Leads", value: String(newLeadsCount ?? 0) },
                   { label: "Follow Ups Due", value: String(followUpsDueCount ?? 0) },
+                  { label: "Overdue Follow Ups", value: String(overdueFollowUpsCount ?? 0) },
                   { label: "Upcoming Follow Ups", value: String(upcomingFollowUpsCount ?? 0) },
                   { label: "Open Quotes", value: String(openQuotesCount ?? 0) },
                   { label: "Customers", value: String(customerCount ?? 0) },
