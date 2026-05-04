@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import BillingActions from "./billing-actions";
 import LogoutButton from "@/components/logout-button";
 import DashboardAIWidget from "@/components/dashboard-ai-widget";
-import DashboardInsights from "@/components/dashboard-insights";
 import { getProfileAccess } from "@/lib/billing";
 import {
   getBusinessProfile,
@@ -473,7 +472,16 @@ export default async function Dashboard() {
   const invoiceLabel = getProfileInvoiceLabel(businessProfile);
   const defaultQuoteHref = `/quotes/${getProfileDefaultQuoteSlug(businessProfile)}`;
   const defaultInvoiceHref = `/invoices/${getProfileDefaultInvoiceSlug(businessProfile)}`;
-  const [{ count: newLeadsCount }, { count: followUpsDueCount }, { count: openQuotesCount }, { count: customerCount }] =
+  const [
+    { count: newLeadsCount },
+    { count: followUpsDueCount },
+    { count: openQuotesCount },
+    { count: customerCount },
+    { count: leadsCreatedCount },
+    { count: wonLeadsCount },
+    { count: lostLeadsCount },
+    { count: scheduledFollowUpsCount },
+  ] =
     await Promise.all([
       supabase
         .from("leads")
@@ -495,29 +503,36 @@ export default async function Dashboard() {
         .from("customers")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "Won"),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "Lost"),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .not("follow_up_date", "is", null),
     ]);
 
-  const stats = [
-    { label: "Total Customers", value: String(customerCount ?? 0), note: "Track saved customers and opportunities." },
-    { label: "New Leads", value: String(newLeadsCount ?? 0), note: "Track new opportunities as they come in." },
-    { label: "Follow Ups", value: String(followUpsDueCount ?? 0), note: "Stay on top of callbacks and pending conversations." },
-    {
-      label: "Core Access",
-      value: hasCoreAccess ? "Unlocked" : "Locked",
-      note: hasCoreAccess
-        ? "Invoices, quotes, customers, leads, and mapping are available."
-        : "Start your trial or subscribe to unlock core tools.",
-    },
-  ];
-
   const sections = [
-    { title: "Leads Database", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Add / View Leads", tone: "primary" },
+    { title: "Leads", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Add / View Leads", tone: "primary" },
     { title: "Customers", description: "Store customer records, follow-up dates, sales status, notes, and quick outreach actions in one CRM view.", href: "/customers", cta: "Add / View Customers", tone: "primary" },
     { title: "Quotes", description: "Create estimates and proposals, manage quote statuses, and convert approved quotes into invoices.", href: defaultQuoteHref, cta: `Create ${quoteLabel} Quote`, tone: "primary" },
     { title: "Invoices", description: "Create, save, and manage customer-ready invoices for every service type.", href: defaultInvoiceHref, cta: `Create ${invoiceLabel} Invoice`, tone: "primary" },
     { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: "View Sales Mapping", tone: "secondary" },
     { title: "AI Assistant", description: "Get paid-plan help with customer follow-ups, invoice wording, route planning, and daily business priorities.", href: "/ai", cta: "Open AI Assistant", tone: "secondary" },
     { title: "Support", description: "Reach support quickly if you need help with your account, billing, or day-to-day use of the app.", href: "/support", cta: "Contact Support", tone: "secondary" },
+    { title: "Onboarding", description: "Review your business setup and dashboard defaults when your services or workflow change.", href: "/onboarding", cta: "Review Onboarding", tone: "secondary" },
   ] as const;
   const primarySections = sections.filter((section) => section.tone === "primary");
   const secondarySections = sections.filter((section) => section.tone === "secondary");
@@ -559,7 +574,7 @@ export default async function Dashboard() {
 
         <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
           <p className="us-kicker">Today&apos;s Focus</p>
-          <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">What needs attention</h2>
+          <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">Today&apos;s Focus</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             {[
               { label: "New Leads", value: newLeadsCount ?? 0 },
@@ -575,42 +590,39 @@ export default async function Dashboard() {
         </section>
 
         <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
-          <p className="us-kicker">Start Here</p>
-          <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">Choose the next action</h2>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <Link href="/leads" className="us-btn-primary min-h-14 text-base">
-              Add Lead
-            </Link>
-            <Link href="/customers" className="us-btn-secondary min-h-14 text-base">
-              Add Customer
-            </Link>
-            <Link href={defaultQuoteHref} className="us-btn-secondary min-h-14 text-base">
-              Create Quote
-            </Link>
+          <p className="us-kicker">Sales Pipeline</p>
+          <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">Sales Pipeline</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Leads Created", value: leadsCreatedCount ?? 0 },
+              { label: "Won Leads", value: wonLeadsCount ?? 0 },
+              { label: "Lost Leads", value: lostLeadsCount ?? 0 },
+              { label: "Follow-Ups", value: scheduledFollowUpsCount ?? 0 },
+            ].map((item) => (
+              <div key={item.label} className="rounded-[1.2rem] border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] p-5">
+                <p className="text-sm font-bold text-[var(--color-text-secondary)]">{item.label}</p>
+                <p className="mt-2 text-3xl font-extrabold text-[var(--color-text)]">{item.value}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((item) => (
-            <div key={item.label} className="rounded-[1.3rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]">
-              <p className="text-sm font-semibold text-[var(--color-text-secondary)]">{item.label}</p>
-              <p className="mt-2 text-2xl font-bold text-[var(--color-text)]">{item.value}</p>
-            </div>
-          ))}
-        </section>
-        <section className="grid gap-4 md:grid-cols-2">
-          {primarySections.map((section) => (
-            <div key={section.title} className="flex min-h-56 flex-col rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
-              <h3 className="text-xl font-bold text-[var(--color-text)]">{section.title}</h3>
-              <p className="mt-3 flex-1 text-sm leading-6 text-[var(--color-text-secondary)]">{section.description}</p>
-              <Link
-                href={section.href}
-                className={`${section.tone === "primary" ? "us-btn-primary" : "us-btn-secondary"} mt-6 w-full text-sm`}
-              >
-                {section.cta}
-              </Link>
-            </div>
-          ))}
+        <section>
+          <div className="mb-4">
+            <p className="us-kicker">Core Tools</p>
+            <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">Core Tools</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {primarySections.map((section) => (
+              <div key={section.title} className="flex min-h-56 flex-col rounded-[1.4rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+                <h3 className="text-xl font-bold text-[var(--color-text)]">{section.title}</h3>
+                <p className="mt-3 flex-1 text-sm leading-6 text-[var(--color-text-secondary)]">{section.description}</p>
+                <Link href={section.href} className="us-btn-primary mt-6 w-full text-sm">
+                  {section.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="rounded-[1.4rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]">
@@ -630,7 +642,12 @@ export default async function Dashboard() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section>
+          <div className="mb-4">
+            <p className="us-kicker">More Tools</p>
+            <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">More Tools</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {secondarySections.map((section) => (
             <div key={section.title} className="flex min-h-44 flex-col rounded-[1.2rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]">
               <h3 className="text-lg font-bold text-[var(--color-text)]">{section.title}</h3>
@@ -640,9 +657,9 @@ export default async function Dashboard() {
               </Link>
             </div>
           ))}
+          </div>
         </section>
 
-        <DashboardInsights isSubscribed={hasAiAccess} />
         <DashboardAIWidget
           context={{
             isSubscribed,
@@ -658,7 +675,12 @@ export default async function Dashboard() {
               defaultQuoteType: businessProfile.default_quote_type,
               defaultInvoiceType: businessProfile.default_invoice_type,
             },
-            stats,
+            stats: [
+              { label: "New Leads", value: String(newLeadsCount ?? 0) },
+              { label: "Follow Ups Due", value: String(followUpsDueCount ?? 0) },
+              { label: "Open Quotes", value: String(openQuotesCount ?? 0) },
+              { label: "Customers", value: String(customerCount ?? 0) },
+            ],
             sections,
           }}
         />
