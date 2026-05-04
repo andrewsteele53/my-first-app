@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AIAssistantPanel from "@/components/ai-assistant-panel";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -26,15 +26,19 @@ type LeadRow = {
   user_id: string;
   customer_id: string | null;
   full_name: string;
+  name: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
   area: string | null;
   service_type: string;
+  service_needed: string | null;
+  source: string | null;
+  lead_source: string | null;
   status: LeadStatus;
   estimated_value: number;
+  probability: number | null;
   follow_up_date: string | null;
-  reminder_note: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -85,7 +89,7 @@ function toLeadRecord(lead: LeadRow): LeadRecord {
     status: lead.status,
     estimatedValue: Number(lead.estimated_value) || 0,
     followUpDate: lead.follow_up_date ?? "",
-    reminderNote: lead.reminder_note ?? "",
+    reminderNote: "",
     notes: lead.notes ?? "",
     createdAt: lead.created_at,
   };
@@ -100,6 +104,31 @@ function getCustomerLabel(customer: CustomerOption) {
   return customer.company_name
     ? `${customer.customer_name} (${customer.company_name})`
     : customer.customer_name;
+}
+
+function getLeadProbability(status: LeadStatus) {
+  switch (status) {
+    case "Won":
+      return 100;
+    case "Lost":
+      return 0;
+    case "Estimate Sent":
+      return 60;
+    case "Contacted":
+      return 25;
+    default:
+      return 10;
+  }
+}
+
+function buildLeadNotes(notes: string, reminderNote: string) {
+  const cleanNotes = notes.trim();
+  const cleanReminder = reminderNote.trim();
+
+  if (!cleanReminder) return cleanNotes || null;
+  return cleanNotes
+    ? `${cleanNotes}\n\nReminder: ${cleanReminder}`
+    : `Reminder: ${cleanReminder}`;
 }
 
 export default function LeadsPage() {
@@ -221,16 +250,20 @@ export default function LeadsPage() {
               id: lead.id,
               user_id: user.id,
               full_name: lead.fullName,
+              name: lead.fullName,
               phone: cleanOptional(lead.phone),
               email: cleanOptional(lead.email),
               address: cleanOptional(lead.address),
               area: cleanOptional(lead.area),
               service_type: lead.serviceType,
+              service_needed: lead.serviceType,
+              source: "Other",
+              lead_source: "Other",
               status: lead.status,
               estimated_value: lead.estimatedValue,
+              probability: getLeadProbability(lead.status),
               follow_up_date: cleanOptional(lead.followUpDate),
-              reminder_note: cleanOptional(lead.reminderNote),
-              notes: cleanOptional(lead.notes),
+              notes: buildLeadNotes(lead.notes, lead.reminderNote),
               created_at: lead.createdAt,
             })),
             { onConflict: "id" }
@@ -381,7 +414,9 @@ export default function LeadsPage() {
     return data.id as string;
   }
 
-  async function saveLead() {
+  async function saveLead(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+
     if (!userId) {
       setError("Log in before saving leads.");
       return;
@@ -397,21 +432,27 @@ export default function LeadsPage() {
 
     try {
       const customerId = await findOrCreateCustomer();
+      const leadSource = "Other";
+      const leadProbability = getLeadProbability(status);
 
       const { error: saveError } = await supabase.from("leads").insert({
         user_id: userId,
         customer_id: customerId,
         full_name: fullName.trim(),
+        name: fullName.trim(),
         phone: cleanOptional(phone),
         email: cleanOptional(email),
         address: cleanOptional(address),
         area: cleanOptional(area),
         service_type: serviceType,
+        service_needed: serviceType,
+        source: leadSource,
+        lead_source: leadSource,
         status,
         estimated_value: estimatedValueNumber,
+        probability: leadProbability,
         follow_up_date: followUpDate ? new Date(followUpDate).toISOString() : null,
-        reminder_note: cleanOptional(reminderNote),
-        notes: cleanOptional(notes),
+        notes: buildLeadNotes(notes, reminderNote),
       });
 
       if (saveError) throw new Error(saveError.message);
@@ -527,7 +568,7 @@ export default function LeadsPage() {
               </button>
             </div>
 
-            <div className="print-hide mt-8 grid gap-4 md:grid-cols-2">
+            <form onSubmit={saveLead} className="print-hide mt-8 grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-semibold">Link Customer</label>
                 <select
@@ -627,7 +668,15 @@ export default function LeadsPage() {
                 <label className="mb-2 block text-sm font-semibold">Notes</label>
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Interested, wants quote next week, older gutters, prefers text message..." className="us-textarea min-h-[120px]" />
               </div>
-            </div>
+              <div className="flex flex-wrap gap-3 md:col-span-2">
+                <button type="submit" disabled={isSaving || isLoading} className="us-btn-primary">
+                  {isSaving ? "Saving..." : "Save Lead"}
+                </button>
+                <button type="button" onClick={() => clearForm()} className="us-btn-secondary">
+                  Clear Form
+                </button>
+              </div>
+            </form>
 
             <div className="print-hide mt-8">
               <AIAssistantPanel
@@ -655,14 +704,6 @@ export default function LeadsPage() {
               />
             </div>
 
-            <div className="print-hide mt-8 flex flex-wrap gap-3">
-              <button onClick={saveLead} disabled={isSaving || isLoading} className="us-btn-primary">
-                {isSaving ? "Saving..." : "Save Lead"}
-              </button>
-              <button onClick={() => clearForm()} className="us-btn-secondary">
-                Clear Form
-              </button>
-            </div>
           </section>
 
           <aside className="space-y-6 print-hide">
@@ -777,7 +818,7 @@ export default function LeadsPage() {
                         </div>
                         <div className="print-hide">
                           <label className="mb-2 block text-sm font-semibold">Reminder Note</label>
-                          <input value={lead.reminderNote} onChange={(e) => updateLeadField(lead.id, { reminder_note: e.target.value })} className="us-input" />
+                          <input value={lead.reminderNote} onChange={(e) => updateLeadField(lead.id, { notes: buildLeadNotes(lead.notes, e.target.value) })} className="us-input" />
                         </div>
                       </div>
                     </div>
