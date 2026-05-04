@@ -182,8 +182,10 @@ function buildCustomerFinderNotes(
     `Customer type: ${lead.customer_type}`,
     `Recommended service need: ${lead.recommended_service_need}`,
     `Weekday hours: ${lead.weekday_hours}`,
-    `Lead source: ${lead.lead_source}`,
-    lead.notes,
+    `City: ${lead.city}`,
+    `State: ${lead.state}`,
+    `Zip: ${lead.zip}`,
+    `AI reason this may be a good lead: ${lead.notes}`,
     "AI-generated customer leads should be verified before outreach.",
   ]
     .filter((item) => item.trim().length > 0)
@@ -721,18 +723,15 @@ export default function LeadsPage() {
 
       return {
         user_id: userId,
-        customer_id: null,
         full_name: customerName,
         name: customerName,
         phone: isPresentAiValue(lead.phone) ? lead.phone : null,
         email: isPresentAiValue(lead.email) ? lead.email : null,
         address: addressValue || null,
-        area: customerFinderLocation.trim() || null,
         service_type: customerFinderBusinessType,
         service_needed: lead.recommended_service_need,
-        source: lead.lead_source,
         lead_source: lead.lead_source,
-        status: "New" as LeadStatus,
+        status: lead.status as LeadStatus,
         estimated_value: 0,
         probability: getLeadProbability("New"),
         follow_up_date: lead.follow_up_date || null,
