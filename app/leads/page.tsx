@@ -11,6 +11,11 @@ import {
   type LeadRecord,
   type LeadStatus,
 } from "@/lib/leads";
+import {
+  DEFAULT_LEAD_SERVICE_TYPE,
+  isLeadServiceType,
+  LEAD_SERVICE_TYPES,
+} from "@/lib/service-types";
 
 type CustomerOption = {
   id: string;
@@ -137,7 +142,7 @@ export default function LeadsPage() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [area, setArea] = useState("");
-  const [serviceType, setServiceType] = useState("Gutter Cleaning");
+  const [serviceType, setServiceType] = useState(DEFAULT_LEAD_SERVICE_TYPE);
   const [status, setStatus] = useState<LeadStatus>("New");
   const [estimatedValue, setEstimatedValue] = useState("150");
   const [followUpDate, setFollowUpDate] = useState("");
@@ -365,7 +370,7 @@ export default function LeadsPage() {
     setEmail("");
     setAddress("");
     setArea("");
-    setServiceType("Gutter Cleaning");
+    setServiceType(DEFAULT_LEAD_SERVICE_TYPE);
     setStatus("New");
     setEstimatedValue("150");
     setFollowUpDate("");
@@ -627,14 +632,14 @@ export default function LeadsPage() {
               <div>
                 <label className="mb-2 block text-sm font-semibold">Service Type</label>
                 <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="us-input">
-                  <option>Gutter Cleaning</option>
-                  <option>Pressure Washing</option>
-                  <option>Lawn Care</option>
-                  <option>Handyman</option>
-                  <option>Construction</option>
-                  <option>Cleaning</option>
-                  <option>Car Detailing</option>
-                  <option>Other</option>
+                  {serviceType && !isLeadServiceType(serviceType) ? (
+                    <option value={serviceType}>{serviceType}</option>
+                  ) : null}
+                  {LEAD_SERVICE_TYPES.map((serviceTypeOption) => (
+                    <option key={serviceTypeOption} value={serviceTypeOption}>
+                      {serviceTypeOption}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -810,6 +815,28 @@ export default function LeadsPage() {
                             <option value="Estimate Sent">Estimate Sent</option>
                             <option value="Won">Won</option>
                             <option value="Lost">Lost</option>
+                          </select>
+                        </div>
+                        <div className="print-hide">
+                          <label className="mb-2 block text-sm font-semibold">Service Type</label>
+                          <select
+                            value={lead.serviceType}
+                            onChange={(e) =>
+                              updateLeadField(lead.id, {
+                                service_type: e.target.value,
+                                service_needed: e.target.value,
+                              })
+                            }
+                            className="us-input"
+                          >
+                            {lead.serviceType && !isLeadServiceType(lead.serviceType) ? (
+                              <option value={lead.serviceType}>{lead.serviceType}</option>
+                            ) : null}
+                            {LEAD_SERVICE_TYPES.map((serviceTypeOption) => (
+                              <option key={serviceTypeOption} value={serviceTypeOption}>
+                                {serviceTypeOption}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <div className="print-hide">
