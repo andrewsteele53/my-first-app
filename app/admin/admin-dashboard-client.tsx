@@ -4,13 +4,18 @@ import type { ReactNode } from "react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  approveTeamApplicationAsSalesAction,
   assignSubscriberAction,
   createManualPayoutAction,
+  createTeamApplicationAction,
+  deleteTeamApplicationAction,
   makeSalesRepAction,
   markPayoutPaidAction,
+  rejectTeamApplicationAction,
   removeSalesRepAction,
   setUserRoleAction,
   syncMissingProfilesAction,
+  updateTeamApplicationAction,
   updateSalesRepAction,
   updateUserAction,
   type AdminActionResult,
@@ -62,6 +67,19 @@ export type CommissionPayoutRow = {
   created_at: string | null;
 };
 
+export type TeamApplicationRow = {
+  id: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  desired_role: string | null;
+  status: string | null;
+  notes: string | null;
+  created_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+};
+
 type EditUserState = {
   profile: ProfileRow;
   displayName: string;
@@ -73,6 +91,16 @@ type EditRepState = {
   rep: SalesRepRow;
   displayName: string;
   paymentNotes: string;
+};
+
+type EditApplicationState = {
+  application?: TeamApplicationRow;
+  name: string;
+  email: string;
+  phone: string;
+  desiredRole: string;
+  status: string;
+  notes: string;
 };
 
 type ConfirmState =
@@ -91,6 +119,7 @@ type Props = {
   salesReps: SalesRepRow[];
   assignments: SalesAssignmentRow[];
   payouts: CommissionPayoutRow[];
+  teamApplications: TeamApplicationRow[];
 };
 
 function formatDate(value?: string | null) {
@@ -137,6 +166,7 @@ export default function AdminDashboardClient({
   salesReps,
   assignments,
   payouts,
+  teamApplications,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -144,6 +174,7 @@ export default function AdminDashboardClient({
   const [message, setMessage] = useState<AdminActionResult | null>(null);
   const [editUser, setEditUser] = useState<EditUserState | null>(null);
   const [editRep, setEditRep] = useState<EditRepState | null>(null);
+  const [editApplication, setEditApplication] = useState<EditApplicationState | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [payoutRepId, setPayoutRepId] = useState("");
   const [payoutAmount, setPayoutAmount] = useState("");
@@ -271,6 +302,52 @@ export default function AdminDashboardClient({
     setPayoutNotes("");
   }
 
+  function openNewApplication() {
+    setEditApplication({
+      name: "",
+      email: "",
+      phone: "",
+      desiredRole: "sales",
+      status: "pending",
+      notes: "",
+    });
+  }
+
+  function openApplicationEditor(application: TeamApplicationRow) {
+    setEditApplication({
+      application,
+      name: application.name || "",
+      email: application.email || "",
+      phone: application.phone || "",
+      desiredRole: application.desired_role || "sales",
+      status: application.status || "pending",
+      notes: application.notes || "",
+    });
+  }
+
+  function submitApplication() {
+    if (!editApplication) return;
+
+    const data = formData({
+      name: editApplication.name,
+      email: editApplication.email,
+      phone: editApplication.phone,
+      desired_role: editApplication.desiredRole,
+      status: editApplication.status,
+      notes: editApplication.notes,
+    });
+
+    if (editApplication.application) {
+      const applicationId = editApplication.application.id;
+      data.set("application_id", applicationId);
+      runAction(() => updateTeamApplicationAction(data), `edit-application-${applicationId}`);
+    } else {
+      runAction(() => createTeamApplicationAction(data), "create-application");
+    }
+
+    setEditApplication(null);
+  }
+
   return (
     <>
       {message ? (
@@ -375,6 +452,115 @@ export default function AdminDashboardClient({
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="us-kicker">Team Applications</p>
+            <h2 className="mt-2 text-2xl font-extrabold">Pending Team Members</h2>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              Track potential Unified Steele employees and sales team members before approval.
+            </p>
+          </div>
+          <button type="button" className="us-btn-primary px-4 py-2 text-sm" onClick={openNewApplication}>
+            Add Pending Team Member
+          </button>
+        </div>
+
+        {teamApplications.length === 0 ? (
+          <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
+            No pending team members yet.
+          </p>
+        ) : (
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[1080px] text-left text-sm">
+              <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                <tr>
+                  <th className="py-3 pr-4">Name</th>
+                  <th className="py-3 pr-4">Email</th>
+                  <th className="py-3 pr-4">Phone</th>
+                  <th className="py-3 pr-4">Desired Role</th>
+                  <th className="py-3 pr-4">Status</th>
+                  <th className="py-3 pr-4">Notes</th>
+                  <th className="py-3 pr-4">Applied</th>
+                  <th className="py-3 pr-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamApplications.map((application) => {
+                  const approveId = `approve-application-${application.id}`;
+                  const rejectId = `reject-application-${application.id}`;
+                  const deleteId = `delete-application-${application.id}`;
+
+                  return (
+                    <tr key={application.id} className="border-b border-[var(--color-border-muted)] align-top">
+                      <td className="py-4 pr-4 font-semibold">{application.name || "-"}</td>
+                      <td className="py-4 pr-4 break-all">{application.email}</td>
+                      <td className="py-4 pr-4">{application.phone || "-"}</td>
+                      <td className="py-4 pr-4 capitalize">{application.desired_role || "sales"}</td>
+                      <td className="py-4 pr-4">{statusBadge(application.status || "pending")}</td>
+                      <td className="max-w-72 py-4 pr-4 text-[var(--color-text-secondary)]">{application.notes || "-"}</td>
+                      <td className="py-4 pr-4">{formatDate(application.created_at)}</td>
+                      <td className="py-4 pr-4">
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" className="us-btn-secondary px-3 py-2 text-xs" onClick={() => openApplicationEditor(application)}>
+                            Edit Application
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-primary px-3 py-2 text-xs"
+                            disabled={isPending || application.status === "approved"}
+                            onClick={() =>
+                              runAction(
+                                () => approveTeamApplicationAsSalesAction(formData({ application_id: application.id })),
+                                approveId
+                              )
+                            }
+                          >
+                            {pendingActionId === approveId ? "Approving..." : "Approve as Sales Rep"}
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-secondary px-3 py-2 text-xs"
+                            disabled={isPending || application.status === "rejected"}
+                            onClick={() =>
+                              runAction(
+                                () => rejectTeamApplicationAction(formData({ application_id: application.id })),
+                                rejectId
+                              )
+                            }
+                          >
+                            {pendingActionId === rejectId ? "Rejecting..." : "Reject"}
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-danger px-3 py-2 text-xs"
+                            onClick={() =>
+                              setConfirm({
+                                title: "Delete Application",
+                                message: `Delete the team application for ${application.email}? This cannot be undone.`,
+                                confirmLabel: "Delete Application",
+                                danger: true,
+                                onConfirm: () =>
+                                  runAction(
+                                    () => deleteTeamApplicationAction(formData({ application_id: application.id })),
+                                    deleteId
+                                  ),
+                              })
+                            }
+                          >
+                            {pendingActionId === deleteId ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
@@ -615,6 +801,54 @@ export default function AdminDashboardClient({
           </div>
         )}
       </section>
+
+      {editApplication ? (
+        <Modal
+          title={editApplication.application ? "Edit Application" : "Add Pending Team Member"}
+          onCancel={() => setEditApplication(null)}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-bold">
+              Name
+              <input className="us-input" value={editApplication.name} onChange={(event) => setEditApplication({ ...editApplication, name: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Email
+              <input className="us-input" type="email" value={editApplication.email} onChange={(event) => setEditApplication({ ...editApplication, email: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Phone
+              <input className="us-input" value={editApplication.phone} onChange={(event) => setEditApplication({ ...editApplication, phone: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Desired role
+              <input className="us-input" value={editApplication.desiredRole} onChange={(event) => setEditApplication({ ...editApplication, desiredRole: event.target.value })} />
+            </label>
+          </div>
+          {editApplication.application ? (
+            <label className="mt-4 grid gap-2 text-sm font-bold">
+              Status
+              <select className="us-input" value={editApplication.status} onChange={(event) => setEditApplication({ ...editApplication, status: event.target.value })}>
+                <option value="pending">pending</option>
+                <option value="approved">approved</option>
+                <option value="rejected">rejected</option>
+              </select>
+            </label>
+          ) : null}
+          <label className="mt-4 grid gap-2 text-sm font-bold">
+            Notes
+            <textarea className="us-input min-h-24" value={editApplication.notes} onChange={(event) => setEditApplication({ ...editApplication, notes: event.target.value })} />
+          </label>
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" className="us-btn-secondary px-4 py-2" onClick={() => setEditApplication(null)}>
+              Cancel
+            </button>
+            <button type="button" className="us-btn-primary px-4 py-2" disabled={isPending} onClick={submitApplication}>
+              {pendingActionId === "create-application" ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </Modal>
+      ) : null}
 
       {editUser ? (
         <Modal title="Edit User" onCancel={() => setEditUser(null)}>

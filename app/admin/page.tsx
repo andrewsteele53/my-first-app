@@ -9,6 +9,7 @@ import AdminDashboardClient, {
   type ProfileRow,
   type SalesAssignmentRow,
   type SalesRepRow,
+  type TeamApplicationRow,
 } from "./admin-dashboard-client";
 
 export default async function AdminPage() {
@@ -20,7 +21,7 @@ export default async function AdminPage() {
   if (!user) redirect("/login");
   await requireAdmin(supabase, user);
 
-  const [profilesResult, salesRepsResult, assignmentsResult, payoutsResult] = await Promise.all([
+  const [profilesResult, salesRepsResult, assignmentsResult, payoutsResult, applicationsResult] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, email, display_name, business_name, owner_name, role, subscription_status, trial_start, trial_end, trial_ends_at, created_at")
@@ -37,12 +38,17 @@ export default async function AdminPage() {
       .from("commission_payouts")
       .select("id, sales_rep_id, amount, status, paid_at, notes, created_at")
       .order("created_at", { ascending: false }),
+    supabase
+      .from("team_applications")
+      .select("id, name, email, phone, desired_role, status, notes, created_at, reviewed_at, reviewed_by")
+      .order("created_at", { ascending: false }),
   ]);
 
   const profiles = ((profilesResult.data ?? []) as ProfileRow[]);
   const salesReps = ((salesRepsResult.data ?? []) as SalesRepRow[]);
   const assignments = ((assignmentsResult.data ?? []) as SalesAssignmentRow[]);
   const payouts = ((payoutsResult.data ?? []) as CommissionPayoutRow[]);
+  const teamApplications = ((applicationsResult.data ?? []) as TeamApplicationRow[]);
   const subscribers = profiles.filter((profile) => profile.role !== "admin" && profile.role !== "sales");
   const totalUsers = profiles.length;
   const activePaidSubscribers = subscribers.filter((profile) =>
@@ -51,7 +57,7 @@ export default async function AdminPage() {
   const trialUsers = subscribers.filter((profile) => profile.subscription_status === "trialing");
   const estimatedMrr = activePaidSubscribers.length * MONTHLY_SUBSCRIPTION_AMOUNT;
 
-  const errors = [profilesResult.error, salesRepsResult.error, assignmentsResult.error, payoutsResult.error]
+  const errors = [profilesResult.error, salesRepsResult.error, assignmentsResult.error, payoutsResult.error, applicationsResult.error]
     .filter(Boolean)
     .map((error) => error?.message)
     .join(" | ");
@@ -94,6 +100,7 @@ export default async function AdminPage() {
           salesReps={salesReps}
           assignments={assignments}
           payouts={payouts}
+          teamApplications={teamApplications}
         />
       </div>
     </main>

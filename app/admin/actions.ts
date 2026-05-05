@@ -23,6 +23,15 @@ function cleanRole(value: FormDataEntryValue | null) {
   throw new Error("Choose a valid role.");
 }
 
+function cleanApplicationStatus(value: FormDataEntryValue | null) {
+  const status = clean(value);
+  if (status === "pending" || status === "approved" || status === "rejected") {
+    return status;
+  }
+
+  throw new Error("Choose a valid application status.");
+}
+
 function success(message: string): AdminActionResult {
   return { ok: true, message };
 }
@@ -627,6 +636,217 @@ export async function createManualPayoutAction(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/sales");
   return success("Manual payout created.");
+}
+
+export async function createTeamApplicationAction(formData: FormData) {
+  const { supabase } = await requireAdminContext();
+  const name = clean(formData.get("name"));
+  const email = clean(formData.get("email")).toLowerCase();
+  const phone = clean(formData.get("phone"));
+  const desiredRole = clean(formData.get("desired_role")) || "sales";
+  const notes = clean(formData.get("notes"));
+
+  if (!email) {
+    throw new Error("Email is required.");
+  }
+
+  const { error } = await supabase.from("team_applications").insert({
+    name: name || null,
+    email,
+    phone: phone || null,
+    desired_role: desiredRole,
+    status: "pending",
+    notes: notes || null,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  return success("Pending team member added.");
+}
+
+export async function updateTeamApplicationAction(formData: FormData) {
+  const { supabase, user } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+  const name = clean(formData.get("name"));
+  const email = clean(formData.get("email")).toLowerCase();
+  const phone = clean(formData.get("phone"));
+  const desiredRole = clean(formData.get("desired_role")) || "sales";
+  const status = cleanApplicationStatus(formData.get("status"));
+  const notes = clean(formData.get("notes"));
+  const reviewedFields =
+    status === "approved" || status === "rejected"
+      ? { reviewed_at: new Date().toISOString(), reviewed_by: user.id }
+      : { reviewed_at: null, reviewed_by: null };
+
+  if (!applicationId) {
+    throw new Error("Application is required.");
+  }
+
+  if (!email) {
+    throw new Error("Email is required.");
+  }
+
+  const { error } = await supabase
+    .from("team_applications")
+    .update({
+      name: name || null,
+      email,
+      phone: phone || null,
+      desired_role: desiredRole,
+      status,
+      notes: notes || null,
+      ...reviewedFields,
+    })
+    .eq("id", applicationId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  return success("Team application updated.");
+}
+
+export async function rejectTeamApplicationAction(formData: FormData) {
+  const { supabase, user } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+
+  if (!applicationId) {
+    throw new Error("Application is required.");
+  }
+
+  const { error } = await supabase
+    .from("team_applications")
+    .update({
+      status: "rejected",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .eq("id", applicationId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  return success("Team application rejected.");
+}
+
+export async function approveTeamApplicationAsSalesAction(formData: FormData) {
+  const { supabase, user } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+
+  if (!applicationId) {
+    throw new Error("Application is required.");
+  }
+
+  const { data: application, error: applicationError } = await supabase
+    .from("team_applications")
+    .select("id, name, email, notes")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  if (applicationError) {
+    throw new Error(applicationError.message);
+  }
+
+  if (!application) {
+    throw new Error("Application not found.");
+  }
+
+  const email = typeof application.email === "string" ? application.email.trim().toLowerCase() : "";
+
+  if (!email) {
+    throw new Error("Application email is required.");
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, email, display_name")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  const { error: applicationUpdateError } = await supabase
+    .from("team_applications")
+    .update({
+      status: "approved",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .eq("id", applicationId);
+
+  if (applicationUpdateError) {
+    throw new Error(applicationUpdateError.message);
+  }
+
+  if (!profile) {
+    revalidatePath("/admin");
+    return success("Approved, but this person still needs to create an account with this email.");
+  }
+
+  const displayName =
+    (typeof application.name === "string" && application.name.trim()) ||
+    (typeof profile.display_name === "string" && profile.display_name.trim()) ||
+    (typeof profile.email === "string" && profile.email.trim()) ||
+    email;
+
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({ role: "sales" })
+    .eq("id", profile.id);
+
+  if (roleError) {
+    throw new Error(roleError.message);
+  }
+
+  const { error: repError } = await supabase.from("sales_reps").upsert(
+    {
+      user_id: profile.id,
+      display_name: displayName,
+      payment_notes:
+        typeof application.notes === "string" && application.notes.trim()
+          ? application.notes.trim()
+          : null,
+      active: true,
+    },
+    { onConflict: "user_id" }
+  );
+
+  if (repError) {
+    throw new Error(repError.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/sales");
+  return success(`${displayName} was approved and added as a sales rep.`);
+}
+
+export async function deleteTeamApplicationAction(formData: FormData) {
+  const { supabase } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+
+  if (!applicationId) {
+    throw new Error("Application is required.");
+  }
+
+  const { error } = await supabase
+    .from("team_applications")
+    .delete()
+    .eq("id", applicationId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  return success("Team application deleted.");
 }
 
 async function deactivateSalesRepForUser(

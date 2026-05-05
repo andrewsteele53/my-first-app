@@ -135,6 +135,19 @@ create table if not exists public.commission_payouts (
   created_at timestamptz default now()
 );
 
+create table if not exists public.team_applications (
+  id uuid primary key default gen_random_uuid(),
+  name text,
+  email text not null,
+  phone text,
+  desired_role text default 'sales',
+  status text default 'pending',
+  notes text,
+  created_at timestamptz default now(),
+  reviewed_at timestamptz,
+  reviewed_by uuid references auth.users(id)
+);
+
 do $$
 begin
   if not exists (
@@ -146,16 +159,30 @@ begin
   end if;
 end $$;
 
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'team_applications_status_check'
+  ) then
+    alter table public.team_applications
+      add constraint team_applications_status_check
+      check (status in ('pending', 'approved', 'rejected'));
+  end if;
+end $$;
+
 create index if not exists sales_reps_user_id_idx on public.sales_reps (user_id);
 create index if not exists sales_assignments_sales_rep_id_idx on public.sales_assignments (sales_rep_id);
 create index if not exists sales_assignments_subscriber_user_id_idx on public.sales_assignments (subscriber_user_id);
 create index if not exists commission_payouts_sales_rep_id_idx on public.commission_payouts (sales_rep_id);
 create index if not exists commission_payouts_status_idx on public.commission_payouts (status);
+create index if not exists team_applications_email_idx on public.team_applications (email);
+create index if not exists team_applications_status_idx on public.team_applications (status);
 
 alter table public.profiles enable row level security;
 alter table public.sales_reps enable row level security;
 alter table public.sales_assignments enable row level security;
 alter table public.commission_payouts enable row level security;
+alter table public.team_applications enable row level security;
 
 drop policy if exists "Users can insert their own profile" on public.profiles;
 create policy "Users can insert their own profile"
@@ -250,7 +277,15 @@ create policy "Sales reps can view own payouts"
     )
   );
 
+drop policy if exists "Admins can manage team applications" on public.team_applications;
+create policy "Admins can manage team applications"
+  on public.team_applications for all
+  to authenticated
+  using (app_private.current_user_role() = 'admin')
+  with check (app_private.current_user_role() = 'admin');
+
 grant select, insert, update, delete on public.profiles to authenticated;
 grant select, insert, update, delete on public.sales_reps to authenticated;
 grant select, insert, update, delete on public.sales_assignments to authenticated;
 grant select, insert, update, delete on public.commission_payouts to authenticated;
+grant select, insert, update, delete on public.team_applications to authenticated;
