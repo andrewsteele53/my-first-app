@@ -5,6 +5,28 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function getRoleHomePath(role?: string | null) {
+  if (role === "admin") return "/admin";
+  if (role === "sales") return "/sales";
+  return "/";
+}
+
+async function getSignedInRoleHomePath(supabase: ReturnType<typeof createClient>) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return "/";
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  return getRoleHomePath(data?.role);
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -24,7 +46,7 @@ export default function LoginPage() {
         } = await supabase.auth.getUser();
 
         if (user && isMounted) {
-          router.replace("/");
+          router.replace(await getSignedInRoleHomePath(supabase));
           return;
         }
       } catch {
@@ -66,7 +88,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
+      router.push(await getSignedInRoleHomePath(supabase));
       router.refresh();
     } catch (err) {
       setError(

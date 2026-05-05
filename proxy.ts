@@ -10,7 +10,9 @@ function requiresAuth(pathname: string) {
     pathname.startsWith("/settings") ||
     pathname.startsWith("/subscribe") ||
     pathname.startsWith("/ai") ||
-    pathname.startsWith("/onboarding")
+    pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/sales")
   );
 }
 
@@ -87,14 +89,10 @@ export async function proxy(request: NextRequest) {
       return redirectTo(request, "/login");
     }
 
-    if (user && isAuthPage(pathname)) {
-      return redirectTo(request, "/");
-    }
-
     if (user) {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("subscription_status, onboarding_completed")
+        .select("subscription_status, onboarding_completed, role")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -103,16 +101,42 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
       }
 
+      const role =
+        profile?.role === "admin" || profile?.role === "sales"
+          ? profile.role
+          : "subscriber";
+
+      if (user && isAuthPage(pathname)) {
+        return redirectTo(request, role === "admin" ? "/admin" : role === "sales" ? "/sales" : "/");
+      }
+
+      if (pathname.startsWith("/admin") && role !== "admin") {
+        return redirectTo(request, role === "sales" ? "/sales" : "/");
+      }
+
+      if (pathname.startsWith("/sales") && role !== "sales" && role !== "admin") {
+        return redirectTo(request, "/");
+      }
+
+      if (pathname === "/" && role === "admin") {
+        return redirectTo(request, "/admin");
+      }
+
+      if (pathname === "/" && role === "sales") {
+        return redirectTo(request, "/sales");
+      }
+
       const onboardingCompleted = Boolean(profile?.onboarding_completed);
       const shouldCheckOnboarding =
-        pathname === "/" ||
+        role === "subscriber" &&
+        (pathname === "/" ||
         pathname.startsWith("/invoices") ||
         pathname.startsWith("/quotes") ||
         pathname.startsWith("/leads") ||
         pathname.startsWith("/mapping") ||
         pathname.startsWith("/settings") ||
         pathname.startsWith("/subscribe") ||
-        pathname.startsWith("/ai");
+        pathname.startsWith("/ai"));
 
       if (!onboardingCompleted && shouldCheckOnboarding && pathname !== "/onboarding") {
         return redirectTo(request, "/onboarding");

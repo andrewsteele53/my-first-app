@@ -5,6 +5,7 @@ import { getProfileAccess } from "@/lib/billing";
 import BusinessProfileForm from "@/components/business-profile-form";
 import QuickBooksSettingsPanel from "@/components/quickbooks-settings-panel";
 import { getBusinessProfile } from "@/lib/business-profile";
+import { getCurrentUserRole, type AccountRole } from "@/lib/roles";
 
 function getAuthMetadataName(user: {
   user_metadata?: Record<string, unknown>;
@@ -34,11 +35,13 @@ export default async function SettingsPage() {
   let subscriptionStatus = "inactive";
   let billingMessage = "Start your 30-day free trial.";
   let hasProAccess = false;
+  let role: AccountRole = "subscriber";
   const userEmail = user?.email || "No email found";
   const businessProfile = user ? await getBusinessProfile(supabase, user) : null;
   const authMetadataName = user ? getAuthMetadataName(user) : "";
 
   if (user) {
+    role = await getCurrentUserRole(supabase, user);
     const access = await getProfileAccess(supabase, user);
     isSubscribed = access.isSubscribed;
     isTrialing = access.isTrialing;
@@ -174,6 +177,16 @@ export default async function SettingsPage() {
               <Link href="/mapping" className="us-btn-secondary flex w-full">
                 Open Mapping
               </Link>
+              {role === "admin" ? (
+                <Link href="/admin" className="us-btn-secondary flex w-full">
+                  Admin
+                </Link>
+              ) : null}
+              {role === "sales" ? (
+                <Link href="/sales" className="us-btn-secondary flex w-full">
+                  Sales Portal
+                </Link>
+              ) : null}
               <div className="flex flex-wrap gap-4 pt-2 text-sm">
                 <Link href="/privacy" className="us-link">
                   Privacy Policy
