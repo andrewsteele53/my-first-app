@@ -33,6 +33,27 @@ export async function addSalesRepAction(formData: FormData) {
     throw new Error("Choose a user to add as a sales rep.");
   }
 
+  const { data: profile, error: readProfileError } = await supabase
+    .from("profiles")
+    .select("id, email, display_name, business_name, owner_name")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (readProfileError) {
+    throw new Error(readProfileError.message);
+  }
+
+  if (!profile) {
+    throw new Error("Profile not found.");
+  }
+
+  const fallbackDisplayName =
+    (typeof profile.display_name === "string" && profile.display_name.trim()) ||
+    (typeof profile.business_name === "string" && profile.business_name.trim()) ||
+    (typeof profile.owner_name === "string" && profile.owner_name.trim()) ||
+    (typeof profile.email === "string" && profile.email.trim()) ||
+    "Sales Rep";
+
   const { error: profileError } = await supabase
     .from("profiles")
     .update({ role: "sales" })
@@ -45,7 +66,7 @@ export async function addSalesRepAction(formData: FormData) {
   const { error } = await supabase.from("sales_reps").upsert(
     {
       user_id: userId,
-      display_name: displayName || null,
+      display_name: displayName || fallbackDisplayName,
       payment_notes: paymentNotes || null,
     },
     { onConflict: "user_id" }

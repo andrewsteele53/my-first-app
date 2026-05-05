@@ -1,5 +1,7 @@
 alter table if exists public.profiles
-  add column if not exists role text not null default 'subscriber';
+  add column if not exists role text not null default 'subscriber',
+  add column if not exists display_name text,
+  add column if not exists created_at timestamptz default now();
 
 do $$
 begin

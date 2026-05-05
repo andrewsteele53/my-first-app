@@ -14,6 +14,7 @@ import {
 type ProfileRow = {
   id: string;
   email: string | null;
+  display_name: string | null;
   business_name: string | null;
   owner_name: string | null;
   role: string | null;
@@ -57,7 +58,13 @@ function formatDate(value?: string | null) {
 }
 
 function getProfileName(profile?: ProfileRow) {
-  return profile?.business_name || profile?.owner_name || profile?.email || "Unnamed user";
+  return (
+    profile?.display_name ||
+    profile?.business_name ||
+    profile?.owner_name ||
+    profile?.email ||
+    "Unnamed user"
+  );
 }
 
 function statusBadge(status?: string | null) {
@@ -88,7 +95,7 @@ export default async function AdminPage() {
   const [profilesResult, salesRepsResult, assignmentsResult, payoutsResult] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, email, business_name, owner_name, role, subscription_status, trial_start, trial_end, trial_ends_at")
+      .select("id, email, display_name, business_name, owner_name, role, subscription_status, trial_start, trial_end, trial_ends_at, created_at")
       .order("email", { ascending: true }),
     supabase
       .from("sales_reps")
@@ -115,6 +122,11 @@ export default async function AdminPage() {
       .map((assignment) => [assignment.subscriber_user_id as string, assignment])
   );
   const salesRepById = new Map(salesReps.map((rep) => [rep.id, rep]));
+  const salesRepByUserId = new Map(
+    salesReps
+      .filter((rep) => rep.user_id)
+      .map((rep) => [rep.user_id as string, rep])
+  );
   const subscribers = profiles.filter((profile) => profile.role !== "admin" && profile.role !== "sales");
   const totalUsers = profiles.length;
   const activePaidSubscribers = subscribers.filter((profile) =>
@@ -122,8 +134,6 @@ export default async function AdminPage() {
   );
   const trialUsers = subscribers.filter((profile) => profile.subscription_status === "trialing");
   const estimatedMrr = activePaidSubscribers.length * MONTHLY_SUBSCRIPTION_AMOUNT;
-  const availableRepUsers = profiles.filter((profile) => profile.role !== "admin");
-
   const repSummaries = salesReps.map((rep) => {
     const repAssignments = assignments.filter((assignment) => assignment.sales_rep_id === rep.id);
     const assignedSubscriberProfiles = repAssignments
@@ -190,29 +200,100 @@ export default async function AdminPage() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="us-kicker">Sales Team</p>
-              <h2 className="mt-2 text-2xl font-extrabold">Sales team members</h2>
+              <h2 className="mt-2 text-2xl font-extrabold">Users</h2>
               <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-                Add a user as a sales rep. This sets their profile role to sales.
+                Profiles are the source of app users. Make a user a sales rep from this list.
               </p>
             </div>
-            <form action={addSalesRepAction} className="grid w-full gap-3 rounded-[1.2rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 lg:max-w-xl">
-              <select name="user_id" className="us-input" defaultValue="">
-                <option value="">Choose user</option>
-                {availableRepUsers.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.email || profile.id}
-                  </option>
-                ))}
-              </select>
-              <input name="display_name" className="us-input" placeholder="Sales rep display name" />
-              <input name="payment_notes" className="us-input" placeholder="Payment notes, Venmo, Zelle, etc." />
-              <button className="us-btn-primary" type="submit">Add / Update Sales Rep</button>
-            </form>
           </div>
 
+          {profiles.length === 0 ? (
+            <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
+              No profiles were found. Users will appear here after a profile record exists.
+            </p>
+          ) : (
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full min-w-[980px] text-left text-sm">
+                <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                  <tr>
+                    <th className="py-3 pr-4">User</th>
+                    <th className="py-3 pr-4">Role</th>
+                    <th className="py-3 pr-4">Subscription</th>
+                    <th className="py-3 pr-4">Joined</th>
+                    <th className="py-3 pr-4">Optional Sales Rep Details</th>
+                    <th className="py-3 pr-4">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {profiles.map((profile) => {
+                    const existingRep = salesRepByUserId.get(profile.id);
+                    const isAdmin = profile.role === "admin";
+                    const isSalesRep = profile.role === "sales" || Boolean(existingRep);
+
+                    return (
+                      <tr key={profile.id} className="border-b border-[var(--color-border-muted)] align-top">
+                        <td className="py-4 pr-4">
+                          <p className="font-bold">{getProfileName(profile)}</p>
+                          <p className="mt-1 break-all text-xs text-[var(--color-text-secondary)]">
+                            {profile.email || profile.id}
+                          </p>
+                        </td>
+                        <td className="py-4 pr-4">{statusBadge(profile.role || "subscriber")}</td>
+                        <td className="py-4 pr-4">{statusBadge(profile.subscription_status)}</td>
+                        <td className="py-4 pr-4">{formatDate(profile.created_at)}</td>
+                        <td className="py-4 pr-4">
+                          <form id={`make-sales-rep-${profile.id}`} action={addSalesRepAction} className="grid min-w-72 gap-2">
+                            <input type="hidden" name="user_id" value={profile.id} />
+                            <input
+                              name="display_name"
+                              className="us-input"
+                              placeholder={getProfileName(profile)}
+                              defaultValue={existingRep?.display_name || ""}
+                              disabled={isAdmin || isSalesRep}
+                            />
+                            <input
+                              name="payment_notes"
+                              className="us-input"
+                              placeholder="Payment notes, Venmo, Zelle, etc."
+                              defaultValue={existingRep?.payment_notes || ""}
+                              disabled={isAdmin || isSalesRep}
+                            />
+                          </form>
+                        </td>
+                        <td className="py-4 pr-4">
+                          {isAdmin ? (
+                            <span className="inline-flex rounded-full border border-[var(--color-border-muted)] bg-[var(--color-section)] px-3 py-2 text-xs font-bold text-[var(--color-text-secondary)]">
+                              Admin
+                            </span>
+                          ) : isSalesRep ? (
+                            <span className="inline-flex rounded-full border border-[rgba(46,125,90,0.2)] bg-[rgba(46,125,90,0.1)] px-3 py-2 text-xs font-bold text-[var(--color-success)]">
+                              Sales Rep
+                            </span>
+                          ) : (
+                            <button
+                              type="submit"
+                              form={`make-sales-rep-${profile.id}`}
+                              className="us-btn-primary whitespace-nowrap px-3 py-2 text-sm"
+                            >
+                              Make Sales Rep
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+          <p className="us-kicker">Sales Reps</p>
+          <h2 className="mt-2 text-2xl font-extrabold">Sales team members</h2>
           {repSummaries.length === 0 ? (
             <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
-              No sales reps yet. Add a user above to create the sales portal record.
+              No sales reps yet. Use Make Sales Rep from the users table above.
             </p>
           ) : (
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
