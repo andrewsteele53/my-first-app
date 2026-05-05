@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  addSalesRepAction,
   assignSubscriberAction,
   createManualPayoutAction,
+  makeSalesRepAction,
   markPayoutPaidAction,
   removeSalesRepAction,
   setUserRoleAction,
@@ -139,6 +139,7 @@ export default function AdminDashboardClient({
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [message, setMessage] = useState<AdminActionResult | null>(null);
   const [editUser, setEditUser] = useState<EditUserState | null>(null);
   const [editRep, setEditRep] = useState<EditRepState | null>(null);
@@ -185,9 +186,10 @@ export default function AdminDashboardClient({
     };
   });
 
-  function runAction(action: () => Promise<AdminActionResult | void>) {
+  function runAction(action: () => Promise<AdminActionResult | void>, actionId?: string) {
     startTransition(async () => {
       setMessage(null);
+      setPendingActionId(actionId || null);
       try {
         const result = await action();
         setMessage(result || { ok: true, message: "Saved." });
@@ -197,6 +199,8 @@ export default function AdminDashboardClient({
           ok: false,
           message: error instanceof Error ? error.message : "Something went wrong.",
         });
+      } finally {
+        setPendingActionId(null);
       }
     });
   }
@@ -209,7 +213,7 @@ export default function AdminDashboardClient({
       confirm_self_demote: profile.id === currentUserId && role !== "admin" ? "yes" : "",
     });
 
-    runAction(() => setUserRoleAction(data));
+    runAction(() => setUserRoleAction(data), `${role}-${profile.id}`);
   }
 
   function openUserEditor(profile: ProfileRow) {
@@ -234,7 +238,7 @@ export default function AdminDashboardClient({
           confirm_self_demote: editUser.profile.id === currentUserId && editUser.role !== "admin" ? "yes" : "",
         })
       )
-    );
+    , `edit-user-${editUser.profile.id}`);
     setEditUser(null);
   }
 
@@ -248,7 +252,7 @@ export default function AdminDashboardClient({
           payment_notes: editRep.paymentNotes,
         })
       )
-    );
+    , `edit-rep-${editRep.rep.id}`);
     setEditRep(null);
   }
 
@@ -261,7 +265,7 @@ export default function AdminDashboardClient({
           notes: payoutNotes,
         })
       )
-    );
+    , "create-payout");
     setPayoutAmount("");
     setPayoutNotes("");
   }
@@ -295,7 +299,9 @@ export default function AdminDashboardClient({
             <tbody>
               {profiles.map((profile) => {
                 const isCurrentUser = profile.id === currentUserId;
-                const isSalesRep = profile.role === "sales" || salesRepByUserId.has(profile.id);
+                const existingSalesRep = salesRepByUserId.get(profile.id);
+                const isSalesRep = Boolean(existingSalesRep);
+                const makeSalesRepId = `make-sales-${profile.id}`;
                 const makeAdmin = () =>
                   setConfirm({
                     title: "Make Admin",
@@ -330,19 +336,9 @@ export default function AdminDashboardClient({
                           type="button"
                           className="us-btn-primary px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                           disabled={isPending || isSalesRep || profile.role === "admin"}
-                          onClick={() =>
-                            runAction(() =>
-                              addSalesRepAction(
-                                formData({
-                                  user_id: profile.id,
-                                  display_name: getProfileName(profile),
-                                  payment_notes: "",
-                                })
-                              )
-                            )
-                          }
+                          onClick={() => runAction(() => makeSalesRepAction(profile.id), makeSalesRepId)}
                         >
-                          {isSalesRep ? "Sales Rep" : "Make Sales Rep"}
+                          {pendingActionId === makeSalesRepId ? "Making..." : isSalesRep ? "Sales Rep" : profile.role === "sales" ? "Update Sales Rep" : "Make Sales Rep"}
                         </button>
                         <button
                           type="button"
@@ -412,7 +408,7 @@ export default function AdminDashboardClient({
                           message: `Remove ${summary.rep.display_name || getProfileName(summary.profile)} from the sales team? Assignments will be cleared and payout history will stay visible.`,
                           confirmLabel: "Remove Sales Rep",
                           danger: true,
-                          onConfirm: () => runAction(() => removeSalesRepAction(formData({ sales_rep_id: summary.rep.id }))),
+                          onConfirm: () => runAction(() => removeSalesRepAction(formData({ sales_rep_id: summary.rep.id })), `remove-rep-${summary.rep.id}`),
                         })
                       }
                     >
@@ -498,7 +494,8 @@ export default function AdminDashboardClient({
                                     subscriber_user_id: subscriber.id,
                                     sales_rep_id: select?.value || "",
                                   })
-                                )
+                                ),
+                                `assign-${subscriber.id}`
                               );
                             }}
                           >
@@ -515,7 +512,8 @@ export default function AdminDashboardClient({
                                     subscriber_user_id: subscriber.id,
                                     sales_rep_id: "",
                                   })
-                                )
+                                ),
+                                `unassign-${subscriber.id}`
                               )
                             }
                           >
@@ -552,8 +550,8 @@ export default function AdminDashboardClient({
             </select>
             <input className="us-input" type="number" min="0" step="0.01" placeholder="Amount" value={payoutAmount} onChange={(event) => setPayoutAmount(event.target.value)} />
             <input className="us-input" placeholder="Notes" value={payoutNotes} onChange={(event) => setPayoutNotes(event.target.value)} />
-            <button type="button" className="us-btn-primary whitespace-nowrap px-3 py-2 text-sm" onClick={submitManualPayout}>
-              Create Manual Payout
+            <button type="button" className="us-btn-primary whitespace-nowrap px-3 py-2 text-sm" disabled={isPending} onClick={submitManualPayout}>
+              {pendingActionId === "create-payout" ? "Creating..." : "Create Manual Payout"}
             </button>
           </div>
         </div>
@@ -592,9 +590,9 @@ export default function AdminDashboardClient({
                           <button
                             type="button"
                             className="us-btn-primary px-3 py-2 text-sm"
-                            onClick={() => runAction(() => markPayoutPaidAction(formData({ payout_id: payout.id })))}
+                            onClick={() => runAction(() => markPayoutPaidAction(formData({ payout_id: payout.id })), `paid-${payout.id}`)}
                           >
-                            Mark Paid
+                            {pendingActionId === `paid-${payout.id}` ? "Marking..." : "Mark Paid"}
                           </button>
                         )}
                       </td>

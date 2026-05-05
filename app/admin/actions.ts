@@ -41,11 +41,81 @@ async function requireAdminContext() {
   return { supabase, user };
 }
 
-export async function addSalesRepAction(formData: FormData) {
+export async function makeSalesRepAction(profileId: string): Promise<AdminActionResult> {
   const { supabase } = await requireAdminContext();
+  const userId = profileId.trim();
+
+  if (!userId) {
+    throw new Error("Choose a user to add as a sales rep.");
+  }
+
+  const { data: profile, error: readProfileError } = await supabase
+    .from("profiles")
+    .select("id, email, display_name")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (readProfileError) {
+    throw new Error(readProfileError.message);
+  }
+
+  if (!profile) {
+    throw new Error("Profile not found.");
+  }
+
+  const fallbackDisplayName =
+    (typeof profile.display_name === "string" && profile.display_name.trim()) ||
+    (typeof profile.email === "string" && profile.email.trim()) ||
+    "Sales Rep";
+
+  const { data: existingRep, error: existingRepError } = await supabase
+    .from("sales_reps")
+    .select("payment_notes")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingRepError) {
+    throw new Error(existingRepError.message);
+  }
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ role: "sales" })
+    .eq("id", userId);
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  const { error } = await supabase.from("sales_reps").upsert(
+    {
+      user_id: userId,
+      display_name: fallbackDisplayName,
+      payment_notes: existingRep?.payment_notes || null,
+      active: true,
+    },
+    { onConflict: "user_id" }
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/sales");
+  return success(`${fallbackDisplayName} is now a sales rep.`);
+}
+
+export async function addSalesRepAction(formData: FormData) {
   const userId = clean(formData.get("user_id"));
   const displayName = clean(formData.get("display_name"));
   const paymentNotes = clean(formData.get("payment_notes"));
+
+  if (!displayName && !paymentNotes) {
+    return makeSalesRepAction(userId);
+  }
+
+  const { supabase } = await requireAdminContext();
 
   if (!userId) {
     throw new Error("Choose a user to add as a sales rep.");
@@ -66,11 +136,22 @@ export async function addSalesRepAction(formData: FormData) {
   }
 
   const fallbackDisplayName =
+    displayName ||
     (typeof profile.display_name === "string" && profile.display_name.trim()) ||
     (typeof profile.business_name === "string" && profile.business_name.trim()) ||
     (typeof profile.owner_name === "string" && profile.owner_name.trim()) ||
     (typeof profile.email === "string" && profile.email.trim()) ||
     "Sales Rep";
+
+  const { data: existingRep, error: existingRepError } = await supabase
+    .from("sales_reps")
+    .select("payment_notes")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingRepError) {
+    throw new Error(existingRepError.message);
+  }
 
   const { error: profileError } = await supabase
     .from("profiles")
@@ -84,8 +165,8 @@ export async function addSalesRepAction(formData: FormData) {
   const { error } = await supabase.from("sales_reps").upsert(
     {
       user_id: userId,
-      display_name: displayName || fallbackDisplayName,
-      payment_notes: paymentNotes || null,
+      display_name: fallbackDisplayName,
+      payment_notes: paymentNotes || existingRep?.payment_notes || null,
       active: true,
     },
     { onConflict: "user_id" }
@@ -145,6 +226,16 @@ export async function updateUserAction(formData: FormData) {
   }
 
   if (role === "sales") {
+    const { data: existingRep, error: existingRepError } = await supabase
+      .from("sales_reps")
+      .select("payment_notes")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (existingRepError) {
+      throw new Error(existingRepError.message);
+    }
+
     const fallbackDisplayName =
       displayName ||
       (typeof profile.display_name === "string" && profile.display_name.trim()) ||
@@ -155,7 +246,7 @@ export async function updateUserAction(formData: FormData) {
       {
         user_id: userId,
         display_name: fallbackDisplayName,
-        payment_notes: paymentNotes || null,
+        payment_notes: paymentNotes || existingRep?.payment_notes || null,
         active: true,
       },
       { onConflict: "user_id" }
@@ -192,7 +283,7 @@ export async function setUserRoleAction(formData: FormData) {
   }
 
   if (role === "sales") {
-    return addSalesRepAction(formData);
+    return makeSalesRepAction(userId);
   }
 
   const { error } = await supabase
