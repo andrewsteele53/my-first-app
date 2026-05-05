@@ -197,14 +197,14 @@ export default function QuotesPage() {
         </section>
 
         <section className="mt-8">
-          <h2 className="text-2xl font-bold">Visible Sections</h2>
+          <h2 className="text-2xl font-bold">Quote Sections</h2>
 
           <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {visibleQuoteTypes.map((type) => (
               <QuoteSectionCard
                 key={type.key}
                 type={type}
-                isLocked={lockedSectionKeys.includes(type.key)}
+                canHide={!lockedSectionKeys.includes(type.key)}
                 savedCount={savedCount}
                 trashCount={trashCount}
                 onHide={hideOptionalSection}
@@ -266,7 +266,7 @@ export default function QuotesPage() {
 
 type QuoteSectionCardProps = {
   type: QuoteCard;
-  isLocked: boolean;
+  canHide: boolean;
   savedCount: number;
   trashCount: number;
   onHide: (key: string) => void;
@@ -274,7 +274,7 @@ type QuoteSectionCardProps = {
 
 function QuoteSectionCard({
   type,
-  isLocked,
+  canHide,
   savedCount,
   trashCount,
   onHide,
@@ -299,14 +299,15 @@ function QuoteSectionCard({
           <p className="mt-3 text-[var(--color-text-secondary)]">{type.description}</p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onHide(type.key)}
-          disabled={isLocked}
-          className="us-btn-primary px-3 py-2 text-sm"
-        >
-          {isLocked ? "Always visible" : "Hide"}
-        </button>
+        {canHide ? (
+          <button
+            type="button"
+            onClick={() => onHide(type.key)}
+            className="us-btn-primary px-3 py-2 text-sm"
+          >
+            Hide
+          </button>
+        ) : null}
       </div>
 
       <Link href={type.href} className="us-link mt-6 inline-block text-sm">
