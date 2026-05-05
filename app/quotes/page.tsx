@@ -5,12 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { invoiceUi } from "@/lib/invoice-ui";
 import {
   getProfileDefaultQuoteSlug,
-  getProfileIndustryLabel,
   getProfileQuoteLabel,
   type BusinessProfile,
 } from "@/lib/business-profile";
 import { getSavedQuotes, getTrashedQuotes } from "@/lib/quotes";
-import { getQuoteServiceCategories, SERVICE_CATEGORY_GROUPS } from "@/lib/service-categories";
+import { getQuoteServiceCategories } from "@/lib/service-categories";
 
 type QuoteCard = {
   title: string;
@@ -21,23 +20,24 @@ type QuoteCard = {
 };
 
 const HIDDEN_SECTION_KEY = "unified-steele-hidden-quote-sections";
+const OPTIONAL_VISIBLE_SECTION_KEY = "unified-steele-visible-optional-quote-sections";
 
 const quoteTypes: QuoteCard[] = [
   ...getQuoteServiceCategories().map((category) => ({
-    title: `${category.name} Quote`,
+    title: `${category.name} Quotes`,
     description: category.description,
     href: `/quotes/${category.slug}`,
     key: category.slug,
     group: category.group,
   })),
   {
-    title: "Saved Quotes",
+    title: "Saved",
     description: "Review quote statuses and convert approved quotes to invoices.",
     href: "/quotes/saved",
     key: "saved",
   },
   {
-    title: "Quote Trash",
+    title: "Trash",
     description: "Restore or permanently delete trashed quotes.",
     href: "/quotes/trash",
     key: "trash",
@@ -48,6 +48,8 @@ export default function QuotesPage() {
   const [savedCount, setSavedCount] = useState(0);
   const [trashCount, setTrashCount] = useState(0);
   const [hiddenSections, setHiddenSections] = useState<string[]>([]);
+  const [optionalVisibleSections, setOptionalVisibleSections] = useState<string[]>([]);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -65,6 +67,18 @@ export default function QuotesPage() {
           }
         } catch {
           setHiddenSections([]);
+        }
+      }
+
+      const optionalVisibleRaw = localStorage.getItem(OPTIONAL_VISIBLE_SECTION_KEY);
+      if (optionalVisibleRaw) {
+        try {
+          const parsed = JSON.parse(optionalVisibleRaw);
+          if (Array.isArray(parsed)) {
+            setOptionalVisibleSections(parsed);
+          }
+        } catch {
+          setOptionalVisibleSections([]);
         }
       }
 
@@ -92,33 +106,53 @@ export default function QuotesPage() {
     localStorage.setItem(HIDDEN_SECTION_KEY, JSON.stringify(next));
   }
 
+  function updateOptionalVisibleSections(next: string[]) {
+    setOptionalVisibleSections(next);
+    localStorage.setItem(OPTIONAL_VISIBLE_SECTION_KEY, JSON.stringify(next));
+  }
+
   const defaultQuoteSlug = getProfileDefaultQuoteSlug(businessProfile);
   const defaultQuoteLabel = getProfileQuoteLabel(businessProfile);
-  const industryLabel = getProfileIndustryLabel(businessProfile);
-
-  const visibleQuoteTypes = useMemo(
-    () => quoteTypes.filter((type) => !hiddenSections.includes(type.key)),
-    [hiddenSections]
+  const lockedSectionKeys = useMemo(
+    () => [defaultQuoteSlug, "saved", "trash"],
+    [defaultQuoteSlug]
   );
+  const visibleQuoteTypes = useMemo(() => {
+    const optionalSections = quoteTypes.filter(
+      (type) =>
+        optionalVisibleSections.includes(type.key) &&
+        !hiddenSections.includes(type.key) &&
+        !lockedSectionKeys.includes(type.key)
+    );
+    const lockedSections = lockedSectionKeys
+      .map((key) => quoteTypes.find((type) => type.key === key))
+      .filter((type): type is QuoteCard => Boolean(type));
 
-  const hiddenQuoteTypes = useMemo(
-    () => quoteTypes.filter((type) => hiddenSections.includes(type.key)),
-    [hiddenSections]
-  );
-
-  const visibleServiceGroups = useMemo(
+    return [...lockedSections, ...optionalSections];
+  }, [hiddenSections, lockedSectionKeys, optionalVisibleSections]);
+  const customizeQuoteTypes = useMemo(
     () =>
-      SERVICE_CATEGORY_GROUPS.map((group) => ({
-        group,
-        items: visibleQuoteTypes.filter((type) => type.group === group),
-      })).filter((section) => section.items.length > 0),
+      quoteTypes.filter(
+        (type) =>
+          type.group &&
+          !visibleQuoteTypes.some((visibleType) => visibleType.key === type.key)
+      ),
     [visibleQuoteTypes]
   );
 
-  const visibleUtilityTypes = useMemo(
-    () => visibleQuoteTypes.filter((type) => !type.group),
-    [visibleQuoteTypes]
-  );
+  function hideOptionalSection(key: string) {
+    if (lockedSectionKeys.includes(key)) return;
+
+    updateOptionalVisibleSections(optionalVisibleSections.filter((item) => item !== key));
+    updateHiddenSections([...new Set([...hiddenSections, key])]);
+  }
+
+  function showOptionalSection(key: string) {
+    if (lockedSectionKeys.includes(key)) return;
+
+    updateOptionalVisibleSections([...new Set([...optionalVisibleSections, key])]);
+    updateHiddenSections(hiddenSections.filter((item) => item !== key));
+  }
 
   if (!loaded) {
     return (
@@ -144,8 +178,8 @@ export default function QuotesPage() {
               <h1 className="mt-2 text-4xl font-bold">Quote Center</h1>
               <p className="mt-3 max-w-2xl text-[var(--color-text-secondary)]">
                 Create estimates and proposals before work is approved, then convert
-                approved quotes into invoices when the job is ready. Hide sections
-                you do not want showing on this device.
+                approved quotes into invoices when the job is ready. Add optional
+                sections only when your business needs them.
               </p>
               <p className="mt-3 text-sm font-semibold text-[var(--color-primary)]">
                 Defaulting to {defaultQuoteLabel} based on your business profile.
@@ -162,113 +196,68 @@ export default function QuotesPage() {
           </div>
         </section>
 
-        <section className="mt-6 rounded-[1.5rem] border border-[rgba(47,93,138,0.2)] bg-[rgba(47,93,138,0.08)] p-5 shadow-[var(--shadow-card-soft)]">
-          <p className="text-sm font-semibold text-[var(--color-primary)]">
-            Business profile: {industryLabel}
-          </p>
-          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-            You can still open any quote type below or change your default in Settings.
-          </p>
-        </section>
-
-        <section className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className={invoiceUi.card}>
-            <p className="text-sm text-[var(--color-text-secondary)]">Saved Quote Count</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-600">{savedCount}</p>
-          </div>
-          <div className={invoiceUi.card}>
-            <p className="text-sm text-[var(--color-text-secondary)]">Trash Count</p>
-            <p className="mt-2 text-3xl font-bold text-red-600">{trashCount}</p>
-          </div>
-        </section>
-
         <section className="mt-8">
           <h2 className="text-2xl font-bold">Visible Sections</h2>
 
-          {visibleQuoteTypes.length === 0 ? (
-            <div className={`mt-6 ${invoiceUi.card}`}>
-              <p className="text-[var(--color-text-secondary)]">
-                All quote sections are hidden right now. Use the hidden section
-                list below to restore them.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-6 space-y-8">
-              {visibleServiceGroups.map((section) => (
-                <div key={section.group}>
-                  <h3 className="text-lg font-bold text-[var(--color-text)]">
-                    {section.group}
-                  </h3>
-                  <div className="mt-4 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {section.items.map((type) => (
-                      <QuoteSectionCard
-                        key={type.key}
-                        type={type}
-                        hiddenSections={hiddenSections}
-                        savedCount={savedCount}
-                        trashCount={trashCount}
-                        onHide={updateHiddenSections}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              {visibleUtilityTypes.length > 0 ? (
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--color-text)]">Saved & Trash</h3>
-                  <div className="mt-4 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {visibleUtilityTypes.map((type) => (
-                      <QuoteSectionCard
-                        key={type.key}
-                        type={type}
-                        hiddenSections={hiddenSections}
-                        savedCount={savedCount}
-                        trashCount={trashCount}
-                        onHide={updateHiddenSections}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          )}
+          <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {visibleQuoteTypes.map((type) => (
+              <QuoteSectionCard
+                key={type.key}
+                type={type}
+                isLocked={lockedSectionKeys.includes(type.key)}
+                savedCount={savedCount}
+                trashCount={trashCount}
+                onHide={hideOptionalSection}
+              />
+            ))}
+          </div>
         </section>
 
         <section className={`mt-8 ${invoiceUi.card}`}>
-          <h2 className="text-lg font-bold">Hidden Sections</h2>
-          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-            Hidden sections stay hidden on this device until you restore them.
-          </p>
-
-          {hiddenQuoteTypes.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--color-text-secondary)]">
-              No quote sections are hidden right now.
-            </p>
-          ) : (
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {hiddenQuoteTypes.map((type) => (
-                <div
-                  key={type.key}
-                  className="rounded-2xl border border-[var(--color-border-muted)] bg-[var(--color-section)] p-5"
-                >
-                  <h3 className="text-lg font-semibold">{type.title}</h3>
-                  <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-                    {type.description}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateHiddenSections(hiddenSections.filter((item) => item !== type.key))
-                    }
-                    className="us-btn-primary mt-4 px-3 py-2 text-sm"
-                  >
-                    Unhide
-                  </button>
-                </div>
-              ))}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold">Customize Sections</h2>
+              <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+                Add optional quote sections without changing your default industry.
+              </p>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setCustomizeOpen((current) => !current)}
+              className="us-btn-secondary"
+            >
+              {customizeOpen ? "Close Customize" : "Customize Sections"}
+            </button>
+          </div>
+
+          {customizeOpen ? (
+            customizeQuoteTypes.length === 0 ? (
+              <p className="mt-4 text-sm text-[var(--color-text-secondary)]">
+                Every optional quote section is already visible.
+              </p>
+            ) : (
+              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {customizeQuoteTypes.map((type) => (
+                  <div
+                    key={type.key}
+                    className="rounded-2xl border border-[var(--color-border-muted)] bg-[var(--color-section)] p-5"
+                  >
+                    <h3 className="text-lg font-semibold">{type.title}</h3>
+                    <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+                      {type.description}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => showOptionalSection(type.key)}
+                      className="us-btn-primary mt-4 px-3 py-2 text-sm"
+                    >
+                      Unhide
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : null}
         </section>
       </div>
     </main>
@@ -277,15 +266,15 @@ export default function QuotesPage() {
 
 type QuoteSectionCardProps = {
   type: QuoteCard;
-  hiddenSections: string[];
+  isLocked: boolean;
   savedCount: number;
   trashCount: number;
-  onHide: (next: string[]) => void;
+  onHide: (key: string) => void;
 };
 
 function QuoteSectionCard({
   type,
-  hiddenSections,
+  isLocked,
   savedCount,
   trashCount,
   onHide,
@@ -312,10 +301,11 @@ function QuoteSectionCard({
 
         <button
           type="button"
-          onClick={() => onHide([...hiddenSections, type.key])}
+          onClick={() => onHide(type.key)}
+          disabled={isLocked}
           className="us-btn-primary px-3 py-2 text-sm"
         >
-          Hide
+          {isLocked ? "Always visible" : "Hide"}
         </button>
       </div>
 
