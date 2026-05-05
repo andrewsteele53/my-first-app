@@ -1,3 +1,7 @@
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade
+);
+
 alter table if exists public.profiles
   add column if not exists role text not null default 'subscriber',
   add column if not exists display_name text,
@@ -89,9 +93,13 @@ create table if not exists public.sales_reps (
   user_id uuid references auth.users(id) on delete cascade,
   display_name text,
   payment_notes text,
+  active boolean not null default true,
   created_at timestamptz default now(),
   unique (user_id)
 );
+
+alter table if exists public.sales_reps
+  add column if not exists active boolean not null default true;
 
 do $$
 begin
