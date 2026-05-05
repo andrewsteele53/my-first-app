@@ -1,7 +1,54 @@
 alter table if exists public.profiles
   add column if not exists role text not null default 'subscriber',
   add column if not exists display_name text,
+  add column if not exists email text,
   add column if not exists created_at timestamptz default now();
+
+insert into public.profiles (id, email, role, display_name, created_at)
+select
+  users.id,
+  users.email,
+  'subscriber',
+  coalesce(nullif(users.email, ''), 'New user'),
+  coalesce(users.created_at, now())
+from auth.users as users
+on conflict (id) do update
+set
+  email = coalesce(public.profiles.email, excluded.email),
+  display_name = coalesce(public.profiles.display_name, excluded.display_name),
+  created_at = coalesce(public.profiles.created_at, excluded.created_at);
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, role, display_name, created_at)
+  values (
+    new.id,
+    new.email,
+    'subscriber',
+    coalesce(nullif(new.email, ''), 'New user'),
+    now()
+  )
+  on conflict (id) do update
+  set
+    email = coalesce(public.profiles.email, excluded.email),
+    display_name = coalesce(public.profiles.display_name, excluded.display_name),
+    created_at = coalesce(public.profiles.created_at, excluded.created_at);
+
+  return new;
+end;
+$$;
+
+revoke all on function public.handle_new_user() from public;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
 
 do $$
 begin
@@ -45,6 +92,16 @@ create table if not exists public.sales_reps (
   created_at timestamptz default now(),
   unique (user_id)
 );
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'sales_reps_user_id_key'
+  ) then
+    alter table public.sales_reps
+      add constraint sales_reps_user_id_key unique (user_id);
+  end if;
+end $$;
 
 create table if not exists public.sales_assignments (
   id uuid primary key default gen_random_uuid(),
