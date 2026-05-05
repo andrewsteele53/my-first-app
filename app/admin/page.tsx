@@ -57,7 +57,7 @@ export default async function AdminPage() {
   const trialUsers = subscribers.filter((profile) => profile.subscription_status === "trialing");
   const estimatedMrr = activePaidSubscribers.length * MONTHLY_SUBSCRIPTION_AMOUNT;
 
-  const errors = [profilesResult.error, salesRepsResult.error, assignmentsResult.error, payoutsResult.error, applicationsResult.error]
+  const errors = [profilesResult.error, salesRepsResult.error, assignmentsResult.error, payoutsResult.error]
     .filter(Boolean)
     .map((error) => error?.message)
     .join(" | ");
@@ -101,6 +101,7 @@ export default async function AdminPage() {
           assignments={assignments}
           payouts={payouts}
           teamApplications={teamApplications}
+          teamApplicationsError={applicationsResult.error?.message || null}
         />
       </div>
     </main>

@@ -148,6 +148,23 @@ create table if not exists public.team_applications (
   reviewed_by uuid references auth.users(id)
 );
 
+alter table if exists public.team_applications
+  add column if not exists name text,
+  add column if not exists email text,
+  add column if not exists phone text,
+  add column if not exists desired_role text default 'sales',
+  add column if not exists status text default 'pending',
+  add column if not exists notes text,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists reviewed_at timestamptz,
+  add column if not exists reviewed_by uuid references auth.users(id);
+
+alter table if exists public.team_applications
+  alter column email set not null,
+  alter column desired_role set default 'sales',
+  alter column status set default 'pending',
+  alter column created_at set default now();
+
 do $$
 begin
   if not exists (

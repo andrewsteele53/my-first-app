@@ -639,32 +639,39 @@ export async function createManualPayoutAction(formData: FormData) {
 }
 
 export async function createTeamApplicationAction(formData: FormData) {
-  const { supabase } = await requireAdminContext();
-  const name = clean(formData.get("name"));
-  const email = clean(formData.get("email")).toLowerCase();
-  const phone = clean(formData.get("phone"));
-  const desiredRole = clean(formData.get("desired_role")) || "sales";
-  const notes = clean(formData.get("notes"));
+  try {
+    const { supabase } = await requireAdminContext();
+    const name = clean(formData.get("name"));
+    const email = clean(formData.get("email")).toLowerCase();
+    const phone = clean(formData.get("phone"));
+    const desiredRole = clean(formData.get("desired_role")) || "sales";
+    const notes = clean(formData.get("notes"));
 
-  if (!email) {
-    throw new Error("Email is required.");
+    if (!email) {
+      return { ok: false, message: "Email is required." };
+    }
+
+    const { error } = await supabase.from("team_applications").insert({
+      name: name || null,
+      email,
+      phone: phone || null,
+      desired_role: desiredRole,
+      status: "pending",
+      notes: notes || null,
+    });
+
+    if (error) {
+      return { ok: false, message: error.message };
+    }
+
+    revalidatePath("/admin");
+    return success("Pending team member added.");
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Unable to add pending team member.",
+    };
   }
-
-  const { error } = await supabase.from("team_applications").insert({
-    name: name || null,
-    email,
-    phone: phone || null,
-    desired_role: desiredRole,
-    status: "pending",
-    notes: notes || null,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/admin");
-  return success("Pending team member added.");
 }
 
 export async function updateTeamApplicationAction(formData: FormData) {

@@ -120,6 +120,7 @@ type Props = {
   assignments: SalesAssignmentRow[];
   payouts: CommissionPayoutRow[];
   teamApplications: TeamApplicationRow[];
+  teamApplicationsError: string | null;
 };
 
 function formatDate(value?: string | null) {
@@ -167,6 +168,7 @@ export default function AdminDashboardClient({
   assignments,
   payouts,
   teamApplications,
+  teamApplicationsError,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -218,14 +220,22 @@ export default function AdminDashboardClient({
     };
   });
 
-  function runAction(action: () => Promise<AdminActionResult | void>, actionId?: string) {
+  function runAction(
+    action: () => Promise<AdminActionResult | void>,
+    actionId?: string,
+    onSuccess?: () => void
+  ) {
     startTransition(async () => {
       setMessage(null);
       setPendingActionId(actionId || null);
       try {
         const result = await action();
-        setMessage(result || { ok: true, message: "Saved." });
-        router.refresh();
+        const actionResult = result || { ok: true, message: "Saved." };
+        setMessage(actionResult);
+        if (actionResult.ok) {
+          onSuccess?.();
+          router.refresh();
+        }
       } catch (error) {
         setMessage({
           ok: false,
@@ -340,12 +350,18 @@ export default function AdminDashboardClient({
     if (editApplication.application) {
       const applicationId = editApplication.application.id;
       data.set("application_id", applicationId);
-      runAction(() => updateTeamApplicationAction(data), `edit-application-${applicationId}`);
+      runAction(
+        () => updateTeamApplicationAction(data),
+        `edit-application-${applicationId}`,
+        () => setEditApplication(null)
+      );
     } else {
-      runAction(() => createTeamApplicationAction(data), "create-application");
+      runAction(
+        () => createTeamApplicationAction(data),
+        "create-application",
+        () => setEditApplication(null)
+      );
     }
-
-    setEditApplication(null);
   }
 
   return (
@@ -468,7 +484,11 @@ export default function AdminDashboardClient({
           </button>
         </div>
 
-        {teamApplications.length === 0 ? (
+        {teamApplicationsError ? (
+          <p className="mt-6 rounded-[1rem] border border-[rgba(176,59,59,0.22)] bg-[rgba(176,59,59,0.08)] p-4 text-sm font-semibold text-[var(--color-danger)]">
+            Pending team members could not load: {teamApplicationsError}
+          </p>
+        ) : teamApplications.length === 0 ? (
           <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
             No pending team members yet.
           </p>
