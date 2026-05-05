@@ -6,20 +6,23 @@ alter table if exists public.profiles
   add column if not exists role text not null default 'subscriber',
   add column if not exists display_name text,
   add column if not exists email text,
+  add column if not exists subscription_status text default 'inactive',
   add column if not exists created_at timestamptz default now();
 
-insert into public.profiles (id, email, role, display_name, created_at)
+insert into public.profiles (id, email, role, display_name, subscription_status, created_at)
 select
   users.id,
   users.email,
   'subscriber',
-  coalesce(nullif(users.email, ''), 'New user'),
+  coalesce(users.raw_user_meta_data->>'display_name', nullif(users.email, ''), 'New user'),
+  'inactive',
   coalesce(users.created_at, now())
 from auth.users as users
 on conflict (id) do update
 set
   email = coalesce(public.profiles.email, excluded.email),
   display_name = coalesce(public.profiles.display_name, excluded.display_name),
+  subscription_status = coalesce(public.profiles.subscription_status, excluded.subscription_status),
   created_at = coalesce(public.profiles.created_at, excluded.created_at);
 
 create or replace function public.handle_new_user()
@@ -29,18 +32,20 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, role, display_name, created_at)
+  insert into public.profiles (id, email, role, display_name, subscription_status, created_at)
   values (
     new.id,
     new.email,
     'subscriber',
-    coalesce(nullif(new.email, ''), 'New user'),
+    coalesce(new.raw_user_meta_data->>'display_name', nullif(new.email, ''), 'New user'),
+    'inactive',
     now()
   )
   on conflict (id) do update
   set
     email = coalesce(public.profiles.email, excluded.email),
     display_name = coalesce(public.profiles.display_name, excluded.display_name),
+    subscription_status = coalesce(public.profiles.subscription_status, excluded.subscription_status),
     created_at = coalesce(public.profiles.created_at, excluded.created_at);
 
   return new;

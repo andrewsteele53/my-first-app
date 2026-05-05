@@ -10,6 +10,7 @@ import {
   markPayoutPaidAction,
   removeSalesRepAction,
   setUserRoleAction,
+  syncMissingProfilesAction,
   updateSalesRepAction,
   updateUserAction,
   type AdminActionResult,
@@ -284,6 +285,16 @@ export default function AdminDashboardClient({
         <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
           Manage profile roles and turn app users into sales reps.
         </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button
+            type="button"
+            className="us-btn-primary px-4 py-2 text-sm"
+            disabled={isPending}
+            onClick={() => runAction(syncMissingProfilesAction, "sync-users")}
+          >
+            {pendingActionId === "sync-users" ? "Syncing..." : "Sync Missing Users"}
+          </button>
+        </div>
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[1020px] text-left text-sm">
             <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">

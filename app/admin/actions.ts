@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createClient as createSupabaseServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/roles";
 
@@ -24,6 +25,22 @@ function cleanRole(value: FormDataEntryValue | null) {
 
 function success(message: string): AdminActionResult {
   return { ok: true, message };
+}
+
+function createServiceRoleClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  }
+
+  return createSupabaseServiceClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 }
 
 async function requireAdminContext() {
@@ -104,6 +121,87 @@ export async function makeSalesRepAction(profileId: string): Promise<AdminAction
   revalidatePath("/admin");
   revalidatePath("/sales");
   return success(`${fallbackDisplayName} is now a sales rep.`);
+}
+
+export async function syncMissingProfilesAction(): Promise<AdminActionResult> {
+  await requireAdminContext();
+  const serviceSupabase = createServiceRoleClient();
+  const users = [];
+  const perPage = 1000;
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await serviceSupabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    users.push(...data.users);
+
+    if (data.users.length < perPage) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  if (users.length === 0) {
+    return success("No auth users found to sync.");
+  }
+
+  const { data: existingProfiles, error: profilesError } = await serviceSupabase
+    .from("profiles")
+    .select("id");
+
+  if (profilesError) {
+    throw new Error(profilesError.message);
+  }
+
+  const existingIds = new Set(
+    (existingProfiles || [])
+      .map((profile) => (typeof profile.id === "string" ? profile.id : ""))
+      .filter(Boolean)
+  );
+  const missingProfiles = users
+    .filter((user) => !existingIds.has(user.id))
+    .map((user) => {
+      const metadata = user.user_metadata as Record<string, unknown> | null;
+      const displayName =
+        (typeof metadata?.display_name === "string" && metadata.display_name.trim()) ||
+        (typeof metadata?.full_name === "string" && metadata.full_name.trim()) ||
+        user.email ||
+        "New user";
+
+      return {
+        id: user.id,
+        email: user.email ?? null,
+        display_name: displayName,
+        role: "subscriber",
+        subscription_status: "inactive",
+        created_at: user.created_at || new Date().toISOString(),
+      };
+    });
+
+  if (missingProfiles.length > 0) {
+    const { error: insertError } = await serviceSupabase
+      .from("profiles")
+      .insert(missingProfiles);
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+  }
+
+  revalidatePath("/admin");
+  return success(
+    missingProfiles.length === 1
+      ? "Synced 1 missing user profile."
+      : `Synced ${missingProfiles.length} missing user profiles.`
+  );
 }
 
 export async function addSalesRepAction(formData: FormData) {
