@@ -216,6 +216,18 @@ function formatContext(context: AIAssistRequest["context"]) {
   }
 }
 
+function getServiceSpecificGuidance(context: AIAssistRequest["context"]) {
+  const contextText = formatContext(context).toLowerCase();
+  if (!contextText.includes("demolition")) return "";
+
+  return [
+    "Demolition-specific guidance:",
+    "- Use demolition leads, quotes, invoices, follow-ups, job notes, and sales mapping language when relevant.",
+    "- Good demolition line items include interior demolition, shed/garage demolition, deck removal, concrete removal, debris removal, hauling/disposal, labor, equipment, dump fees, and site cleanup.",
+    "- For sales mapping, suggest targets like remodelers, property managers, real estate investors, landlords, homeowners, contractors, and small commercial property owners.",
+  ].join("\n");
+}
+
 export function getPromptDefinition(action: AIAction) {
   return PROMPT_DEFINITIONS[action];
 }
@@ -238,6 +250,7 @@ export function buildAIAssistPrompt(request: AIAssistRequest) {
     `Action: ${request.action}`,
     `Goal: ${definition.goal}`,
     `Guidelines:\n- ${definition.guidelines.join("\n- ")}`,
+    getServiceSpecificGuidance(request.context),
     `User input:\n${request.input}`,
     `Page context:\n${formatContext(request.context)}`,
   ].join("\n\n");

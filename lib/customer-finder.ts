@@ -12,6 +12,7 @@ export const CUSTOMER_FINDER_BUSINESS_TYPES = [
   "Towing",
   "Residential / Commercial Cleaning",
   "Junk Removal",
+  "Demolition",
   "Handyman",
   "General Contractor",
 ] as const;
@@ -71,6 +72,8 @@ export const CUSTOMER_FINDER_TARGETING_RULES: Record<
     "Find offices, salons, gyms, clinics, daycares, property managers, apartment complexes, realtors, landlords, small businesses, churches, schools, and move-out cleaning opportunities.",
   "Junk Removal":
     "Find realtors, landlords, property managers, storage facilities, apartment complexes, estate cleanout opportunities, foreclosure cleanup opportunities, contractors, remodelers, and homeowners.",
+  Demolition:
+    "Find real estate investors, remodelers, general contractors, property managers, landlords, homeowners planning renovations, small commercial property owners, shed or garage removal opportunities, deck replacement leads, concrete removal needs, and cleanout referral partners.",
   Handyman:
     "Find landlords, property managers, realtors, apartment complexes, HOAs, homeowners, small businesses, offices, retail spaces, and people needing small repair jobs.",
   "General Contractor":

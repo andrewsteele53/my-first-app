@@ -41,6 +41,7 @@ const SERVICE_CATEGORY_ORDER = [
   "gutter-cleaning",
   "powerwashing",
   "junk-removal",
+  "demolition",
   "cleaning",
 ];
 
@@ -289,6 +290,34 @@ export const serviceCategories: ServiceCategory[] = [
     ],
     suggestedFields: ["Load Size", "Item Types", "Stairs or Access", "Disposal Notes"],
     tips: ["Use load size as the main pricing line.", "Call out heavy items and disposal fees separately."],
+  },
+  {
+    id: "demolition",
+    slug: "demolition",
+    name: "Demolition",
+    description: "Interior demolition, structure removal, debris hauling, equipment, dump fees, and site cleanup.",
+    group: "Cleanup & Removal",
+    supportsInvoices: true,
+    supportsQuotes: true,
+    invoicePrefix: "DEMO",
+    quotePrefix: "QDEMO",
+    defaultLineItems: [
+      { description: "Interior demolition", quantity: 1, price: 0 },
+      { description: "Shed/garage demolition", quantity: 1, price: 0 },
+      { description: "Deck removal", quantity: 1, price: 0 },
+      { description: "Concrete removal", quantity: 1, price: 0 },
+      { description: "Debris removal", quantity: 1, price: 0 },
+      { description: "Hauling/disposal", quantity: 1, price: 0 },
+      { description: "Labor", quantity: 1, price: 0 },
+      { description: "Equipment", quantity: 1, price: 0 },
+      { description: "Dump fees", quantity: 1, price: 0 },
+      { description: "Site cleanup", quantity: 1, price: 0 },
+    ],
+    suggestedFields: ["Demo Type", "Structure or Area", "Materials", "Debris Volume", "Access Notes"],
+    tips: [
+      "Separate labor, equipment, hauling, dump fees, and cleanup.",
+      "Call out exclusions, utility shutoff assumptions, permits, and customer approvals.",
+    ],
   },
   {
     id: "roofing",

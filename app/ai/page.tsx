@@ -54,6 +54,7 @@ const BUSINESS_TYPE_ALIASES: Array<{
   { pattern: /\btowing|tow\b/i, businessType: "Towing" },
   { pattern: /\bclean/i, businessType: "Residential / Commercial Cleaning" },
   { pattern: /\bjunk/i, businessType: "Junk Removal" },
+  { pattern: /\bdemo|demolition|tear\s?out|tear\s?down|remove\s+(?:a\s+)?(?:deck|shed|garage|concrete)/i, businessType: "Demolition" },
   { pattern: /\bhandyman/i, businessType: "Handyman" },
   { pattern: /\bgeneral contractor|contractor|construction/i, businessType: "General Contractor" },
 ];
@@ -204,6 +205,7 @@ export default function AIAssistantPage() {
 
     try {
       const businessType = await getProfileBusinessType(messageValue);
+      setStatusMessage(`Finding ${businessType} leads...`);
       const response = await fetch("/api/ai/customer-finder", {
         method: "POST",
         headers: {
@@ -391,9 +393,11 @@ export default function AIAssistantPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             {[
               "Make an invoice for John Smith for lawn care, $150, due in 7 days.",
+              "Create a demolition quote for interior demo, debris removal, hauling, and dump fees.",
+              "Find 5 demolition leads near Hanover Park, IL.",
               "Add a lead for Mike's Towing in Schaumburg. They use QuickBooks and may need invoicing.",
               "Write a follow-up message for a roofing contractor who hasn't responded.",
-              "Create sales mapping notes for towing companies near Schaumburg.",
+              "Map demolition sales route near Schaumburg.",
             ].map((suggestion) => (
               <button
                 key={suggestion}

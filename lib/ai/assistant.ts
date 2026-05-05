@@ -49,14 +49,40 @@ function extractJson(text: string) {
 
 function getServiceType(request: AIAssistRequest) {
   const serviceType = request.context?.serviceType;
-  return typeof serviceType === "string" && serviceType.trim()
-    ? serviceType
-    : "service business";
+  if (typeof serviceType === "string" && serviceType.trim()) {
+    return serviceType;
+  }
+
+  const businessProfile = request.context?.businessProfile;
+  if (businessProfile && typeof businessProfile === "object" && !Array.isArray(businessProfile)) {
+    const industry = (businessProfile as { industry?: unknown }).industry;
+    if (typeof industry === "string" && industry.trim()) {
+      return industry;
+    }
+  }
+
+  return "service business";
 }
 
 function buildFallbackResponse(request: AIAssistRequest): AIAssistResponse {
   const serviceType = getServiceType(request);
   const input = request.input;
+  const fallbackLineItems =
+    serviceType === "Demolition"
+      ? [
+          { description: "Interior demolition", quantity: 1, price: 0 },
+          { description: "Debris removal", quantity: 1, price: 0 },
+          { description: "Hauling/disposal", quantity: 1, price: 0 },
+          { description: "Labor", quantity: 1, price: 0 },
+          { description: "Equipment", quantity: 1, price: 0 },
+          { description: "Dump fees", quantity: 1, price: 0 },
+          { description: "Site cleanup", quantity: 1, price: 0 },
+        ]
+      : [
+          { description: `${serviceType} labor`, quantity: 1, price: 0 },
+          { description: `Primary service scope: ${input}`, quantity: 1, price: 0 },
+          { description: "Site cleanup and final walkthrough", quantity: 1, price: 0 },
+        ];
 
   const fallbackMap: Record<AIAssistRequest["action"], unknown[]> = {
     polish_service_description: [
@@ -78,12 +104,8 @@ function buildFallbackResponse(request: AIAssistRequest): AIAssistResponse {
         kind: "line_items",
         title: "Suggested Line Items",
         content: `Suggested line items for this ${serviceType.toLowerCase()} job. Review before inserting.`,
-        lineItems: [
-          { description: `${serviceType} labor`, quantity: 1, price: 0 },
-          { description: `Primary service scope: ${input}`, quantity: 1, price: 0 },
-          { description: "Site cleanup and final walkthrough", quantity: 1, price: 0 },
-        ],
-        insertText: `${serviceType} labor\nPrimary service scope: ${input}\nSite cleanup and final walkthrough`,
+        lineItems: fallbackLineItems,
+        insertText: fallbackLineItems.map((item) => item.description).join("\n"),
       },
     ],
     customer_notes: [
@@ -333,12 +355,19 @@ function getDueDateFromInput(input: string) {
   return date.toISOString();
 }
 
-function buildFallbackActionPreview(request: AIActionRequest): AIActionResponse {
-  const input = request.message;
+function getFallbackServiceType(input: string, context: AIActionRequest["context"]) {
   const lower = input.toLowerCase();
-  const serviceType =
-    getTextContextValue(request.context, "serviceType") ||
-    (lower.includes("gutter")
+  const businessProfile = context?.businessProfile;
+  const profileIndustry =
+    businessProfile && typeof businessProfile === "object" && !Array.isArray(businessProfile)
+      ? (businessProfile as { industry?: unknown }).industry
+      : null;
+
+  return (
+    getTextContextValue(context, "serviceType") ||
+    (/\bdemo|demolition|tear\s?out|tear\s?down|remove\s+(?:a\s+)?(?:deck|shed|garage|concrete)/i.test(input)
+      ? "Demolition"
+      : lower.includes("gutter")
       ? "Gutter Cleaning"
       : lower.includes("lawn")
       ? "Lawn Care"
@@ -346,7 +375,39 @@ function buildFallbackActionPreview(request: AIActionRequest): AIActionResponse 
       ? "Roofing"
       : lower.includes("tow")
       ? "Towing"
-      : "Service");
+      : typeof profileIndustry === "string" && profileIndustry.trim()
+      ? profileIndustry
+      : "Service")
+  );
+}
+
+function getFallbackQuoteInvoiceLineItems(serviceType: string, total: number) {
+  if (serviceType === "Demolition") {
+    return [
+      { description: "Interior demolition", quantity: 1, unitPrice: 0, total: 0 },
+      { description: "Debris removal", quantity: 1, unitPrice: 0, total: 0 },
+      { description: "Hauling/disposal", quantity: 1, unitPrice: 0, total: 0 },
+      { description: "Labor", quantity: 1, unitPrice: total, total },
+      { description: "Equipment", quantity: 1, unitPrice: 0, total: 0 },
+      { description: "Dump fees", quantity: 1, unitPrice: 0, total: 0 },
+      { description: "Site cleanup", quantity: 1, unitPrice: 0, total: 0 },
+    ];
+  }
+
+  return [
+    {
+      description: `${serviceType} service`,
+      quantity: 1,
+      unitPrice: total,
+      total,
+    },
+  ];
+}
+
+function buildFallbackActionPreview(request: AIActionRequest): AIActionResponse {
+  const input = request.message;
+  const lower = input.toLowerCase();
+  const serviceType = getFallbackServiceType(input, request.context);
 
   let preview: AIActionPreview;
 
@@ -360,14 +421,7 @@ function buildFallbackActionPreview(request: AIActionRequest): AIActionResponse 
         customerName: getTextContextValue(request.context, "customerName"),
         serviceType,
         projectTitle: `${serviceType} Quote`,
-        lineItems: [
-          {
-            description: `${serviceType} service`,
-            quantity: 1,
-            unitPrice: subtotal,
-            total: subtotal,
-          },
-        ],
+        lineItems: getFallbackQuoteInvoiceLineItems(serviceType, subtotal),
         subtotal,
         tax: 0,
         taxRate: 0,
@@ -388,14 +442,7 @@ function buildFallbackActionPreview(request: AIActionRequest): AIActionResponse 
         customerName: getTextContextValue(request.context, "customerName"),
         serviceType,
         projectTitle: `${serviceType} Invoice`,
-        lineItems: [
-          {
-            description: `${serviceType} service`,
-            quantity: 1,
-            unitPrice: total,
-            total,
-          },
-        ],
+        lineItems: getFallbackQuoteInvoiceLineItems(serviceType, total),
         subtotal: total,
         tax: 0,
         taxRate: 0,
@@ -488,7 +535,7 @@ function buildFallbackActionPreview(request: AIActionRequest): AIActionResponse 
 function buildAIActionPrompt(request: AIActionRequest) {
   return {
     system:
-      "You are the Unified Steele AI Action Assistant for a service-business SaaS app. Detect the user's intent and return only valid JSON. Never save records. Generate a preview for the user to review. Supported intents: create_quote, create_invoice, create_lead, generate_multiple_leads, create_sales_mapping_note, write_follow_up_message, general_assistant. If the user asks to find leads, find customers, generate leads, get leads, find X leads, find X customers, generate X leads, show me leads, or get potential customers, set intent to generate_multiple_leads. If the user asks create a lead, add a lead, or make a lead, keep intent create_lead. Avoid legal, tax, accounting, or financial advice. Use professional service-business wording. For quotes/invoices, include customer details if provided, serviceType, projectTitle, lineItems with description/quantity/unitPrice/total, subtotal, tax, taxRate, discount, total, notes, and terms. For invoices, include dueDate when a due date is clear, otherwise dueTerms='Due upon receipt.'. For single leads, include businessName, contactName, phone, email, address, city, serviceType, leadSource, status, priority, estimatedValue, notes, followUpDate when clear. For generate_multiple_leads, return data with response only because the frontend must call AI Customer Finder and render a selectable results table. For mapping notes, include title, location, businessType, targetCustomer, routeNotes, outreachNotes, priority, status. For follow-up messages, include channel, subject if email, and message. If asked to turn a quote into an invoice, use supplied quote context if present and set intent create_invoice.",
+      "You are the Unified Steele AI Action Assistant for a service-business SaaS app. Detect the user's intent and return only valid JSON. Never save records. Generate a preview for the user to review. Supported intents: create_quote, create_invoice, create_lead, generate_multiple_leads, create_sales_mapping_note, write_follow_up_message, general_assistant. If the user asks to find leads, find customers, generate leads, get leads, find X leads, find X customers, generate X leads, show me leads, or get potential customers, set intent to generate_multiple_leads. If the user asks create a lead, add a lead, or make a lead, keep intent create_lead. Avoid legal, tax, accounting, or financial advice. Use professional service-business wording. For quotes/invoices, include customer details if provided, serviceType, projectTitle, lineItems with description/quantity/unitPrice/total, subtotal, tax, taxRate, discount, total, notes, and terms. For demolition quotes and invoices, use demolition language and line items such as interior demolition, shed/garage demolition, deck removal, concrete removal, debris removal, hauling/disposal, labor, equipment, dump fees, and site cleanup. For invoices, include dueDate when a due date is clear, otherwise dueTerms='Due upon receipt.'. For single leads, include businessName, contactName, phone, email, address, city, serviceType, leadSource, status, priority, estimatedValue, notes, followUpDate when clear. For generate_multiple_leads, return data with response only because the frontend must call AI Customer Finder and render a selectable results table. For mapping notes, include title, location, businessType, targetCustomer, routeNotes, outreachNotes, priority, status. For demolition mapping notes, suggest targets such as remodelers, property managers, real estate investors, landlords, homeowners, and contractors. For follow-up messages, include channel, subject if email, and message. If asked to turn a quote into an invoice, use supplied quote context if present and set intent create_invoice.",
     user: JSON.stringify({
       message: request.message,
       currentDate: new Date().toISOString(),

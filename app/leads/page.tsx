@@ -1261,8 +1261,8 @@ export default function LeadsPage() {
                       className="us-btn-primary"
                     >
                       {isGeneratingCustomerFinderLeads
-                        ? "Generating customer leads..."
-                        : "Generate Customer Leads"}
+                        ? `Finding ${customerFinderBusinessType} leads...`
+                        : `Find ${customerFinderBusinessType} Leads`}
                     </button>
                     {customerFinderLeads.length > 0 ? (
                       <button

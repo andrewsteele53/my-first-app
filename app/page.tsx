@@ -487,6 +487,9 @@ export default async function Dashboard() {
   const invoiceLabel = getProfileInvoiceLabel(businessProfile);
   const defaultQuoteHref = `/quotes/${getProfileDefaultQuoteSlug(businessProfile)}`;
   const defaultInvoiceHref = `/invoices/${getProfileDefaultInvoiceSlug(businessProfile)}`;
+  const leadCta = industryLabel === "Demolition" ? "Find Demolition Leads" : "Add / View Leads";
+  const mappingCta =
+    industryLabel === "Demolition" ? "Map Demolition Sales Route" : "View Sales Mapping";
   const todayDate = getLocalDateString();
   const tomorrowDate = getLocalDateString(addDays(new Date(), 1));
   const [
@@ -583,11 +586,11 @@ export default async function Dashboard() {
   const scheduledFollowUpsCount = scheduledFollowUpsResult.count;
 
   const sections = [
-    { title: "Leads", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: "Add / View Leads", tone: "primary" },
+    { title: "Leads", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: leadCta, tone: "primary" },
     { title: "Customers", description: "Store customer records, follow-up dates, sales status, notes, and quick outreach actions in one CRM view.", href: "/customers", cta: "Add / View Customers", tone: "primary" },
     { title: "Quotes", description: "Create estimates and proposals, manage quote statuses, and convert approved quotes into invoices.", href: defaultQuoteHref, cta: `Create ${quoteLabel} Quote`, tone: "primary" },
     { title: "Invoices", description: "Create, save, and manage customer-ready invoices for every service type.", href: defaultInvoiceHref, cta: `Create ${invoiceLabel} Invoice`, tone: "primary" },
-    { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: "View Sales Mapping", tone: "secondary" },
+    { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: mappingCta, tone: "secondary" },
     { title: "AI Assistant", description: "Get paid-plan help with customer follow-ups, invoice wording, route planning, and daily business priorities.", href: "/ai", cta: "Open AI Assistant", tone: "secondary" },
     { title: "Support", description: "Reach support quickly if you need help with your account, billing, or day-to-day use of the app.", href: "/support", cta: "Contact Support", tone: "secondary" },
     { title: "Onboarding", description: "Review your business setup and dashboard defaults when your services or workflow change.", href: "/onboarding", cta: "Review Onboarding", tone: "secondary" },

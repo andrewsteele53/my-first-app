@@ -80,6 +80,11 @@ export const INDUSTRY_GROUPS = [
         icon: "JR",
         helper: "Hauling, removal, disposal, and cleanout jobs.",
       },
+      {
+        name: "Demolition",
+        icon: "DM",
+        helper: "Interior demo, removals, debris hauling, and site cleanup.",
+      },
     ],
   },
   {
@@ -165,6 +170,7 @@ export const INDUSTRY_TEMPLATE_MAP: Record<IndustryOption, string> = {
   Towing: "towing",
   "Residential / Commercial Cleaning": "cleaning",
   "Junk Removal": "junk-removal",
+  Demolition: "demolition",
   Handyman: "handyman",
   "General Contractor": "construction",
   Other: "general",
