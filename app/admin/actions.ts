@@ -1054,6 +1054,59 @@ export async function updateJobApplicationAction(formData: FormData) {
   return success("Job application updated.");
 }
 
+export async function deleteJobApplicationAction(formData: FormData): Promise<AdminActionResult> {
+  const { supabase } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+
+  if (!applicationId) {
+    throw new Error("Application is required.");
+  }
+
+  const { data: application, error: readError } = await supabase
+    .from("job_applications")
+    .select("id, resume_file_path")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(readError.message);
+  }
+
+  if (!application) {
+    throw new Error("Application not found.");
+  }
+
+  const resumeFilePath =
+    typeof application.resume_file_path === "string"
+      ? application.resume_file_path.trim()
+      : "";
+
+  const { error } = await supabase
+    .from("job_applications")
+    .delete()
+    .eq("id", applicationId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+
+  if (resumeFilePath) {
+    const { error: resumeError } = await supabase.storage
+      .from("resumes")
+      .remove([resumeFilePath]);
+
+    if (resumeError) {
+      return success(
+        `Job application deleted, but resume cleanup failed: ${resumeError.message}`
+      );
+    }
+  }
+
+  return success("Job application deleted.");
+}
+
 export async function approveJobApplicationAsPendingTeamMemberAction(formData: FormData) {
   const { supabase, user } = await requireAdminContext();
   const applicationId = clean(formData.get("application_id"));

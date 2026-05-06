@@ -11,6 +11,7 @@ import {
   createManualPayoutAction,
   createJobListingAction,
   createTeamApplicationAction,
+  deleteJobApplicationAction,
   deleteJobListingAction,
   deleteTeamApplicationAction,
   getResumeDownloadUrlAction,
@@ -1026,6 +1027,7 @@ export default function AdminDashboardClient({
               <tbody>
                 {filteredJobApplications.map((application) => {
                   const job = application.job_listing_id ? jobListingById.get(application.job_listing_id) : undefined;
+                  const deleteId = `delete-job-application-${application.id}`;
 
                   return (
                     <tr key={application.id} className="border-b border-[var(--color-border-muted)] align-top">
@@ -1071,6 +1073,7 @@ export default function AdminDashboardClient({
                           <button
                             type="button"
                             className="us-btn-success px-3 py-2 text-xs"
+                            disabled={isPending}
                             onClick={() =>
                               runAction(
                                 () => approveJobApplicationAsSalesRepAction(formData({ application_id: application.id })),
@@ -1079,6 +1082,26 @@ export default function AdminDashboardClient({
                             }
                           >
                             Approve Sales Rep
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-danger px-3 py-2 text-xs"
+                            disabled={isPending}
+                            onClick={() =>
+                              setConfirm({
+                                title: "Delete Job Application",
+                                message: "Are you sure you want to delete this job application? This cannot be undone.",
+                                confirmLabel: "Delete",
+                                danger: true,
+                                onConfirm: () =>
+                                  runAction(
+                                    () => deleteJobApplicationAction(formData({ application_id: application.id })),
+                                    deleteId
+                                  ),
+                              })
+                            }
+                          >
+                            {pendingActionId === deleteId ? "Deleting..." : "Delete"}
                           </button>
                         </div>
                       </td>
