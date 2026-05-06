@@ -905,50 +905,69 @@ async function activateTeamApplicationById(
     throw new Error("Application not found.");
   }
 
-  const normalize = (value: string) => value.toLowerCase().trim().replace(/\s+/g, "");
-  const email = normalizeEmail(application.email);
+  const normalize = (value: string) => value.toLowerCase().trim();
+  const email = normalize(application.email || "");
 
   if (!email) {
     throw new Error("Application email is required.");
   }
 
-  const paymentNotes = typeof application.notes === "string" ? application.notes.trim() : "";
-
-  const { data: profileRows, error: profileError } = await supabase
+  const { data: profiles, error: profileError } = await supabase
     .from("profiles")
-    .select("*");
+    .select("id, email, display_name");
 
   if (profileError) {
     throw new Error(profileError.message);
   }
 
-  const matchingProfile =
-    ((profileRows || []) as Array<{ id: string; email: string | null; display_name: string | null }>).find(
-      (profile) => normalize(profile.email || "") === normalize(application.email || "")
-    ) || null;
+  const matchingProfile = (
+    (profiles || []) as Array<{ id: string; email: string | null; display_name: string | null }>
+  ).find((profile) => normalize(profile.email || "") === normalize(application.email || ""));
 
-  console.info("Team application activation email match", {
-    normalizedApplicationEmail: email,
-    applicationEmail: application.email,
-    matchedProfileId: matchingProfile?.id || null,
-    matchedProfileEmail: matchingProfile?.email || null,
-  });
+  console.log("APP EMAIL:", application.email);
+  console.log("MATCHED PROFILE:", matchingProfile || null);
 
   if (!matchingProfile) {
-    revalidatePath("/admin");
-    revalidatePath("/sales");
-    return {
-      ok: false,
-      message: `No profile found for ${email}. Ask them to create a team account with that exact email.`,
-    };
+    console.error("NO MATCH FOUND", {
+      appEmail: application.email,
+      profiles: (profiles || []).map((profile) => profile.email),
+    });
+    throw new Error("No profile found");
   }
 
-  await activateSalesRepProfile({
-    supabase,
-    profile: matchingProfile,
-    displayName: matchingProfile.display_name || application.name || matchingProfile.email,
-    paymentNotes,
+  const displayName = matchingProfile.display_name || application.name || "Sales Rep";
+
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({ role: "sales" })
+    .eq("id", matchingProfile.id);
+
+  if (roleError) {
+    throw new Error(roleError.message);
+  }
+
+  const { data: salesRepData, error: salesRepError } = await supabase
+    .from("sales_reps")
+    .upsert(
+      {
+        user_id: matchingProfile.id,
+        display_name: displayName,
+        active: true,
+      },
+      { onConflict: "user_id" }
+    )
+    .select("id, user_id, display_name, active")
+    .maybeSingle();
+
+  console.info("Sales reps upsert result", {
+    matchedProfileId: matchingProfile.id,
+    data: salesRepData,
+    error: salesRepError?.message || null,
   });
+
+  if (salesRepError) {
+    throw new Error(salesRepError.message);
+  }
 
   const { error: applicationUpdateError } = await supabase
     .from("team_applications")
