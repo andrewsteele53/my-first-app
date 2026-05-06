@@ -77,16 +77,16 @@ export default async function SalesPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
-  console.log("AUTH USER ID:", user?.id);
+  console.log("USER ID:", user.id);
   const role = await requireAccountRole(supabase, user, ["sales", "admin"]);
 
   const [salesRepResult, assignmentsResult, payoutsResult] = await Promise.all([
     supabase
       .from("sales_reps")
-      .select("id, user_id, display_name, payment_notes, created_at")
+      .select("*")
       .eq("user_id", user.id)
       .eq("active", true)
-      .limit(1),
+      .maybeSingle(),
     supabase
       .from("sales_assignments")
       .select("id, sales_rep_id, subscriber_user_id, created_at")
@@ -97,20 +97,19 @@ export default async function SalesPage() {
       .order("created_at", { ascending: false }),
   ]);
 
-  const salesRepRows = (salesRepResult.data ?? []) as SalesRepRow[];
-  const salesRep = salesRepRows[0] ?? null;
-  console.log("SALES_REPS ROWS FOUND:", salesRepRows.length);
-  console.log("FIRST SALES REP ID:", salesRep?.id ?? null);
-  console.log("SALES REP RESULT:", salesRep);
+  const salesRep = (salesRepResult.data ?? null) as SalesRepRow | null;
+  const hasSalesRep = !!salesRep;
+  console.log("SALES REP:", salesRep);
+  console.log("HAS SALES REP:", hasSalesRep);
   if (salesRepResult.error) {
     console.error("Sales portal sales_reps query error:", salesRepResult.error);
   }
-  const assignments = salesRep
+  const assignments = hasSalesRep
     ? ((assignmentsResult.data ?? []) as SalesAssignmentRow[]).filter(
         (assignment) => assignment.sales_rep_id === salesRep.id
       )
     : [];
-  const payouts = salesRep
+  const payouts = hasSalesRep
     ? ((payoutsResult.data ?? []) as CommissionPayoutRow[]).filter(
         (payout) => payout.sales_rep_id === salesRep.id
       )
@@ -171,7 +170,7 @@ export default async function SalesPage() {
           </div>
         </section>
 
-        {!salesRep ? (
+        {!hasSalesRep ? (
           <div className="us-notice-info text-sm">
             Your account has the sales role, but no sales rep record exists yet. Ask the admin to use Check / Activate or Approve Sales Rep so your sales dashboard can be connected.
           </div>
