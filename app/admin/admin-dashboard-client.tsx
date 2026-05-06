@@ -4,17 +4,24 @@ import type { ReactNode } from "react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  approveJobApplicationAsPendingTeamMemberAction,
+  approveJobApplicationAsSalesRepAction,
   approveTeamApplicationAsSalesAction,
   assignSubscriberAction,
   createManualPayoutAction,
+  createJobListingAction,
   createTeamApplicationAction,
+  deleteJobListingAction,
   deleteTeamApplicationAction,
   makeSalesRepAction,
   markPayoutPaidAction,
   rejectTeamApplicationAction,
   removeSalesRepAction,
   setUserRoleAction,
+  setJobListingStatusAction,
   syncMissingProfilesAction,
+  updateJobApplicationAction,
+  updateJobListingAction,
   updateTeamApplicationAction,
   updateSalesRepAction,
   updateUserAction,
@@ -80,6 +87,40 @@ export type TeamApplicationRow = {
   reviewed_by: string | null;
 };
 
+export type JobListingRow = {
+  id: string;
+  title: string;
+  department: string | null;
+  location: string | null;
+  employment_type: string | null;
+  compensation: string | null;
+  description: string | null;
+  requirements: string | null;
+  status: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  created_by: string | null;
+};
+
+export type JobApplicationRow = {
+  id: string;
+  job_listing_id: string | null;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  location: string | null;
+  experience_summary: string | null;
+  why_interested: string | null;
+  availability: string | null;
+  preferred_contact_method: string | null;
+  resume_link: string | null;
+  notes: string | null;
+  status: string | null;
+  created_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+};
+
 type EditUserState = {
   profile: ProfileRow;
   displayName: string;
@@ -103,6 +144,24 @@ type EditApplicationState = {
   notes: string;
 };
 
+type EditJobListingState = {
+  job?: JobListingRow;
+  title: string;
+  department: string;
+  location: string;
+  employmentType: string;
+  compensation: string;
+  description: string;
+  requirements: string;
+  status: string;
+};
+
+type EditJobApplicationState = {
+  application: JobApplicationRow;
+  status: string;
+  notes: string;
+};
+
 type ConfirmState =
   | {
       title: string;
@@ -121,6 +180,10 @@ type Props = {
   payouts: CommissionPayoutRow[];
   teamApplications: TeamApplicationRow[];
   teamApplicationsError: string | null;
+  jobListings: JobListingRow[];
+  jobListingsError: string | null;
+  jobApplications: JobApplicationRow[];
+  jobApplicationsError: string | null;
 };
 
 function formatDate(value?: string | null) {
@@ -169,6 +232,10 @@ export default function AdminDashboardClient({
   payouts,
   teamApplications,
   teamApplicationsError,
+  jobListings,
+  jobListingsError,
+  jobApplications,
+  jobApplicationsError,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -177,6 +244,10 @@ export default function AdminDashboardClient({
   const [editUser, setEditUser] = useState<EditUserState | null>(null);
   const [editRep, setEditRep] = useState<EditRepState | null>(null);
   const [editApplication, setEditApplication] = useState<EditApplicationState | null>(null);
+  const [editJobListing, setEditJobListing] = useState<EditJobListingState | null>(null);
+  const [editJobApplication, setEditJobApplication] = useState<EditJobApplicationState | null>(null);
+  const [jobApplicationStatusFilter, setJobApplicationStatusFilter] = useState("all");
+  const [jobApplicationJobFilter, setJobApplicationJobFilter] = useState("all");
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [payoutRepId, setPayoutRepId] = useState("");
   const [payoutAmount, setPayoutAmount] = useState("");
@@ -218,6 +289,17 @@ export default function AdminDashboardClient({
       unpaidTotal: unpaidPayouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0),
       paidTotal: paidPayouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0),
     };
+  });
+  const jobListingById = useMemo(
+    () => new Map(jobListings.map((job) => [job.id, job])),
+    [jobListings]
+  );
+  const filteredJobApplications = jobApplications.filter((application) => {
+    const statusMatches =
+      jobApplicationStatusFilter === "all" || application.status === jobApplicationStatusFilter;
+    const jobMatches =
+      jobApplicationJobFilter === "all" || application.job_listing_id === jobApplicationJobFilter;
+    return statusMatches && jobMatches;
   });
 
   function runAction(
@@ -362,6 +444,80 @@ export default function AdminDashboardClient({
         () => setEditApplication(null)
       );
     }
+  }
+
+  function openNewJobListing() {
+    setEditJobListing({
+      title: "",
+      department: "",
+      location: "",
+      employmentType: "",
+      compensation: "",
+      description: "",
+      requirements: "",
+      status: "draft",
+    });
+  }
+
+  function openJobListingEditor(job: JobListingRow) {
+    setEditJobListing({
+      job,
+      title: job.title || "",
+      department: job.department || "",
+      location: job.location || "",
+      employmentType: job.employment_type || "",
+      compensation: job.compensation || "",
+      description: job.description || "",
+      requirements: job.requirements || "",
+      status: job.status || "draft",
+    });
+  }
+
+  function submitJobListing() {
+    if (!editJobListing) return;
+
+    const data = formData({
+      title: editJobListing.title,
+      department: editJobListing.department,
+      location: editJobListing.location,
+      employment_type: editJobListing.employmentType,
+      compensation: editJobListing.compensation,
+      description: editJobListing.description,
+      requirements: editJobListing.requirements,
+      status: editJobListing.status,
+    });
+
+    if (editJobListing.job) {
+      const jobId = editJobListing.job.id;
+      data.set("job_id", jobId);
+      runAction(() => updateJobListingAction(data), `edit-job-${jobId}`, () => setEditJobListing(null));
+    } else {
+      runAction(() => createJobListingAction(data), "create-job", () => setEditJobListing(null));
+    }
+  }
+
+  function openJobApplication(application: JobApplicationRow) {
+    setEditJobApplication({
+      application,
+      status: application.status || "new",
+      notes: application.notes || "",
+    });
+  }
+
+  function submitJobApplicationReview() {
+    if (!editJobApplication) return;
+    runAction(
+      () =>
+        updateJobApplicationAction(
+          formData({
+            application_id: editJobApplication.application.id,
+            status: editJobApplication.status,
+            notes: editJobApplication.notes,
+          })
+        ),
+      `review-job-application-${editJobApplication.application.id}`,
+      () => setEditJobApplication(null)
+    );
   }
 
   return (
@@ -571,6 +727,211 @@ export default function AdminDashboardClient({
                             }
                           >
                             {pendingActionId === deleteId ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="us-kicker">Careers</p>
+            <h2 className="mt-2 text-2xl font-extrabold">Job Listings</h2>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              Create, publish, close, and manage public careers listings.
+            </p>
+          </div>
+          <button type="button" className="us-btn-primary px-4 py-2 text-sm" onClick={openNewJobListing}>
+            Create Job Listing
+          </button>
+        </div>
+
+        {jobListingsError ? (
+          <p className="mt-6 rounded-[1rem] border border-[rgba(176,59,59,0.22)] bg-[rgba(176,59,59,0.08)] p-4 text-sm font-semibold text-[var(--color-danger)]">
+            Job listings could not load: {jobListingsError}
+          </p>
+        ) : jobListings.length === 0 ? (
+          <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
+            No job listings yet.
+          </p>
+        ) : (
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[1080px] text-left text-sm">
+              <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                <tr>
+                  <th className="py-3 pr-4">Title</th>
+                  <th className="py-3 pr-4">Department</th>
+                  <th className="py-3 pr-4">Location</th>
+                  <th className="py-3 pr-4">Type</th>
+                  <th className="py-3 pr-4">Compensation</th>
+                  <th className="py-3 pr-4">Status</th>
+                  <th className="py-3 pr-4">Updated</th>
+                  <th className="py-3 pr-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobListings.map((job) => (
+                  <tr key={job.id} className="border-b border-[var(--color-border-muted)] align-top">
+                    <td className="py-4 pr-4 font-semibold">{job.title}</td>
+                    <td className="py-4 pr-4">{job.department || "-"}</td>
+                    <td className="py-4 pr-4">{job.location || "-"}</td>
+                    <td className="py-4 pr-4">{job.employment_type || "-"}</td>
+                    <td className="py-4 pr-4">{job.compensation || "-"}</td>
+                    <td className="py-4 pr-4">{statusBadge(job.status || "draft")}</td>
+                    <td className="py-4 pr-4">{formatDate(job.updated_at || job.created_at)}</td>
+                    <td className="py-4 pr-4">
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" className="us-btn-secondary px-3 py-2 text-xs" onClick={() => openJobListingEditor(job)}>
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="us-btn-primary px-3 py-2 text-xs"
+                          disabled={isPending || job.status === "published"}
+                          onClick={() => runAction(() => setJobListingStatusAction(formData({ job_id: job.id, status: "published" })), `publish-${job.id}`)}
+                        >
+                          {pendingActionId === `publish-${job.id}` ? "Publishing..." : "Publish"}
+                        </button>
+                        <button
+                          type="button"
+                          className="us-btn-secondary px-3 py-2 text-xs"
+                          disabled={isPending || job.status === "draft"}
+                          onClick={() => runAction(() => setJobListingStatusAction(formData({ job_id: job.id, status: "draft" })), `unpublish-${job.id}`)}
+                        >
+                          Unpublish
+                        </button>
+                        <button
+                          type="button"
+                          className="us-btn-secondary px-3 py-2 text-xs"
+                          disabled={isPending || job.status === "closed"}
+                          onClick={() => runAction(() => setJobListingStatusAction(formData({ job_id: job.id, status: "closed" })), `close-${job.id}`)}
+                        >
+                          Close
+                        </button>
+                        <button
+                          type="button"
+                          className="us-btn-danger px-3 py-2 text-xs"
+                          onClick={() =>
+                            setConfirm({
+                              title: "Delete Job Listing",
+                              message: `Delete ${job.title}? Applications will remain, but the listing will be removed.`,
+                              confirmLabel: "Delete Listing",
+                              danger: true,
+                              onConfirm: () => runAction(() => deleteJobListingAction(formData({ job_id: job.id })), `delete-job-${job.id}`),
+                            })
+                          }
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="us-kicker">Careers</p>
+            <h2 className="mt-2 text-2xl font-extrabold">Job Applications</h2>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              Review public careers submissions and move strong applicants forward.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <select className="us-input" value={jobApplicationJobFilter} onChange={(event) => setJobApplicationJobFilter(event.target.value)}>
+              <option value="all">All jobs</option>
+              {jobListings.map((job) => (
+                <option key={job.id} value={job.id}>{job.title}</option>
+              ))}
+            </select>
+            <select className="us-input" value={jobApplicationStatusFilter} onChange={(event) => setJobApplicationStatusFilter(event.target.value)}>
+              <option value="all">All statuses</option>
+              <option value="new">new</option>
+              <option value="reviewing">reviewing</option>
+              <option value="interview">interview</option>
+              <option value="approved">approved</option>
+              <option value="rejected">rejected</option>
+            </select>
+          </div>
+        </div>
+
+        {jobApplicationsError ? (
+          <p className="mt-6 rounded-[1rem] border border-[rgba(176,59,59,0.22)] bg-[rgba(176,59,59,0.08)] p-4 text-sm font-semibold text-[var(--color-danger)]">
+            Job applications could not load: {jobApplicationsError}
+          </p>
+        ) : filteredJobApplications.length === 0 ? (
+          <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
+            No job applications match the current filters.
+          </p>
+        ) : (
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[1120px] text-left text-sm">
+              <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                <tr>
+                  <th className="py-3 pr-4">Applicant</th>
+                  <th className="py-3 pr-4">Job</th>
+                  <th className="py-3 pr-4">Status</th>
+                  <th className="py-3 pr-4">Location</th>
+                  <th className="py-3 pr-4">Availability</th>
+                  <th className="py-3 pr-4">Applied</th>
+                  <th className="py-3 pr-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredJobApplications.map((application) => {
+                  const job = application.job_listing_id ? jobListingById.get(application.job_listing_id) : undefined;
+
+                  return (
+                    <tr key={application.id} className="border-b border-[var(--color-border-muted)] align-top">
+                      <td className="py-4 pr-4">
+                        <p className="font-bold">{application.full_name}</p>
+                        <p className="mt-1 break-all text-xs text-[var(--color-text-secondary)]">{application.email}</p>
+                      </td>
+                      <td className="py-4 pr-4">{job?.title || "Listing removed"}</td>
+                      <td className="py-4 pr-4">{statusBadge(application.status || "new")}</td>
+                      <td className="py-4 pr-4">{application.location || "-"}</td>
+                      <td className="py-4 pr-4">{application.availability || "-"}</td>
+                      <td className="py-4 pr-4">{formatDate(application.created_at)}</td>
+                      <td className="py-4 pr-4">
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" className="us-btn-secondary px-3 py-2 text-xs" onClick={() => openJobApplication(application)}>
+                            Open Details
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-primary px-3 py-2 text-xs"
+                            onClick={() =>
+                              runAction(
+                                () => approveJobApplicationAsPendingTeamMemberAction(formData({ application_id: application.id })),
+                                `pending-from-job-${application.id}`
+                              )
+                            }
+                          >
+                            Pending Team Member
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-success px-3 py-2 text-xs"
+                            onClick={() =>
+                              runAction(
+                                () => approveJobApplicationAsSalesRepAction(formData({ application_id: application.id })),
+                                `sales-from-job-${application.id}`
+                              )
+                            }
+                          >
+                            Approve Sales Rep
                           </button>
                         </div>
                       </td>
@@ -821,6 +1182,110 @@ export default function AdminDashboardClient({
           </div>
         )}
       </section>
+
+      {editJobListing ? (
+        <Modal title={editJobListing.job ? "Edit Job Listing" : "Create Job Listing"} onCancel={() => setEditJobListing(null)}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-bold">
+              Title
+              <input className="us-input" value={editJobListing.title} onChange={(event) => setEditJobListing({ ...editJobListing, title: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Department
+              <input className="us-input" value={editJobListing.department} onChange={(event) => setEditJobListing({ ...editJobListing, department: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Location
+              <input className="us-input" value={editJobListing.location} onChange={(event) => setEditJobListing({ ...editJobListing, location: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Employment type
+              <input className="us-input" value={editJobListing.employmentType} onChange={(event) => setEditJobListing({ ...editJobListing, employmentType: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Compensation
+              <input className="us-input" value={editJobListing.compensation} onChange={(event) => setEditJobListing({ ...editJobListing, compensation: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Status
+              <select className="us-input" value={editJobListing.status} onChange={(event) => setEditJobListing({ ...editJobListing, status: event.target.value })}>
+                <option value="draft">draft</option>
+                <option value="published">published</option>
+                <option value="closed">closed</option>
+              </select>
+            </label>
+          </div>
+          <label className="mt-4 grid gap-2 text-sm font-bold">
+            Description
+            <textarea className="us-textarea" value={editJobListing.description} onChange={(event) => setEditJobListing({ ...editJobListing, description: event.target.value })} />
+          </label>
+          <label className="mt-4 grid gap-2 text-sm font-bold">
+            Requirements
+            <textarea className="us-textarea" value={editJobListing.requirements} onChange={(event) => setEditJobListing({ ...editJobListing, requirements: event.target.value })} />
+          </label>
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" className="us-btn-secondary px-4 py-2" onClick={() => setEditJobListing(null)}>
+              Cancel
+            </button>
+            <button type="button" className="us-btn-primary px-4 py-2" disabled={isPending} onClick={submitJobListing}>
+              {pendingActionId === "create-job" ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {editJobApplication ? (
+        <Modal title="Job Application Details" onCancel={() => setEditJobApplication(null)}>
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="font-bold">{editJobApplication.application.full_name}</p>
+              <p className="text-[var(--color-text-secondary)]">{editJobApplication.application.email}</p>
+              <p className="text-[var(--color-text-secondary)]">{editJobApplication.application.phone || "No phone"}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MiniStat label="Location" value={editJobApplication.application.location || "-"} />
+              <MiniStat label="Availability" value={editJobApplication.application.availability || "-"} />
+              <MiniStat label="Contact" value={editJobApplication.application.preferred_contact_method || "-"} />
+              <MiniStat label="Applied" value={formatDate(editJobApplication.application.created_at)} />
+            </div>
+            <div>
+              <p className="font-bold">Experience</p>
+              <p className="mt-1 whitespace-pre-wrap text-[var(--color-text-secondary)]">{editJobApplication.application.experience_summary || "-"}</p>
+            </div>
+            <div>
+              <p className="font-bold">Why interested</p>
+              <p className="mt-1 whitespace-pre-wrap text-[var(--color-text-secondary)]">{editJobApplication.application.why_interested || "-"}</p>
+            </div>
+            {editJobApplication.application.resume_link ? (
+              <a className="us-link" href={editJobApplication.application.resume_link} target="_blank" rel="noreferrer">
+                Resume link
+              </a>
+            ) : null}
+          </div>
+          <label className="mt-4 grid gap-2 text-sm font-bold">
+            Status
+            <select className="us-input" value={editJobApplication.status} onChange={(event) => setEditJobApplication({ ...editJobApplication, status: event.target.value })}>
+              <option value="new">new</option>
+              <option value="reviewing">reviewing</option>
+              <option value="interview">interview</option>
+              <option value="approved">approved</option>
+              <option value="rejected">rejected</option>
+            </select>
+          </label>
+          <label className="mt-4 grid gap-2 text-sm font-bold">
+            Internal notes
+            <textarea className="us-textarea" value={editJobApplication.notes} onChange={(event) => setEditJobApplication({ ...editJobApplication, notes: event.target.value })} />
+          </label>
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" className="us-btn-secondary px-4 py-2" onClick={() => setEditJobApplication(null)}>
+              Cancel
+            </button>
+            <button type="button" className="us-btn-primary px-4 py-2" disabled={isPending} onClick={submitJobApplicationReview}>
+              Save
+            </button>
+          </div>
+        </Modal>
+      ) : null}
 
       {editApplication ? (
         <Modal

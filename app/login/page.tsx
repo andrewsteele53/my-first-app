@@ -187,6 +187,14 @@ export default function LoginPage() {
             Sign up
           </Link>
         </p>
+        <div className="mt-5 border-t border-slate-200 pt-5 text-center">
+          <Link
+            href="/careers"
+            className="text-sm font-semibold text-slate-700 transition hover:text-slate-950"
+          >
+            Interested in joining Unified Steele? View open positions
+          </Link>
+        </div>
       </div>
     </main>
   );

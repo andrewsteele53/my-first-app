@@ -32,6 +32,24 @@ function cleanApplicationStatus(value: FormDataEntryValue | null) {
   throw new Error("Choose a valid application status.");
 }
 
+function cleanJobStatus(value: FormDataEntryValue | null) {
+  const status = clean(value);
+  if (status === "draft" || status === "published" || status === "closed") {
+    return status;
+  }
+
+  throw new Error("Choose a valid job status.");
+}
+
+function cleanJobApplicationStatus(value: FormDataEntryValue | null) {
+  const status = clean(value);
+  if (status === "new" || status === "reviewing" || status === "interview" || status === "approved" || status === "rejected") {
+    return status;
+  }
+
+  throw new Error("Choose a valid applicant status.");
+}
+
 function success(message: string): AdminActionResult {
   return { ok: true, message };
 }
@@ -854,6 +872,285 @@ export async function deleteTeamApplicationAction(formData: FormData) {
 
   revalidatePath("/admin");
   return success("Team application deleted.");
+}
+
+export async function createJobListingAction(formData: FormData) {
+  const { supabase, user } = await requireAdminContext();
+  const title = clean(formData.get("title"));
+
+  if (!title) {
+    return { ok: false, message: "Job title is required." };
+  }
+
+  const { error } = await supabase.from("job_listings").insert({
+    title,
+    department: clean(formData.get("department")) || null,
+    location: clean(formData.get("location")) || null,
+    employment_type: clean(formData.get("employment_type")) || null,
+    compensation: clean(formData.get("compensation")) || null,
+    description: clean(formData.get("description")) || null,
+    requirements: clean(formData.get("requirements")) || null,
+    status: cleanJobStatus(formData.get("status")),
+    created_by: user.id,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/careers");
+  return success("Job listing created.");
+}
+
+export async function updateJobListingAction(formData: FormData) {
+  const { supabase } = await requireAdminContext();
+  const jobId = clean(formData.get("job_id"));
+  const title = clean(formData.get("title"));
+
+  if (!jobId) {
+    throw new Error("Job listing is required.");
+  }
+
+  if (!title) {
+    return { ok: false, message: "Job title is required." };
+  }
+
+  const { error } = await supabase
+    .from("job_listings")
+    .update({
+      title,
+      department: clean(formData.get("department")) || null,
+      location: clean(formData.get("location")) || null,
+      employment_type: clean(formData.get("employment_type")) || null,
+      compensation: clean(formData.get("compensation")) || null,
+      description: clean(formData.get("description")) || null,
+      requirements: clean(formData.get("requirements")) || null,
+      status: cleanJobStatus(formData.get("status")),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", jobId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/careers");
+  revalidatePath(`/careers/${jobId}`);
+  return success("Job listing updated.");
+}
+
+export async function setJobListingStatusAction(formData: FormData) {
+  const { supabase } = await requireAdminContext();
+  const jobId = clean(formData.get("job_id"));
+  const status = cleanJobStatus(formData.get("status"));
+
+  if (!jobId) {
+    throw new Error("Job listing is required.");
+  }
+
+  const { error } = await supabase
+    .from("job_listings")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", jobId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/careers");
+  revalidatePath(`/careers/${jobId}`);
+  return success(`Job listing set to ${status}.`);
+}
+
+export async function deleteJobListingAction(formData: FormData) {
+  const { supabase } = await requireAdminContext();
+  const jobId = clean(formData.get("job_id"));
+
+  if (!jobId) {
+    throw new Error("Job listing is required.");
+  }
+
+  const { error } = await supabase.from("job_listings").delete().eq("id", jobId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/careers");
+  return success("Job listing deleted.");
+}
+
+export async function updateJobApplicationAction(formData: FormData) {
+  const { supabase, user } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+  const status = cleanJobApplicationStatus(formData.get("status"));
+
+  if (!applicationId) {
+    throw new Error("Application is required.");
+  }
+
+  const { error } = await supabase
+    .from("job_applications")
+    .update({
+      status,
+      notes: clean(formData.get("notes")) || null,
+      reviewed_at: status === "new" ? null : new Date().toISOString(),
+      reviewed_by: status === "new" ? null : user.id,
+    })
+    .eq("id", applicationId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  return success("Job application updated.");
+}
+
+export async function approveJobApplicationAsPendingTeamMemberAction(formData: FormData) {
+  const { supabase, user } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+
+  if (!applicationId) {
+    throw new Error("Application is required.");
+  }
+
+  const { data: application, error: readError } = await supabase
+    .from("job_applications")
+    .select("id, full_name, email, phone, notes")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(readError.message);
+  }
+
+  if (!application) {
+    throw new Error("Application not found.");
+  }
+
+  const { error: insertError } = await supabase.from("team_applications").insert({
+    name: application.full_name || null,
+    email: application.email,
+    phone: application.phone || null,
+    desired_role: "sales",
+    status: "pending",
+    notes: application.notes || "Created from job application.",
+  });
+
+  if (insertError) {
+    throw new Error(insertError.message);
+  }
+
+  const { error: updateError } = await supabase
+    .from("job_applications")
+    .update({
+      status: "approved",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .eq("id", applicationId);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  revalidatePath("/admin");
+  return success("Applicant approved as a pending team member.");
+}
+
+export async function approveJobApplicationAsSalesRepAction(formData: FormData) {
+  const { supabase, user } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+
+  if (!applicationId) {
+    throw new Error("Application is required.");
+  }
+
+  const { data: application, error: readError } = await supabase
+    .from("job_applications")
+    .select("id, full_name, email, notes")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(readError.message);
+  }
+
+  if (!application) {
+    throw new Error("Application not found.");
+  }
+
+  const email = typeof application.email === "string" ? application.email.trim().toLowerCase() : "";
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, email, display_name")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  const { error: applicationError } = await supabase
+    .from("job_applications")
+    .update({
+      status: "approved",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .eq("id", applicationId);
+
+  if (applicationError) {
+    throw new Error(applicationError.message);
+  }
+
+  if (!profile) {
+    revalidatePath("/admin");
+    return success("Applicant approved, but they still need to create an account with this email.");
+  }
+
+  const displayName =
+    (typeof application.full_name === "string" && application.full_name.trim()) ||
+    (typeof profile.display_name === "string" && profile.display_name.trim()) ||
+    (typeof profile.email === "string" && profile.email.trim()) ||
+    email;
+
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({ role: "sales" })
+    .eq("id", profile.id);
+
+  if (roleError) {
+    throw new Error(roleError.message);
+  }
+
+  const { error: repError } = await supabase.from("sales_reps").upsert(
+    {
+      user_id: profile.id,
+      display_name: displayName,
+      payment_notes:
+        typeof application.notes === "string" && application.notes.trim()
+          ? application.notes.trim()
+          : null,
+      active: true,
+    },
+    { onConflict: "user_id" }
+  );
+
+  if (repError) {
+    throw new Error(repError.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/sales");
+  return success(`${displayName} was approved and added as a sales rep.`);
 }
 
 async function deactivateSalesRepForUser(

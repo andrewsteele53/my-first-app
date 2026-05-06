@@ -148,6 +148,40 @@ create table if not exists public.team_applications (
   reviewed_by uuid references auth.users(id)
 );
 
+create table if not exists public.job_listings (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  department text,
+  location text,
+  employment_type text,
+  compensation text,
+  description text,
+  requirements text,
+  status text default 'draft',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  created_by uuid references auth.users(id)
+);
+
+create table if not exists public.job_applications (
+  id uuid primary key default gen_random_uuid(),
+  job_listing_id uuid references public.job_listings(id) on delete set null,
+  full_name text not null,
+  email text not null,
+  phone text,
+  location text,
+  experience_summary text,
+  why_interested text,
+  availability text,
+  preferred_contact_method text,
+  resume_link text,
+  notes text,
+  status text default 'new',
+  created_at timestamptz default now(),
+  reviewed_at timestamptz,
+  reviewed_by uuid references auth.users(id)
+);
+
 alter table if exists public.team_applications
   add column if not exists name text,
   add column if not exists email text,
@@ -163,6 +197,60 @@ alter table if exists public.team_applications
   alter column email set not null,
   alter column desired_role set default 'sales',
   alter column status set default 'pending',
+  alter column created_at set default now();
+
+alter table if exists public.job_listings
+  add column if not exists title text,
+  add column if not exists department text,
+  add column if not exists location text,
+  add column if not exists employment_type text,
+  add column if not exists compensation text,
+  add column if not exists description text,
+  add column if not exists requirements text,
+  add column if not exists status text default 'draft',
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now(),
+  add column if not exists created_by uuid references auth.users(id);
+
+update public.job_listings
+set title = 'Untitled position'
+where title is null;
+
+alter table if exists public.job_listings
+  alter column title set not null,
+  alter column status set default 'draft',
+  alter column created_at set default now(),
+  alter column updated_at set default now();
+
+alter table if exists public.job_applications
+  add column if not exists job_listing_id uuid references public.job_listings(id) on delete set null,
+  add column if not exists full_name text,
+  add column if not exists email text,
+  add column if not exists phone text,
+  add column if not exists location text,
+  add column if not exists experience_summary text,
+  add column if not exists why_interested text,
+  add column if not exists availability text,
+  add column if not exists preferred_contact_method text,
+  add column if not exists resume_link text,
+  add column if not exists notes text,
+  add column if not exists status text default 'new',
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists reviewed_at timestamptz,
+  add column if not exists reviewed_by uuid references auth.users(id);
+
+update public.job_applications
+set full_name = 'Unknown applicant'
+where full_name is null;
+
+update public.job_applications
+set email = 'unknown@example.com'
+where email is null;
+
+alter table if exists public.job_applications
+  alter column full_name set not null,
+  alter column email set not null,
+  alter column status set default 'new',
   alter column created_at set default now();
 
 do $$
@@ -187,6 +275,28 @@ begin
   end if;
 end $$;
 
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'job_listings_status_check'
+  ) then
+    alter table public.job_listings
+      add constraint job_listings_status_check
+      check (status in ('draft', 'published', 'closed'));
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'job_applications_status_check'
+  ) then
+    alter table public.job_applications
+      add constraint job_applications_status_check
+      check (status in ('new', 'reviewing', 'interview', 'approved', 'rejected'));
+  end if;
+end $$;
+
 create index if not exists sales_reps_user_id_idx on public.sales_reps (user_id);
 create index if not exists sales_assignments_sales_rep_id_idx on public.sales_assignments (sales_rep_id);
 create index if not exists sales_assignments_subscriber_user_id_idx on public.sales_assignments (subscriber_user_id);
@@ -194,12 +304,18 @@ create index if not exists commission_payouts_sales_rep_id_idx on public.commiss
 create index if not exists commission_payouts_status_idx on public.commission_payouts (status);
 create index if not exists team_applications_email_idx on public.team_applications (email);
 create index if not exists team_applications_status_idx on public.team_applications (status);
+create index if not exists job_listings_status_idx on public.job_listings (status);
+create index if not exists job_applications_job_listing_id_idx on public.job_applications (job_listing_id);
+create index if not exists job_applications_status_idx on public.job_applications (status);
+create index if not exists job_applications_email_idx on public.job_applications (email);
 
 alter table public.profiles enable row level security;
 alter table public.sales_reps enable row level security;
 alter table public.sales_assignments enable row level security;
 alter table public.commission_payouts enable row level security;
 alter table public.team_applications enable row level security;
+alter table public.job_listings enable row level security;
+alter table public.job_applications enable row level security;
 
 drop policy if exists "Users can insert their own profile" on public.profiles;
 create policy "Users can insert their own profile"
@@ -301,8 +417,38 @@ create policy "Admins can manage team applications"
   using (app_private.current_user_role() = 'admin')
   with check (app_private.current_user_role() = 'admin');
 
+drop policy if exists "Anyone can view published job listings" on public.job_listings;
+create policy "Anyone can view published job listings"
+  on public.job_listings for select
+  to anon, authenticated
+  using (status = 'published');
+
+drop policy if exists "Admins can manage job listings" on public.job_listings;
+create policy "Admins can manage job listings"
+  on public.job_listings for all
+  to authenticated
+  using (app_private.current_user_role() = 'admin')
+  with check (app_private.current_user_role() = 'admin');
+
+drop policy if exists "Anyone can submit job applications" on public.job_applications;
+create policy "Anyone can submit job applications"
+  on public.job_applications for insert
+  to anon, authenticated
+  with check (true);
+
+drop policy if exists "Admins can manage job applications" on public.job_applications;
+create policy "Admins can manage job applications"
+  on public.job_applications for all
+  to authenticated
+  using (app_private.current_user_role() = 'admin')
+  with check (app_private.current_user_role() = 'admin');
+
 grant select, insert, update, delete on public.profiles to authenticated;
 grant select, insert, update, delete on public.sales_reps to authenticated;
 grant select, insert, update, delete on public.sales_assignments to authenticated;
 grant select, insert, update, delete on public.commission_payouts to authenticated;
 grant select, insert, update, delete on public.team_applications to authenticated;
+grant select, insert, update, delete on public.job_listings to authenticated;
+grant select, insert, update, delete on public.job_applications to authenticated;
+grant select on public.job_listings to anon;
+grant insert on public.job_applications to anon;
