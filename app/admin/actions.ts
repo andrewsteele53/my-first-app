@@ -65,6 +65,14 @@ function cleanJobApplicationStatus(value: FormDataEntryValue | null) {
   throw new Error("Choose a valid applicant status.");
 }
 
+const TEAM_APPLICATION_ACTIVATION_STATUSES = [
+  "pending",
+  "approved",
+  "invite_sent",
+  "invited",
+  "active",
+];
+
 function success(message: string): AdminActionResult {
   return { ok: true, message };
 }
@@ -137,18 +145,21 @@ async function activateSalesRepProfile({
     .from("sales_reps")
     .select("payment_notes")
     .eq("user_id", profile.id)
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .limit(1);
 
   if (existingRepError) {
     throw new Error(existingRepError.message);
   }
+
+  const rep = Array.isArray(existingRep) ? existingRep[0] : null;
 
   const { error: repError } = await supabase.from("sales_reps").upsert(
     {
       user_id: profile.id,
       display_name: resolvedDisplayName,
       payment_notes:
-        existingRep?.payment_notes ||
+        rep?.payment_notes ||
         (typeof paymentNotes === "string" && paymentNotes.trim()) ||
         null,
       active: true,
@@ -873,13 +884,16 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     .from("profiles")
     .select("id, email, display_name")
     .ilike("email", email)
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .limit(1);
 
   if (profileError) {
     throw new Error(profileError.message);
   }
 
-  if (!profile) {
+  const matchingProfile = Array.isArray(profile) ? profile[0] : null;
+
+  if (!matchingProfile) {
     const { error: applicationUpdateError } = await supabase
       .from("team_applications")
       .update({
@@ -894,12 +908,13 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     }
 
     revalidatePath("/admin");
-    return success("Approved. Use the manual invite panel to send this applicant the signup link.");
+    revalidatePath("/sales");
+    return { ok: false, message: "This person still needs to create a team account." };
   }
 
   const resolvedDisplayName = await activateSalesRepProfile({
     supabase,
-    profile,
+    profile: matchingProfile,
     displayName,
     paymentNotes,
   });
@@ -911,10 +926,25 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
       reviewed_at: new Date().toISOString(),
       reviewed_by: user.id,
     })
-    .eq("id", applicationId);
+    .ilike("email", email)
+    .in("status", TEAM_APPLICATION_ACTIVATION_STATUSES);
 
   if (applicationUpdateError) {
     throw new Error(applicationUpdateError.message);
+  }
+
+  const { error: jobApplicationUpdateError } = await supabase
+    .from("job_applications")
+    .update({
+      status: "active",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .ilike("email", email)
+    .in("status", ["approved", "active"]);
+
+  if (jobApplicationUpdateError) {
+    throw new Error(jobApplicationUpdateError.message);
   }
 
   revalidatePath("/admin");
@@ -1246,13 +1276,16 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
     .from("profiles")
     .select("id, email, display_name")
     .ilike("email", email)
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .limit(1);
 
   if (profileError) {
     throw new Error(profileError.message);
   }
 
-  if (!profile) {
+  const matchingProfile = Array.isArray(profile) ? profile[0] : null;
+
+  if (!matchingProfile) {
     const { error: applicationError } = await supabase
       .from("job_applications")
       .update({
@@ -1286,7 +1319,7 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
 
   const resolvedDisplayName = await activateSalesRepProfile({
     supabase,
-    profile,
+    profile: matchingProfile,
     displayName,
     paymentNotes,
   });
@@ -1312,7 +1345,7 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
       reviewed_by: user.id,
     })
     .ilike("email", email)
-    .in("status", ["approved", "invite_sent", "invited", "active"]);
+    .in("status", TEAM_APPLICATION_ACTIVATION_STATUSES);
 
   if (teamApplicationUpdateError) {
     throw new Error(teamApplicationUpdateError.message);

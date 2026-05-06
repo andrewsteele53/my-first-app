@@ -467,6 +467,10 @@ export default function AdminDashboardClient({
       return "active";
     }
 
+    if (rawStatus === "active") {
+      return "approved";
+    }
+
     return rawStatus;
   }
 
@@ -776,7 +780,10 @@ export default function AdminDashboardClient({
                                 ? "Approving..."
                                 : isActiveApplication
                                 ? "Active"
-                                : application.status === "approved" || application.status === "invite_sent"
+                                : application.status === "approved" ||
+                                  application.status === "invite_sent" ||
+                                  application.status === "invited" ||
+                                  application.status === "active"
                                 ? "Check / Activate"
                                 : "Approve as Sales Rep"}
                             </button>

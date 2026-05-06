@@ -84,6 +84,7 @@ export default async function SalesPage() {
       .from("sales_reps")
       .select("id, user_id, display_name, payment_notes, created_at")
       .eq("user_id", user.id)
+      .eq("active", true)
       .order("created_at", { ascending: true })
       .limit(1),
     supabase
