@@ -66,6 +66,15 @@ function cleanJobApplicationStatus(value: FormDataEntryValue | null) {
   throw new Error("Choose a valid applicant status.");
 }
 
+function cleanSalesLeadStatus(value: FormDataEntryValue | null) {
+  const status = clean(value);
+  if (status === "new" || status === "contacted" || status === "interested" || status === "signed_up") {
+    return status;
+  }
+
+  throw new Error("Choose a valid lead status.");
+}
+
 const TEAM_APPLICATION_ACTIVATION_STATUSES = [
   "pending",
   "approved",
@@ -1434,6 +1443,61 @@ export async function getResumeDownloadUrlAction(
     message: "Resume link ready.",
     url: data.signedUrl,
   };
+}
+
+export async function updateSalesLeadAdminAction(formData: FormData): Promise<AdminActionResult> {
+  const { supabase } = await requireAdminContext();
+  const leadId = clean(formData.get("lead_id"));
+  const businessName = clean(formData.get("business_name"));
+  const status = cleanSalesLeadStatus(formData.get("status"));
+
+  if (!leadId) {
+    throw new Error("Choose a lead to update.");
+  }
+
+  if (!businessName) {
+    throw new Error("Business name is required.");
+  }
+
+  const { error } = await supabase
+    .from("sales_leads")
+    .update({
+      business_name: businessName,
+      owner_name: clean(formData.get("owner_name")) || null,
+      phone: clean(formData.get("phone")) || null,
+      email: clean(formData.get("email")) || null,
+      status,
+      signed_up: status === "signed_up",
+      signed_up_at: status === "signed_up" ? new Date().toISOString() : null,
+    })
+    .eq("id", leadId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/sales");
+  return success("Lead updated.");
+}
+
+export async function deleteSalesLeadAdminAction(formData: FormData): Promise<AdminActionResult> {
+  const { supabase } = await requireAdminContext();
+  const leadId = clean(formData.get("lead_id"));
+
+  if (!leadId) {
+    throw new Error("Choose a lead to delete.");
+  }
+
+  const { error } = await supabase.from("sales_leads").delete().eq("id", leadId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/sales");
+  return success("Lead deleted.");
 }
 
 async function deactivateSalesRepForUser(

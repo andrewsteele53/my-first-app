@@ -9,16 +9,7 @@ export type SalesLeadActionResult = {
   message: string;
 };
 
-const SALES_LEAD_STATUSES = [
-  "new",
-  "contacted",
-  "follow_up",
-  "interested",
-  "not_interested",
-  "subscribed",
-  "lost",
-] as const;
-
+const SALES_LEAD_STATUSES = ["new", "contacted", "interested", "signed_up"] as const;
 type SalesLeadStatus = (typeof SALES_LEAD_STATUSES)[number];
 
 function clean(value: FormDataEntryValue | null) {
@@ -36,11 +27,6 @@ function cleanStatus(value: FormDataEntryValue | null): SalesLeadStatus {
   }
 
   throw new Error("Choose a valid lead status.");
-}
-
-function cleanOptionalUuid(value: FormDataEntryValue | null) {
-  const id = clean(value);
-  return id || null;
 }
 
 function success(message: string): SalesLeadActionResult {
@@ -61,7 +47,7 @@ async function requireSalesRepContext() {
 
   const { data: salesRep, error } = await supabase
     .from("sales_reps")
-    .select("id, user_id, display_name, active")
+    .select("id, user_id, active")
     .eq("user_id", user.id)
     .eq("active", true)
     .maybeSingle();
@@ -74,7 +60,7 @@ async function requireSalesRepContext() {
     throw new Error("No active sales rep record exists for your account.");
   }
 
-  return { supabase, user, salesRep };
+  return { supabase, user };
 }
 
 function leadPayload(formData: FormData) {
@@ -83,32 +69,22 @@ function leadPayload(formData: FormData) {
     throw new Error("Business name is required.");
   }
 
-  const status = cleanStatus(formData.get("status") || "new");
-  const subscribedProfileId = cleanOptionalUuid(formData.get("subscribed_profile_id"));
-
   return {
     business_name: businessName,
-    contact_name: optional(clean(formData.get("contact_name"))),
+    owner_name: optional(clean(formData.get("owner_name"))),
     phone: optional(clean(formData.get("phone"))),
     email: optional(clean(formData.get("email"))),
-    address: optional(clean(formData.get("address"))),
-    industry: optional(clean(formData.get("industry"))),
-    status,
-    notes: optional(clean(formData.get("notes"))),
-    follow_up_date: optional(clean(formData.get("follow_up_date"))),
-    subscribed_profile_id: status === "subscribed" ? subscribedProfileId : null,
-    subscribed_at: status === "subscribed" ? new Date().toISOString() : null,
   };
 }
 
 export async function createSalesLeadAction(formData: FormData): Promise<SalesLeadActionResult> {
-  const { supabase, user, salesRep } = await requireSalesRepContext();
-  const payload = leadPayload(formData);
+  const { supabase, user } = await requireSalesRepContext();
 
   const { error } = await supabase.from("sales_leads").insert({
-    ...payload,
-    sales_rep_id: salesRep.id,
-    sales_rep_user_id: user.id,
+    ...leadPayload(formData),
+    sales_rep_id: user.id,
+    status: "new",
+    signed_up: false,
   });
 
   if (error) {
@@ -127,11 +103,17 @@ export async function updateSalesLeadAction(formData: FormData): Promise<SalesLe
     throw new Error("Choose a lead to update.");
   }
 
+  const status = cleanStatus(formData.get("status") || "new");
   const { error } = await supabase
     .from("sales_leads")
-    .update(leadPayload(formData))
+    .update({
+      ...leadPayload(formData),
+      status,
+      signed_up: status === "signed_up",
+      signed_up_at: status === "signed_up" ? new Date().toISOString() : null,
+    })
     .eq("id", leadId)
-    .eq("sales_rep_user_id", user.id);
+    .eq("sales_rep_id", user.id);
 
   if (error) {
     throw new Error(error.message);
@@ -153,7 +135,7 @@ export async function deleteSalesLeadAction(formData: FormData): Promise<SalesLe
     .from("sales_leads")
     .delete()
     .eq("id", leadId)
-    .eq("sales_rep_user_id", user.id);
+    .eq("sales_rep_id", user.id);
 
   if (error) {
     throw new Error(error.message);
@@ -168,7 +150,6 @@ export async function updateSalesLeadStatusAction(formData: FormData): Promise<S
   const { supabase, user } = await requireSalesRepContext();
   const leadId = clean(formData.get("lead_id"));
   const status = cleanStatus(formData.get("status"));
-  const subscribedProfileId = cleanOptionalUuid(formData.get("subscribed_profile_id"));
 
   if (!leadId) {
     throw new Error("Choose a lead to update.");
@@ -178,11 +159,11 @@ export async function updateSalesLeadStatusAction(formData: FormData): Promise<S
     .from("sales_leads")
     .update({
       status,
-      subscribed_profile_id: status === "subscribed" ? subscribedProfileId : null,
-      subscribed_at: status === "subscribed" ? new Date().toISOString() : null,
+      signed_up: status === "signed_up",
+      signed_up_at: status === "signed_up" ? new Date().toISOString() : null,
     })
     .eq("id", leadId)
-    .eq("sales_rep_user_id", user.id);
+    .eq("sales_rep_id", user.id);
 
   if (error) {
     throw new Error(error.message);
@@ -190,5 +171,5 @@ export async function updateSalesLeadStatusAction(formData: FormData): Promise<S
 
   revalidatePath("/sales");
   revalidatePath("/admin");
-  return success(status === "subscribed" ? "Lead marked subscribed." : "Lead status updated.");
+  return success(status === "signed_up" ? "Lead marked signed up." : "Lead status updated.");
 }

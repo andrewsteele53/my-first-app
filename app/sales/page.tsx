@@ -98,9 +98,8 @@ export default async function SalesPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("sales_leads")
-      .select("id, sales_rep_id, sales_rep_user_id, business_name, contact_name, phone, email, address, industry, status, notes, follow_up_date, subscribed_profile_id, subscribed_at, created_at, updated_at")
-      .eq("sales_rep_user_id", user.id)
-      .order("follow_up_date", { ascending: true, nullsFirst: false })
+      .select("id, sales_rep_id, business_name, owner_name, phone, email, status, signed_up, signed_up_at, created_at")
+      .eq("sales_rep_id", user.id)
       .order("created_at", { ascending: false }),
   ]);
 
@@ -137,18 +136,10 @@ export default async function SalesPage() {
   const activePaidSubscribers = subscribers.filter((subscriber) =>
     isActivePaidSubscription(subscriber.subscription_status)
   );
-  const today = new Date().toISOString().slice(0, 10);
   const contactedLeads = leads.filter((lead) => lead.status === "contacted");
   const interestedLeads = leads.filter((lead) => lead.status === "interested");
-  const followUpsDue = leads.filter(
-    (lead) =>
-      lead.follow_up_date &&
-      lead.follow_up_date <= today &&
-      lead.status !== "subscribed" &&
-      lead.status !== "lost"
-  );
-  const subscribedLeads = leads.filter((lead) => lead.status === "subscribed");
-  const estimatedCommissionOwed = subscribedLeads.length * COMMISSION_PER_ACTIVE_SUBSCRIBER;
+  const signedUpLeads = leads.filter((lead) => lead.signed_up === true);
+  const estimatedCommissionOwed = signedUpLeads.length * COMMISSION_PER_ACTIVE_SUBSCRIBER;
   const paidPayouts = payouts.filter((payout) => payout.status === "paid");
   const unpaidPayouts = payouts.filter((payout) => payout.status !== "paid");
   const paidTotal = paidPayouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0);
@@ -200,8 +191,7 @@ export default async function SalesPage() {
           <MetricCard label="Total Leads" value={String(leads.length)} />
           <MetricCard label="Contacted" value={String(contactedLeads.length)} />
           <MetricCard label="Interested" value={String(interestedLeads.length)} />
-          <MetricCard label="Follow-ups Due" value={String(followUpsDue.length)} />
-          <MetricCard label="Subscribed Clients" value={String(subscribedLeads.length)} />
+          <MetricCard label="Signed Up / Closed Deals" value={String(signedUpLeads.length)} />
           <MetricCard label="Estimated Commission Owed" value={formatMoney(estimatedCommissionOwed)} />
           <MetricCard label="Paid / Unpaid History" value={`${formatMoney(paidTotal)} / ${formatMoney(unpaidTotal)}`} />
           <MetricCard label="Active Paid Assigned" value={String(activePaidSubscribers.length)} />

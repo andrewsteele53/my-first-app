@@ -13,51 +13,28 @@ import {
 export type SalesLeadRow = {
   id: string;
   sales_rep_id: string | null;
-  sales_rep_user_id: string | null;
   business_name: string;
-  contact_name: string | null;
+  owner_name: string | null;
   phone: string | null;
   email: string | null;
-  address: string | null;
-  industry: string | null;
   status: string | null;
-  notes: string | null;
-  follow_up_date: string | null;
-  subscribed_profile_id: string | null;
-  subscribed_at: string | null;
+  signed_up: boolean | null;
+  signed_up_at: string | null;
   created_at: string | null;
-  updated_at: string | null;
 };
 
 type LeadEditorState = {
   lead?: SalesLeadRow;
   businessName: string;
-  contactName: string;
+  ownerName: string;
   phone: string;
   email: string;
-  address: string;
-  industry: string;
   status: string;
-  notes: string;
-  followUpDate: string;
-  subscribedProfileId: string;
 };
 
-type ConfirmState =
-  | {
-      lead: SalesLeadRow;
-    }
-  | null;
+type ConfirmState = { lead: SalesLeadRow } | null;
 
-const STATUS_OPTIONS = [
-  "new",
-  "contacted",
-  "follow_up",
-  "interested",
-  "not_interested",
-  "subscribed",
-  "lost",
-];
+const STATUS_OPTIONS = ["new", "contacted", "interested", "signed_up"];
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -69,15 +46,13 @@ function statusLabel(status?: string | null) {
   return (status || "new").replace(/_/g, " ");
 }
 
-function statusBadge(status?: string | null) {
-  const normalized = status || "new";
+function statusBadge(status?: string | null, signedUp?: boolean | null) {
+  const normalized = signedUp ? "signed_up" : status || "new";
   const className =
-    normalized === "subscribed" || normalized === "interested"
+    normalized === "signed_up" || normalized === "interested"
       ? "border-[rgba(46,125,90,0.2)] bg-[rgba(46,125,90,0.1)] text-[var(--color-success)]"
-      : normalized === "follow_up" || normalized === "contacted"
+      : normalized === "contacted"
       ? "border-[rgba(183,121,31,0.24)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]"
-      : normalized === "lost" || normalized === "not_interested"
-      ? "border-red-200 bg-red-50 text-red-700"
       : "border-[var(--color-border-muted)] bg-[var(--color-section)] text-[var(--color-text-secondary)]";
 
   return (
@@ -97,15 +72,10 @@ function leadToEditor(lead?: SalesLeadRow): LeadEditorState {
   return {
     lead,
     businessName: lead?.business_name || "",
-    contactName: lead?.contact_name || "",
+    ownerName: lead?.owner_name || "",
     phone: lead?.phone || "",
     email: lead?.email || "",
-    address: lead?.address || "",
-    industry: lead?.industry || "",
     status: lead?.status || "new",
-    notes: lead?.notes || "",
-    followUpDate: lead?.follow_up_date || "",
-    subscribedProfileId: lead?.subscribed_profile_id || "",
   };
 }
 
@@ -143,15 +113,10 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
     if (!editor) return;
     const data = formData({
       business_name: editor.businessName,
-      contact_name: editor.contactName,
+      owner_name: editor.ownerName,
       phone: editor.phone,
       email: editor.email,
-      address: editor.address,
-      industry: editor.industry,
       status: editor.status,
-      notes: editor.notes,
-      follow_up_date: editor.followUpDate,
-      subscribed_profile_id: editor.subscribedProfileId,
     });
 
     if (editor.lead) {
@@ -164,14 +129,7 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
 
   function changeStatus(lead: SalesLeadRow, status: string) {
     runAction(
-      () =>
-        updateSalesLeadStatusAction(
-          formData({
-            lead_id: lead.id,
-            status,
-            subscribed_profile_id: lead.subscribed_profile_id || "",
-          })
-        ),
+      () => updateSalesLeadStatusAction(formData({ lead_id: lead.id, status })),
       `${status}-${lead.id}`
     );
   }
@@ -200,13 +158,12 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
         </p>
       ) : (
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
+          <table className="w-full min-w-[860px] text-left text-sm">
             <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
               <tr>
                 <th className="py-3 pr-4">Lead</th>
                 <th className="py-3 pr-4">Status</th>
-                <th className="py-3 pr-4">Follow-up</th>
-                <th className="py-3 pr-4">Notes</th>
+                <th className="py-3 pr-4">Created</th>
                 <th className="py-3 pr-4">Actions</th>
               </tr>
             </thead>
@@ -216,24 +173,21 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
                   <td className="py-4 pr-4">
                     <p className="font-bold">{lead.business_name}</p>
                     <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                      {lead.contact_name || "No contact"} {lead.industry ? `- ${lead.industry}` : ""}
+                      {lead.owner_name || "No owner name"}
                     </p>
                     <p className="mt-1 break-all text-xs text-[var(--color-text-secondary)]">
                       {[lead.phone, lead.email].filter(Boolean).join(" | ") || "No phone or email"}
                     </p>
                   </td>
                   <td className="py-4 pr-4">
-                    {statusBadge(lead.status)}
-                    {lead.subscribed_at ? (
+                    {statusBadge(lead.status, lead.signed_up)}
+                    {lead.signed_up_at ? (
                       <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-                        Subscribed {formatDate(lead.subscribed_at)}
+                        Signed up {formatDate(lead.signed_up_at)}
                       </p>
                     ) : null}
                   </td>
-                  <td className="py-4 pr-4">{formatDate(lead.follow_up_date)}</td>
-                  <td className="py-4 pr-4 text-[var(--color-text-secondary)]">
-                    <div className="max-w-xs whitespace-pre-wrap">{lead.notes || "-"}</div>
-                  </td>
+                  <td className="py-4 pr-4">{formatDate(lead.created_at)}</td>
                   <td className="py-4 pr-4">
                     <div className="flex min-w-72 flex-wrap gap-2">
                       <button
@@ -254,11 +208,19 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
                       </button>
                       <button
                         type="button"
+                        className="us-btn-secondary px-3 py-2 text-xs"
+                        disabled={isPending}
+                        onClick={() => changeStatus(lead, "interested")}
+                      >
+                        {pendingActionId === `interested-${lead.id}` ? "Saving..." : "Mark Interested"}
+                      </button>
+                      <button
+                        type="button"
                         className="us-btn-primary px-3 py-2 text-xs"
                         disabled={isPending}
-                        onClick={() => changeStatus(lead, "subscribed")}
+                        onClick={() => changeStatus(lead, "signed_up")}
                       >
-                        {pendingActionId === `subscribed-${lead.id}` ? "Saving..." : "Mark Subscribed"}
+                        {pendingActionId === `signed_up-${lead.id}` ? "Saving..." : "Mark Signed Up"}
                       </button>
                       <button
                         type="button"
@@ -285,8 +247,8 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
               <input className="us-input" value={editor.businessName} onChange={(event) => setEditor({ ...editor, businessName: event.target.value })} />
             </label>
             <label className="grid gap-2 text-sm font-bold">
-              Contact name
-              <input className="us-input" value={editor.contactName} onChange={(event) => setEditor({ ...editor, contactName: event.target.value })} />
+              Owner name
+              <input className="us-input" value={editor.ownerName} onChange={(event) => setEditor({ ...editor, ownerName: event.target.value })} />
             </label>
             <label className="grid gap-2 text-sm font-bold">
               Phone
@@ -296,37 +258,19 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
               Email
               <input className="us-input" type="email" value={editor.email} onChange={(event) => setEditor({ ...editor, email: event.target.value })} />
             </label>
-            <label className="grid gap-2 text-sm font-bold">
-              Industry
-              <input className="us-input" value={editor.industry} onChange={(event) => setEditor({ ...editor, industry: event.target.value })} />
-            </label>
-            <label className="grid gap-2 text-sm font-bold">
-              Follow-up date
-              <input className="us-input" type="date" value={editor.followUpDate} onChange={(event) => setEditor({ ...editor, followUpDate: event.target.value })} />
-            </label>
-            <label className="grid gap-2 text-sm font-bold">
-              Status
-              <select className="us-input" value={editor.status} onChange={(event) => setEditor({ ...editor, status: event.target.value })}>
-                {STATUS_OPTIONS.map((status) => (
-                  <option key={status} value={status}>
-                    {statusLabel(status)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-bold">
-              Subscribed profile id
-              <input className="us-input" value={editor.subscribedProfileId} onChange={(event) => setEditor({ ...editor, subscribedProfileId: event.target.value })} />
-            </label>
+            {editor.lead ? (
+              <label className="grid gap-2 text-sm font-bold">
+                Status
+                <select className="us-input" value={editor.status} onChange={(event) => setEditor({ ...editor, status: event.target.value })}>
+                  {STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>
+                      {statusLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
           </div>
-          <label className="mt-4 grid gap-2 text-sm font-bold">
-            Address
-            <input className="us-input" value={editor.address} onChange={(event) => setEditor({ ...editor, address: event.target.value })} />
-          </label>
-          <label className="mt-4 grid gap-2 text-sm font-bold">
-            Notes
-            <textarea className="us-textarea" value={editor.notes} onChange={(event) => setEditor({ ...editor, notes: event.target.value })} />
-          </label>
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button type="button" className="us-btn-secondary px-4 py-2" onClick={() => setEditor(null)}>
               Cancel
