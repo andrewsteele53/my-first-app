@@ -31,6 +31,11 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  matching_application_id uuid;
+  matching_application_name text;
+  matching_application_notes text;
+  resolved_display_name text;
 begin
   insert into public.profiles (id, email, role, display_name, subscription_status, created_at)
   values (
@@ -47,6 +52,44 @@ begin
     display_name = coalesce(public.profiles.display_name, excluded.display_name),
     subscription_status = coalesce(public.profiles.subscription_status, excluded.subscription_status),
     created_at = coalesce(public.profiles.created_at, excluded.created_at);
+
+  select id, name, notes
+  into matching_application_id, matching_application_name, matching_application_notes
+  from public.team_applications
+  where lower(email) = lower(new.email)
+    and status = 'converted'
+  order by reviewed_at desc nulls last, created_at desc
+  limit 1;
+
+  if matching_application_id is not null then
+    resolved_display_name := coalesce(
+      nullif(matching_application_name, ''),
+      nullif(new.raw_user_meta_data->>'display_name', ''),
+      nullif(new.raw_user_meta_data->>'full_name', ''),
+      nullif(new.email, ''),
+      'Sales Rep'
+    );
+
+    update public.profiles
+    set
+      role = 'sales',
+      display_name = coalesce(nullif(public.profiles.display_name, ''), resolved_display_name),
+      email = coalesce(public.profiles.email, new.email)
+    where id = new.id;
+
+    insert into public.sales_reps (user_id, display_name, payment_notes, active)
+    values (
+      new.id,
+      resolved_display_name,
+      nullif(matching_application_notes, ''),
+      true
+    )
+    on conflict (user_id) do update
+    set
+      display_name = coalesce(nullif(public.sales_reps.display_name, ''), excluded.display_name),
+      payment_notes = coalesce(public.sales_reps.payment_notes, excluded.payment_notes),
+      active = true;
+  end if;
 
   return new;
 end;
@@ -266,16 +309,36 @@ begin
   end if;
 end $$;
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint where conname = 'team_applications_status_check'
-  ) then
-    alter table public.team_applications
-      add constraint team_applications_status_check
-      check (status in ('pending', 'approved', 'rejected'));
-  end if;
-end $$;
+alter table public.team_applications
+  drop constraint if exists team_applications_status_check;
+
+alter table public.team_applications
+  add constraint team_applications_status_check
+  check (status in ('pending', 'approved', 'rejected', 'converted'));
+
+update public.profiles as profiles
+set
+  role = 'sales',
+  display_name = coalesce(nullif(profiles.display_name, ''), nullif(team_applications.name, ''), profiles.email)
+from public.team_applications as team_applications
+where lower(profiles.email) = lower(team_applications.email)
+  and team_applications.status = 'converted';
+
+insert into public.sales_reps (user_id, display_name, payment_notes, active)
+select
+  profiles.id,
+  coalesce(nullif(team_applications.name, ''), nullif(profiles.display_name, ''), profiles.email, 'Sales Rep'),
+  nullif(team_applications.notes, ''),
+  true
+from public.team_applications as team_applications
+join public.profiles as profiles
+  on lower(profiles.email) = lower(team_applications.email)
+where team_applications.status = 'converted'
+on conflict (user_id) do update
+set
+  display_name = coalesce(nullif(public.sales_reps.display_name, ''), excluded.display_name),
+  payment_notes = coalesce(public.sales_reps.payment_notes, excluded.payment_notes),
+  active = true;
 
 do $$
 begin

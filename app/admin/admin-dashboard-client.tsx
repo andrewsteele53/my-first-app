@@ -209,7 +209,7 @@ function statusBadge(status?: string | null) {
   const className =
     normalized === "active" || normalized === "paid"
       ? "border-[rgba(46,125,90,0.2)] bg-[rgba(46,125,90,0.1)] text-[var(--color-success)]"
-      : normalized === "trialing" || normalized === "unpaid"
+      : normalized === "trialing" || normalized === "unpaid" || normalized === "invited" || normalized === "awaiting signup"
       ? "border-[rgba(183,121,31,0.24)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]"
       : "border-[var(--color-border-muted)] bg-[var(--color-section)] text-[var(--color-text-secondary)]";
 
@@ -261,6 +261,15 @@ export default function AdminDashboardClient({
   const salesRepByUserId = useMemo(
     () => new Map(activeSalesReps.filter((rep) => rep.user_id).map((rep) => [rep.user_id as string, rep])),
     [activeSalesReps]
+  );
+  const profileByEmail = useMemo(
+    () =>
+      new Map(
+        profiles
+          .filter((profile) => profile.email)
+          .map((profile) => [(profile.email as string).trim().toLowerCase(), profile])
+      ),
+    [profiles]
   );
   const assignmentBySubscriberId = useMemo(
     () =>
@@ -438,6 +447,23 @@ export default function AdminDashboardClient({
       status: application.status || "pending",
       notes: application.notes || "",
     });
+  }
+
+  function getTeamApplicationStatus(application: TeamApplicationRow) {
+    const rawStatus = application.status || "pending";
+
+    if (rawStatus !== "converted") {
+      return rawStatus;
+    }
+
+    const profile = profileByEmail.get(application.email.trim().toLowerCase());
+    const salesRep = profile ? salesRepByUserId.get(profile.id) : undefined;
+
+    if (salesRep && salesRep.active !== false) {
+      return "active";
+    }
+
+    return profile ? "awaiting signup" : "invited";
   }
 
   function submitApplication() {
@@ -691,6 +717,8 @@ export default function AdminDashboardClient({
                   const approveId = `approve-application-${application.id}`;
                   const rejectId = `reject-application-${application.id}`;
                   const deleteId = `delete-application-${application.id}`;
+                  const teamStatus = getTeamApplicationStatus(application);
+                  const isActiveApplication = teamStatus === "active";
 
                   return (
                     <tr key={application.id} className="border-b border-[var(--color-border-muted)] align-top">
@@ -698,7 +726,7 @@ export default function AdminDashboardClient({
                       <td className="py-4 pr-4 break-all">{application.email}</td>
                       <td className="py-4 pr-4">{application.phone || "-"}</td>
                       <td className="py-4 pr-4 capitalize">{application.desired_role || "sales"}</td>
-                      <td className="py-4 pr-4">{statusBadge(application.status || "pending")}</td>
+                      <td className="py-4 pr-4">{statusBadge(teamStatus)}</td>
                       <td className="max-w-72 py-4 pr-4 text-[var(--color-text-secondary)]">{application.notes || "-"}</td>
                       <td className="py-4 pr-4">{formatDate(application.created_at)}</td>
                       <td className="py-4 pr-4">
@@ -709,7 +737,7 @@ export default function AdminDashboardClient({
                           <button
                             type="button"
                             className="us-btn-primary px-3 py-2 text-xs"
-                            disabled={isPending || application.status === "approved"}
+                            disabled={isPending || isActiveApplication}
                             onClick={() =>
                               runAction(
                                 () => approveTeamApplicationAsSalesAction(formData({ application_id: application.id })),
@@ -717,7 +745,13 @@ export default function AdminDashboardClient({
                               )
                             }
                           >
-                            {pendingActionId === approveId ? "Approving..." : "Approve as Sales Rep"}
+                            {pendingActionId === approveId
+                              ? "Approving..."
+                              : isActiveApplication
+                              ? "Active"
+                              : application.status === "converted"
+                              ? "Resend Invite"
+                              : "Approve as Sales Rep"}
                           </button>
                           <button
                             type="button"
@@ -1360,6 +1394,7 @@ export default function AdminDashboardClient({
                 <option value="pending">pending</option>
                 <option value="approved">approved</option>
                 <option value="rejected">rejected</option>
+                <option value="converted">converted</option>
               </select>
             </label>
           ) : null}
