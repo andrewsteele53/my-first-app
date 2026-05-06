@@ -77,7 +77,7 @@ export default async function SalesPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
-  console.info("Sales portal current user id:", user.id);
+  console.log("AUTH USER ID:", user?.id);
   const role = await requireAccountRole(supabase, user, ["sales", "admin"]);
 
   const [salesRepResult, assignmentsResult, payoutsResult] = await Promise.all([
@@ -86,8 +86,7 @@ export default async function SalesPage() {
       .select("id, user_id, display_name, payment_notes, created_at")
       .eq("user_id", user.id)
       .eq("active", true)
-      .order("created_at", { ascending: true })
-      .limit(1),
+      .single(),
     supabase
       .from("sales_assignments")
       .select("id, sales_rep_id, subscriber_user_id, created_at")
@@ -98,8 +97,8 @@ export default async function SalesPage() {
       .order("created_at", { ascending: false }),
   ]);
 
-  const salesRep = ((salesRepResult.data ?? []) as SalesRepRow[])[0] ?? null;
-  console.info("Sales portal sales_reps query result:", salesRepResult.data);
+  const salesRep = (salesRepResult.data ?? null) as SalesRepRow | null;
+  console.log("SALES REP RESULT:", salesRep);
   if (salesRepResult.error) {
     console.error("Sales portal sales_reps query error:", salesRepResult.error);
   }
