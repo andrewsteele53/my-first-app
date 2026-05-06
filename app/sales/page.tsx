@@ -86,7 +86,7 @@ export default async function SalesPage() {
       .select("id, user_id, display_name, payment_notes, created_at")
       .eq("user_id", user.id)
       .eq("active", true)
-      .single(),
+      .limit(1),
     supabase
       .from("sales_assignments")
       .select("id, sales_rep_id, subscriber_user_id, created_at")
@@ -97,7 +97,10 @@ export default async function SalesPage() {
       .order("created_at", { ascending: false }),
   ]);
 
-  const salesRep = (salesRepResult.data ?? null) as SalesRepRow | null;
+  const salesRepRows = (salesRepResult.data ?? []) as SalesRepRow[];
+  const salesRep = salesRepRows[0] ?? null;
+  console.log("SALES_REPS ROWS FOUND:", salesRepRows.length);
+  console.log("FIRST SALES REP ID:", salesRep?.id ?? null);
   console.log("SALES REP RESULT:", salesRep);
   if (salesRepResult.error) {
     console.error("Sales portal sales_reps query error:", salesRepResult.error);
