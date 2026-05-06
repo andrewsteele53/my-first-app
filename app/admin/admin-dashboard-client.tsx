@@ -235,6 +235,10 @@ function formData(values: Record<string, string>) {
   return data;
 }
 
+function normalizeEmail(value?: string | null) {
+  return typeof value === "string" ? value.toLowerCase().trim().replace(/\s+/g, "") : "";
+}
+
 export default function AdminDashboardClient({
   currentUserId,
   profiles,
@@ -276,7 +280,7 @@ export default function AdminDashboardClient({
       new Map(
         profiles
           .filter((profile) => profile.email)
-          .map((profile) => [(profile.email as string).trim().toLowerCase(), profile])
+          .map((profile) => [normalizeEmail(profile.email), profile])
       ),
     [profiles]
   );
@@ -460,7 +464,7 @@ export default function AdminDashboardClient({
 
   function getTeamApplicationStatus(application: TeamApplicationRow) {
     const rawStatus = (application.status || "pending").trim().toLowerCase();
-    const profile = profileByEmail.get(application.email.trim().toLowerCase());
+    const profile = profileByEmail.get(normalizeEmail(application.email));
     const salesRep = profile ? salesRepByUserId.get(profile.id) : undefined;
 
     if (salesRep && salesRep.active !== false) {
@@ -744,7 +748,7 @@ export default function AdminDashboardClient({
                   const inviteSentId = `invite-sent-${application.id}`;
                   const teamStatus = getTeamApplicationStatus(application);
                   const isActiveApplication = teamStatus === "active";
-                  const hasMatchingProfile = Boolean(profileByEmail.get(application.email.trim().toLowerCase()));
+                  const hasMatchingProfile = Boolean(profileByEmail.get(normalizeEmail(application.email)));
                   const showManualInvite =
                     !hasMatchingProfile &&
                     (teamStatus === "approved" || teamStatus === "invite_sent");

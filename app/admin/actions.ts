@@ -78,7 +78,7 @@ function success(message: string): AdminActionResult {
 }
 
 function normalizeEmail(value?: string | null) {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
+  return typeof value === "string" ? value.toLowerCase().trim().replace(/\s+/g, "") : "";
 }
 
 function createServiceRoleClient() {
@@ -158,10 +158,7 @@ async function activateSalesRepProfile({
     {
       user_id: profile.id,
       display_name: resolvedDisplayName,
-      payment_notes:
-        rep?.payment_notes ||
-        (typeof paymentNotes === "string" && paymentNotes.trim()) ||
-        null,
+      payment_notes: rep?.payment_notes || (typeof paymentNotes === "string" && paymentNotes.trim()) || null,
       active: true,
     },
     { onConflict: "user_id" }
@@ -877,13 +874,11 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     throw new Error("Application email is required.");
   }
 
-  const displayName = typeof application.name === "string" ? application.name.trim() : "";
   const paymentNotes = typeof application.notes === "string" ? application.notes.trim() : "";
 
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
-    .select("id, email, display_name")
-    .ilike("email", `%${email}%`);
+    .select("id, email, display_name");
 
   if (profileError) {
     throw new Error(profileError.message);
@@ -893,6 +888,11 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     ((profileRows || []) as Array<{ id: string; email: string | null; display_name: string | null }>).find(
       (profile) => normalizeEmail(profile.email) === email
     ) || null;
+
+  console.info("Team application activation email match", {
+    applicationEmail: application.email,
+    matchedProfileEmail: matchingProfile?.email || null,
+  });
 
   if (!matchingProfile) {
     const { error: applicationUpdateError } = await supabase
@@ -916,7 +916,7 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
   const resolvedDisplayName = await activateSalesRepProfile({
     supabase,
     profile: matchingProfile,
-    displayName,
+    displayName: matchingProfile.display_name || application.name || matchingProfile.email,
     paymentNotes,
   });
 
