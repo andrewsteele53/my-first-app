@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseServiceClient } from "@supabase/supabase-js";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/roles";
 
@@ -868,10 +869,11 @@ export async function rejectTeamApplicationAction(formData: FormData) {
 
 export async function approveTeamApplicationAsSalesAction(formData: FormData) {
   try {
-    const { supabase, user } = await requireAdminContext();
+    const { user } = await requireAdminContext();
     const applicationId = clean(formData.get("application_id"));
+    const adminSupabase = createSupabaseAdminClient();
 
-    return activateTeamApplicationById(supabase, user.id, applicationId);
+    return activateTeamApplicationById(adminSupabase, user.id, applicationId);
   } catch (error) {
     console.error("ACTIVATION ERROR:", error);
     return {
@@ -885,10 +887,11 @@ export async function forceCreateSalesRepFromTeamApplicationAction(
   formData: FormData
 ): Promise<AdminActionResult> {
   try {
-    const { supabase, user } = await requireAdminContext();
+    const { user } = await requireAdminContext();
     const applicationId = clean(formData.get("application_id"));
+    const adminSupabase = createSupabaseAdminClient();
 
-    return activateTeamApplicationById(supabase, user.id, applicationId);
+    return activateTeamApplicationById(adminSupabase, user.id, applicationId);
   } catch (error) {
     console.error("ACTIVATION ERROR:", error);
     return {
@@ -899,7 +902,7 @@ export async function forceCreateSalesRepFromTeamApplicationAction(
 }
 
 async function activateTeamApplicationById(
-  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
   adminUserId: string,
   applicationId: string
 ): Promise<AdminActionResult> {
@@ -907,6 +910,8 @@ async function activateTeamApplicationById(
     if (!applicationId) {
       return { ok: false, message: "Application is required." };
     }
+
+    console.info("Activation using Supabase service-role admin client.");
 
     const { data: application, error: applicationError } = await supabase
       .from("team_applications")
@@ -932,6 +937,7 @@ async function activateTeamApplicationById(
     }
 
     console.log("PROFILES FOUND:", profiles);
+    console.info("Profiles count found:", profiles?.length ?? 0);
 
     const matchingProfile = (
       (profiles || []) as Array<{ id: string; email: string | null; display_name: string | null }>
@@ -939,6 +945,11 @@ async function activateTeamApplicationById(
 
     console.log("APP EMAIL:", application.email);
     console.log("MATCHED:", matchingProfile || null);
+    console.info("Activation email match details", {
+      normalizedApplicantEmail: normalize(application.email || ""),
+      matchedProfileId: matchingProfile?.id || null,
+      matchedProfileEmail: matchingProfile?.email || null,
+    });
 
     if (!matchingProfile) {
       console.error("NO MATCH FOUND", {
@@ -959,6 +970,7 @@ async function activateTeamApplicationById(
 
     if (salesRepError) {
       console.error("SALES REP ERROR:", salesRepError);
+      console.error("sales_reps upsert error:", salesRepError.message);
       return { ok: false, message: salesRepError.message };
     }
 
