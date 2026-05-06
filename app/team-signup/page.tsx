@@ -7,7 +7,7 @@ import { createTeamAccountAction } from "./actions";
 export default function TeamSignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; text: string; loginLink?: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -20,7 +20,7 @@ export default function TeamSignupPage() {
 
     startTransition(async () => {
       const result = await createTeamAccountAction(data);
-      setMessage({ ok: result.ok, text: result.message });
+      setMessage({ ok: result.ok, text: result.message, loginLink: result.loginLink });
 
       if (result.ok) {
         setPassword("");
@@ -84,7 +84,12 @@ export default function TeamSignupPage() {
 
         {message ? (
           <div className={message.ok ? "us-notice-success mt-4 text-sm" : "us-notice-danger mt-4 text-sm"}>
-            {message.text}
+            <p>{message.text}</p>
+            {message.loginLink ? (
+              <Link href="/login" className="us-btn-secondary mt-3 w-full px-4 py-2 text-sm">
+                Log in
+              </Link>
+            ) : null}
           </div>
         ) : null}
 

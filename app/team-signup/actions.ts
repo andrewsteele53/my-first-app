@@ -5,6 +5,7 @@ import { createClient as createSupabaseServiceClient } from "@supabase/supabase-
 export type TeamSignupResult = {
   ok: boolean;
   message: string;
+  loginLink?: boolean;
 };
 
 type TeamApplication = {
@@ -35,6 +36,21 @@ function clean(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function normalizeStatus(value?: string | null) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+const APPROVED_TEAM_SIGNUP_STATUSES = new Set([
+  "approved",
+  "invite_sent",
+  "invited",
+  "active",
+]);
+
 function isExistingAccountError(message: string) {
   const normalized = message.toLowerCase();
   return normalized.includes("already") || normalized.includes("registered") || normalized.includes("exists");
@@ -54,17 +70,19 @@ function userFacingCreateUserError(message: string) {
 
 async function activateTeamAccount({
   supabase,
-  application,
+  applications,
   userId,
   email,
   displayName,
 }: {
   supabase: ReturnType<typeof createServiceRoleClient>;
-  application: TeamApplication;
+  applications: TeamApplication[];
   userId: string;
   email: string;
   displayName: string;
 }) {
+  const application = applications[0];
+
   const { error: profileError } = await supabase.from("profiles").upsert(
     {
       id: userId,
@@ -94,7 +112,7 @@ async function activateTeamAccount({
     {
       user_id: userId,
       display_name: displayName,
-      payment_notes: existingRep?.payment_notes || application.notes || null,
+      payment_notes: existingRep?.payment_notes || application?.notes || null,
       active: true,
     },
     { onConflict: "user_id" }
@@ -107,7 +125,7 @@ async function activateTeamAccount({
   const { error: applicationError } = await supabase
     .from("team_applications")
     .update({ status: "active" })
-    .eq("id", application.id);
+    .in("id", applications.map((matchingApplication) => matchingApplication.id));
 
   if (applicationError) {
     throw new Error(applicationError.message);
@@ -116,7 +134,7 @@ async function activateTeamAccount({
 
 export async function createTeamAccountAction(formData: FormData): Promise<TeamSignupResult> {
   try {
-    const email = clean(formData.get("email")).toLowerCase();
+    const email = normalizeEmail(clean(formData.get("email")));
     const password = clean(formData.get("password"));
 
     if (!email || !password) {
@@ -129,27 +147,41 @@ export async function createTeamAccountAction(formData: FormData): Promise<TeamS
 
     const supabase = createServiceRoleClient();
 
-    const { data: application, error: applicationError } = await supabase
+    const { data: applicationRows, error: applicationError } = await supabase
       .from("team_applications")
       .select("id, name, email, notes, status")
       .ilike("email", email)
-      .in("status", ["approved", "invite_sent"])
       .order("reviewed_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: false });
 
     if (applicationError) {
       return { ok: false, message: applicationError.message };
     }
 
-    if (!application) {
+    const matchingApplications = ((applicationRows || []) as TeamApplication[]).filter(
+      (application) => normalizeEmail(application.email) === email
+    );
+    const statusesFound = matchingApplications.map((application) => application.status || "");
+    const approvedApplications = matchingApplications.filter((application) =>
+      APPROVED_TEAM_SIGNUP_STATUSES.has(normalizeStatus(application.status))
+    );
+
+    if (approvedApplications.length === 0) {
+      console.warn("Team signup approval check failed", {
+        submittedEmail: email,
+        matchingTeamApplicationsCount: matchingApplications.length,
+        statusesFound,
+      });
+    }
+
+    if (approvedApplications.length === 0) {
       return {
         ok: false,
         message: "This email has not been approved for team access.",
       };
     }
 
+    const application = approvedApplications[0];
     const displayName =
       (typeof application.name === "string" && application.name.trim()) ||
       email;
@@ -166,14 +198,19 @@ export async function createTeamAccountAction(formData: FormData): Promise<TeamS
 
     if (createUserError) {
       console.error("Team signup auth user creation failed", createUserError);
-      return { ok: false, message: userFacingCreateUserError(createUserError.message) };
+      const userMessage = userFacingCreateUserError(createUserError.message);
+      return {
+        ok: false,
+        message: userMessage,
+        loginLink: userMessage === "You already have an account. Please log in instead.",
+      };
     }
 
     if (createdUser.user?.id) {
       try {
         await activateTeamAccount({
           supabase,
-          application: application as TeamApplication,
+          applications: approvedApplications,
           userId: createdUser.user.id,
           email,
           displayName,
