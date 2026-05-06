@@ -38,6 +38,7 @@ import {
 } from "@/lib/sales-commission";
 
 const TEAM_SIGNUP_LINK = "https://unifiedsteele.app/team-signup";
+const PENDING_TEAM_APPLICATION_STATUSES = new Set(["pending", "approved", "invite_sent", "invited"]);
 
 export type ProfileRow = {
   id: string;
@@ -319,6 +320,9 @@ export default function AdminDashboardClient({
     [assignments]
   );
   const subscribers = profiles.filter((profile) => profile.role !== "admin" && profile.role !== "sales");
+  const pendingTeamApplications = teamApplications.filter((application) =>
+    PENDING_TEAM_APPLICATION_STATUSES.has((application.status || "pending").trim().toLowerCase())
+  );
   const repSummaries = salesReps.map((rep) => {
     const repAssignments = assignments.filter((assignment) => assignment.sales_rep_id === rep.id);
     const assignedProfiles = repAssignments
@@ -351,6 +355,7 @@ export default function AdminDashboardClient({
   const selectedPerformanceSummary = selectedPerformanceRepId
     ? repSummaries.find((summary) => summary.rep.id === selectedPerformanceRepId)
     : undefined;
+  const activeRepSummaries = repSummaries.filter((summary) => summary.rep.active !== false);
   const jobListingById = useMemo(
     () => new Map(jobListings.map((job) => [job.id, job])),
     [jobListings]
@@ -500,24 +505,12 @@ export default function AdminDashboardClient({
   }
 
   function getTeamApplicationStatus(application: TeamApplicationRow) {
-    const rawStatus = (application.status || "pending").trim().toLowerCase();
-    const profile = profileByEmail.get(normalizeEmail(application.email));
-    const salesRep = profile ? salesRepByUserId.get(profile.id) : undefined;
-
-    if (salesRep && salesRep.active !== false) {
-      return "active";
-    }
-
-    if (rawStatus === "active") {
-      return "approved";
-    }
-
-    return rawStatus;
+    return (application.status || "pending").trim().toLowerCase();
   }
 
   function getTeamInviteMessage(application: TeamApplicationRow) {
     const name = application.name?.trim() || "there";
-    return `Hi ${name}, your Unified Steele sales team application has been approved. Please create your team account using this same email address: ${application.email}.\n\nSign up here:\n${TEAM_SIGNUP_LINK}\n\nOnce your account is created, I’ll activate your sales portal.`;
+    return `Hi ${name}, your Unified Steele sales team application has been approved. Please create your team account using this same email address: ${application.email}.\n\nSign up here:\n${TEAM_SIGNUP_LINK}\n\nOnce your account is created, I'll activate your sales portal.`;
   }
 
   function copyText(text: string, successMessage: string) {
@@ -759,7 +752,7 @@ export default function AdminDashboardClient({
           <p className="mt-6 rounded-[1rem] border border-[rgba(176,59,59,0.22)] bg-[rgba(176,59,59,0.08)] p-4 text-sm font-semibold text-[var(--color-danger)]">
             Pending team members could not load: {teamApplicationsError}
           </p>
-        ) : teamApplications.length === 0 ? (
+        ) : pendingTeamApplications.length === 0 ? (
           <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
             No pending team members yet.
           </p>
@@ -779,7 +772,7 @@ export default function AdminDashboardClient({
                 </tr>
               </thead>
               <tbody>
-                {teamApplications.map((application) => {
+                {pendingTeamApplications.map((application) => {
                   const approveId = `approve-application-${application.id}`;
                   const rejectId = `reject-application-${application.id}`;
                   const deleteId = `delete-application-${application.id}`;
@@ -1240,13 +1233,13 @@ export default function AdminDashboardClient({
       <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
         <p className="us-kicker">Sales Reps</p>
         <h2 className="mt-2 text-2xl font-extrabold">Sales team members</h2>
-        {repSummaries.length === 0 ? (
+        {activeRepSummaries.length === 0 ? (
           <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
-            No sales reps yet. Use Make Sales Rep from the users table above.
+            No active sales reps yet. Use Make Sales Rep from the users table above.
           </p>
         ) : (
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {repSummaries.map((summary) => (
+            {activeRepSummaries.map((summary) => (
               <div key={summary.rep.id} className="rounded-[1.2rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -1288,6 +1281,8 @@ export default function AdminDashboardClient({
                   </div>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <MiniStat label="Status" value={summary.rep.active === false ? "Inactive" : "Active"} />
+                  <MiniStat label="Created" value={formatDate(summary.rep.created_at)} />
                   <MiniStat label="Assigned" value={String(summary.assignedCount)} />
                   <MiniStat label="Active Paid" value={String(summary.activeAssignedCount)} />
                   <MiniStat label="Estimated Owed" value={formatMoney(summary.estimatedOwed)} />

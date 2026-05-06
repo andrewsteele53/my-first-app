@@ -965,7 +965,7 @@ async function activateTeamApplicationById(
 
     const salesRepPayload = {
       user_id: profile.id,
-      display_name: profile.display_name,
+      display_name: profile.display_name || application.name || profile.email || "Sales Rep",
       active: true,
     };
     console.log("CHECK / ACTIVATE SALES REP UPSERT:", salesRepPayload);
