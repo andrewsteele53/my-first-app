@@ -35,7 +35,7 @@ import {
   isActivePaidSubscription,
 } from "@/lib/sales-commission";
 
-const TEAM_SIGNUP_LINK = "https://unifiedsteele.app/login";
+const TEAM_SIGNUP_LINK = "https://unifiedsteele.app/team-signup";
 
 export type ProfileRow = {
   id: string;
@@ -467,7 +467,7 @@ export default function AdminDashboardClient({
 
   function getTeamInviteMessage(application: TeamApplicationRow) {
     const name = application.name?.trim() || "there";
-    return `Hi ${name}, your Unified Steele sales team application has been approved. Please create your account using this same email address: ${application.email}. Once your account is created, I’ll activate your sales portal.`;
+    return `Hi ${name}, your Unified Steele sales team application has been approved. Please create your team account using this same email address: ${application.email}.\n\nSign up here:\n${TEAM_SIGNUP_LINK}\n\nOnce your account is created, I’ll activate your sales portal.`;
   }
 
   function copyText(text: string, successMessage: string) {
