@@ -57,7 +57,7 @@ begin
   into matching_application_id, matching_application_name, matching_application_notes
   from public.team_applications
   where lower(email) = lower(new.email)
-    and status = 'converted'
+    and status in ('approved', 'invite_sent')
   order by reviewed_at desc nulls last, created_at desc
   limit 1;
 
@@ -89,6 +89,10 @@ begin
       display_name = coalesce(nullif(public.sales_reps.display_name, ''), excluded.display_name),
       payment_notes = coalesce(public.sales_reps.payment_notes, excluded.payment_notes),
       active = true;
+
+    update public.team_applications
+    set status = 'active'
+    where id = matching_application_id;
   end if;
 
   return new;
@@ -312,9 +316,13 @@ end $$;
 alter table public.team_applications
   drop constraint if exists team_applications_status_check;
 
+update public.team_applications
+set status = 'approved'
+where status = 'converted';
+
 alter table public.team_applications
   add constraint team_applications_status_check
-  check (status in ('pending', 'approved', 'rejected', 'converted'));
+  check (status in ('pending', 'approved', 'invite_sent', 'active', 'rejected'));
 
 update public.profiles as profiles
 set
@@ -322,7 +330,7 @@ set
   display_name = coalesce(nullif(profiles.display_name, ''), nullif(team_applications.name, ''), profiles.email)
 from public.team_applications as team_applications
 where lower(profiles.email) = lower(team_applications.email)
-  and team_applications.status = 'converted';
+  and team_applications.status in ('approved', 'invite_sent', 'active');
 
 insert into public.sales_reps (user_id, display_name, payment_notes, active)
 select
@@ -333,12 +341,19 @@ select
 from public.team_applications as team_applications
 join public.profiles as profiles
   on lower(profiles.email) = lower(team_applications.email)
-where team_applications.status = 'converted'
+where team_applications.status in ('approved', 'invite_sent', 'active')
 on conflict (user_id) do update
 set
   display_name = coalesce(nullif(public.sales_reps.display_name, ''), excluded.display_name),
   payment_notes = coalesce(public.sales_reps.payment_notes, excluded.payment_notes),
   active = true;
+
+update public.team_applications as team_applications
+set status = 'active'
+from public.profiles as profiles
+where lower(profiles.email) = lower(team_applications.email)
+  and team_applications.status in ('approved', 'invite_sent')
+  and profiles.role = 'sales';
 
 do $$
 begin

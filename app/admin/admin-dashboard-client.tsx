@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   approveJobApplicationAsPendingTeamMemberAction,
@@ -15,6 +15,7 @@ import {
   deleteTeamApplicationAction,
   getResumeDownloadUrlAction,
   makeSalesRepAction,
+  markTeamInviteSentAction,
   markPayoutPaidAction,
   rejectTeamApplicationAction,
   removeSalesRepAction,
@@ -33,6 +34,8 @@ import {
   formatMoney,
   isActivePaidSubscription,
 } from "@/lib/sales-commission";
+
+const TEAM_SIGNUP_LINK = "https://unifiedsteele.app/login";
 
 export type ProfileRow = {
   id: string;
@@ -206,16 +209,17 @@ function getProfileName(profile?: ProfileRow | null) {
 
 function statusBadge(status?: string | null) {
   const normalized = status || "inactive";
+  const label = normalized.replace(/_/g, " ");
   const className =
     normalized === "active" || normalized === "paid"
       ? "border-[rgba(46,125,90,0.2)] bg-[rgba(46,125,90,0.1)] text-[var(--color-success)]"
-      : normalized === "trialing" || normalized === "unpaid" || normalized === "invited" || normalized === "awaiting signup"
+      : normalized === "trialing" || normalized === "unpaid" || normalized === "invite_sent" || normalized === "approved"
       ? "border-[rgba(183,121,31,0.24)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]"
       : "border-[var(--color-border-muted)] bg-[var(--color-section)] text-[var(--color-text-secondary)]";
 
   return (
     <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold capitalize ${className}`}>
-      {normalized}
+      {label}
     </span>
   );
 }
@@ -451,11 +455,6 @@ export default function AdminDashboardClient({
 
   function getTeamApplicationStatus(application: TeamApplicationRow) {
     const rawStatus = application.status || "pending";
-
-    if (rawStatus !== "converted") {
-      return rawStatus;
-    }
-
     const profile = profileByEmail.get(application.email.trim().toLowerCase());
     const salesRep = profile ? salesRepByUserId.get(profile.id) : undefined;
 
@@ -463,7 +462,23 @@ export default function AdminDashboardClient({
       return "active";
     }
 
-    return profile ? "awaiting signup" : "invited";
+    return rawStatus;
+  }
+
+  function getTeamInviteMessage(application: TeamApplicationRow) {
+    const name = application.name?.trim() || "there";
+    return `Hi ${name}, your Unified Steele sales team application has been approved. Please create your account using this same email address: ${application.email}. Once your account is created, I’ll activate your sales portal.`;
+  }
+
+  function copyText(text: string, successMessage: string) {
+    startTransition(async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        setMessage({ ok: true, message: successMessage });
+      } catch {
+        setMessage({ ok: false, message: "Unable to copy. Select the text and copy it manually." });
+      }
+    });
   }
 
   function submitApplication() {
@@ -717,77 +732,138 @@ export default function AdminDashboardClient({
                   const approveId = `approve-application-${application.id}`;
                   const rejectId = `reject-application-${application.id}`;
                   const deleteId = `delete-application-${application.id}`;
+                  const inviteSentId = `invite-sent-${application.id}`;
                   const teamStatus = getTeamApplicationStatus(application);
                   const isActiveApplication = teamStatus === "active";
+                  const hasMatchingProfile = Boolean(profileByEmail.get(application.email.trim().toLowerCase()));
+                  const showManualInvite =
+                    !hasMatchingProfile &&
+                    (application.status === "approved" || application.status === "invite_sent");
+                  const inviteMessage = getTeamInviteMessage(application);
 
                   return (
-                    <tr key={application.id} className="border-b border-[var(--color-border-muted)] align-top">
-                      <td className="py-4 pr-4 font-semibold">{application.name || "-"}</td>
-                      <td className="py-4 pr-4 break-all">{application.email}</td>
-                      <td className="py-4 pr-4">{application.phone || "-"}</td>
-                      <td className="py-4 pr-4 capitalize">{application.desired_role || "sales"}</td>
-                      <td className="py-4 pr-4">{statusBadge(teamStatus)}</td>
-                      <td className="max-w-72 py-4 pr-4 text-[var(--color-text-secondary)]">{application.notes || "-"}</td>
-                      <td className="py-4 pr-4">{formatDate(application.created_at)}</td>
-                      <td className="py-4 pr-4">
-                        <div className="flex flex-wrap gap-2">
-                          <button type="button" className="us-btn-secondary px-3 py-2 text-xs" onClick={() => openApplicationEditor(application)}>
-                            Edit Application
-                          </button>
-                          <button
-                            type="button"
-                            className="us-btn-primary px-3 py-2 text-xs"
-                            disabled={isPending || isActiveApplication}
-                            onClick={() =>
-                              runAction(
-                                () => approveTeamApplicationAsSalesAction(formData({ application_id: application.id })),
-                                approveId
-                              )
-                            }
-                          >
-                            {pendingActionId === approveId
-                              ? "Approving..."
-                              : isActiveApplication
-                              ? "Active"
-                              : application.status === "converted"
-                              ? "Resend Invite"
-                              : "Approve as Sales Rep"}
-                          </button>
-                          <button
-                            type="button"
-                            className="us-btn-secondary px-3 py-2 text-xs"
-                            disabled={isPending || application.status === "rejected"}
-                            onClick={() =>
-                              runAction(
-                                () => rejectTeamApplicationAction(formData({ application_id: application.id })),
-                                rejectId
-                              )
-                            }
-                          >
-                            {pendingActionId === rejectId ? "Rejecting..." : "Reject"}
-                          </button>
-                          <button
-                            type="button"
-                            className="us-btn-danger px-3 py-2 text-xs"
-                            onClick={() =>
-                              setConfirm({
-                                title: "Delete Application",
-                                message: `Delete the team application for ${application.email}? This cannot be undone.`,
-                                confirmLabel: "Delete Application",
-                                danger: true,
-                                onConfirm: () =>
-                                  runAction(
-                                    () => deleteTeamApplicationAction(formData({ application_id: application.id })),
-                                    deleteId
-                                  ),
-                              })
-                            }
-                          >
-                            {pendingActionId === deleteId ? "Deleting..." : "Delete"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <Fragment key={application.id}>
+                      <tr className="border-b border-[var(--color-border-muted)] align-top">
+                        <td className="py-4 pr-4 font-semibold">{application.name || "-"}</td>
+                        <td className="py-4 pr-4 break-all">{application.email}</td>
+                        <td className="py-4 pr-4">{application.phone || "-"}</td>
+                        <td className="py-4 pr-4 capitalize">{application.desired_role || "sales"}</td>
+                        <td className="py-4 pr-4">{statusBadge(teamStatus)}</td>
+                        <td className="max-w-72 py-4 pr-4 text-[var(--color-text-secondary)]">{application.notes || "-"}</td>
+                        <td className="py-4 pr-4">{formatDate(application.created_at)}</td>
+                        <td className="py-4 pr-4">
+                          <div className="flex flex-wrap gap-2">
+                            <button type="button" className="us-btn-secondary px-3 py-2 text-xs" onClick={() => openApplicationEditor(application)}>
+                              Edit Application
+                            </button>
+                            <button
+                              type="button"
+                              className="us-btn-primary px-3 py-2 text-xs"
+                              disabled={isPending || isActiveApplication}
+                              onClick={() =>
+                                runAction(
+                                  () => approveTeamApplicationAsSalesAction(formData({ application_id: application.id })),
+                                  approveId
+                                )
+                              }
+                            >
+                              {pendingActionId === approveId
+                                ? "Approving..."
+                                : isActiveApplication
+                                ? "Active"
+                                : application.status === "approved" || application.status === "invite_sent"
+                                ? "Check / Activate"
+                                : "Approve as Sales Rep"}
+                            </button>
+                            <button
+                              type="button"
+                              className="us-btn-secondary px-3 py-2 text-xs"
+                              disabled={isPending || application.status === "rejected"}
+                              onClick={() =>
+                                runAction(
+                                  () => rejectTeamApplicationAction(formData({ application_id: application.id })),
+                                  rejectId
+                                )
+                              }
+                            >
+                              {pendingActionId === rejectId ? "Rejecting..." : "Reject"}
+                            </button>
+                            <button
+                              type="button"
+                              className="us-btn-danger px-3 py-2 text-xs"
+                              onClick={() =>
+                                setConfirm({
+                                  title: "Delete Application",
+                                  message: `Delete the team application for ${application.email}? This cannot be undone.`,
+                                  confirmLabel: "Delete Application",
+                                  danger: true,
+                                  onConfirm: () =>
+                                    runAction(
+                                      () => deleteTeamApplicationAction(formData({ application_id: application.id })),
+                                      deleteId
+                                    ),
+                                })
+                              }
+                            >
+                              {pendingActionId === deleteId ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {showManualInvite ? (
+                        <tr className="border-b border-[var(--color-border-muted)]">
+                          <td colSpan={8} className="py-4">
+                            <div className="rounded-[1.1rem] border border-[rgba(183,121,31,0.24)] bg-[rgba(183,121,31,0.08)] p-4">
+                              <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+                                <div className="space-y-3 text-sm">
+                                  <div>
+                                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">Manual invite</p>
+                                    <p className="mt-1 font-bold">{application.email}</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-bold">Signup link</p>
+                                    <p className="mt-1 break-all rounded-[0.8rem] border border-[var(--color-border-muted)] bg-white px-3 py-2 text-[var(--color-text-secondary)]">
+                                      {TEAM_SIGNUP_LINK}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="font-bold">Invite message</p>
+                                    <p className="mt-1 whitespace-pre-wrap rounded-[0.8rem] border border-[var(--color-border-muted)] bg-white px-3 py-2 text-[var(--color-text-secondary)]">
+                                      {inviteMessage}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2 lg:justify-end">
+                                  <button type="button" className="us-btn-secondary px-3 py-2 text-xs" onClick={() => copyText(TEAM_SIGNUP_LINK, "Signup link copied.")}>
+                                    Copy Signup Link
+                                  </button>
+                                  <button type="button" className="us-btn-secondary px-3 py-2 text-xs" onClick={() => copyText(inviteMessage, "Invite message copied.")}>
+                                    Copy Invite Message
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="us-btn-primary px-3 py-2 text-xs"
+                                    disabled={isPending || application.status === "invite_sent"}
+                                    onClick={() =>
+                                      runAction(
+                                        () => markTeamInviteSentAction(formData({ application_id: application.id })),
+                                        inviteSentId
+                                      )
+                                    }
+                                  >
+                                    {pendingActionId === inviteSentId
+                                      ? "Marking..."
+                                      : application.status === "invite_sent"
+                                      ? "Invite Sent"
+                                      : "Mark as Invite Sent"}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -1393,8 +1469,9 @@ export default function AdminDashboardClient({
               <select className="us-input" value={editApplication.status} onChange={(event) => setEditApplication({ ...editApplication, status: event.target.value })}>
                 <option value="pending">pending</option>
                 <option value="approved">approved</option>
+                <option value="invite_sent">invite_sent</option>
+                <option value="active">active</option>
                 <option value="rejected">rejected</option>
-                <option value="converted">converted</option>
               </select>
             </label>
           ) : null}

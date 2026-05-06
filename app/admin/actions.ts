@@ -26,7 +26,13 @@ function cleanRole(value: FormDataEntryValue | null) {
 
 function cleanApplicationStatus(value: FormDataEntryValue | null) {
   const status = clean(value);
-  if (status === "pending" || status === "approved" || status === "rejected" || status === "converted") {
+  if (
+    status === "pending" ||
+    status === "approved" ||
+    status === "invite_sent" ||
+    status === "active" ||
+    status === "rejected"
+  ) {
     return status;
   }
 
@@ -69,144 +75,6 @@ function createServiceRoleClient() {
       persistSession: false,
     },
   });
-}
-
-function getInviteRedirectTo() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  return siteUrl ? `${siteUrl.replace(/\/$/, "")}/login` : undefined;
-}
-
-type AuthUserSummary = {
-  id: string;
-  email?: string | null;
-  created_at?: string | null;
-  user_metadata?: Record<string, unknown> | null;
-};
-
-async function findAuthUserByEmail(
-  serviceSupabase: ReturnType<typeof createServiceRoleClient>,
-  email: string
-) {
-  const normalizedEmail = email.trim().toLowerCase();
-  const perPage = 1000;
-  let page = 1;
-
-  while (true) {
-    const { data, error } = await serviceSupabase.auth.admin.listUsers({
-      page,
-      perPage,
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    const match = (data.users as AuthUserSummary[]).find(
-      (authUser) => (authUser.email || "").trim().toLowerCase() === normalizedEmail
-    );
-
-    if (match) {
-      return match;
-    }
-
-    if (data.users.length < perPage) {
-      return null;
-    }
-
-    page += 1;
-  }
-}
-
-async function activateSalesRepForAuthUser({
-  serviceSupabase,
-  authUser,
-  email,
-  displayName,
-  paymentNotes,
-}: {
-  serviceSupabase: ReturnType<typeof createServiceRoleClient>;
-  authUser: AuthUserSummary;
-  email: string;
-  displayName: string;
-  paymentNotes: string;
-}) {
-  const normalizedEmail = email.trim().toLowerCase();
-  const authEmail = (authUser.email || normalizedEmail).trim().toLowerCase();
-
-  const { data: existingProfile, error: profileReadError } = await serviceSupabase
-    .from("profiles")
-    .select("id, email, display_name, subscription_status, created_at")
-    .eq("id", authUser.id)
-    .maybeSingle();
-
-  if (profileReadError) {
-    throw new Error(profileReadError.message);
-  }
-
-  const metadata = authUser.user_metadata || {};
-  const resolvedDisplayName =
-    displayName ||
-    (typeof existingProfile?.display_name === "string" && existingProfile.display_name.trim()) ||
-    (typeof metadata.display_name === "string" && metadata.display_name.trim()) ||
-    (typeof metadata.full_name === "string" && metadata.full_name.trim()) ||
-    authEmail ||
-    "Sales Rep";
-
-  if (existingProfile) {
-    const { error: profileUpdateError } = await serviceSupabase
-      .from("profiles")
-      .update({
-        email: existingProfile.email || authEmail,
-        display_name: existingProfile.display_name || resolvedDisplayName,
-        role: "sales",
-        subscription_status: existingProfile.subscription_status || "inactive",
-        created_at: existingProfile.created_at || authUser.created_at || new Date().toISOString(),
-      })
-      .eq("id", authUser.id);
-
-    if (profileUpdateError) {
-      throw new Error(profileUpdateError.message);
-    }
-  } else {
-    const { error: profileInsertError } = await serviceSupabase.from("profiles").insert({
-      id: authUser.id,
-      email: authEmail,
-      display_name: resolvedDisplayName,
-      role: "sales",
-      subscription_status: "inactive",
-      created_at: authUser.created_at || new Date().toISOString(),
-    });
-
-    if (profileInsertError) {
-      throw new Error(profileInsertError.message);
-    }
-  }
-
-  const { data: existingRep, error: repReadError } = await serviceSupabase
-    .from("sales_reps")
-    .select("payment_notes")
-    .eq("user_id", authUser.id)
-    .maybeSingle();
-
-  if (repReadError) {
-    throw new Error(repReadError.message);
-  }
-
-  const { error: repError } = await serviceSupabase.from("sales_reps").upsert(
-    {
-      user_id: authUser.id,
-      display_name: resolvedDisplayName,
-      payment_notes: existingRep?.payment_notes || paymentNotes || null,
-      active: true,
-    },
-    { onConflict: "user_id" }
-  );
-
-  if (repError) {
-    throw new Error(repError.message);
-  }
-
-  return resolvedDisplayName;
 }
 
 async function requireAdminContext() {
@@ -841,7 +709,7 @@ export async function updateTeamApplicationAction(formData: FormData) {
   const status = cleanApplicationStatus(formData.get("status"));
   const notes = clean(formData.get("notes"));
   const reviewedFields =
-    status === "approved" || status === "rejected" || status === "converted"
+    status === "approved" || status === "invite_sent" || status === "active" || status === "rejected"
       ? { reviewed_at: new Date().toISOString(), reviewed_by: user.id }
       : { reviewed_at: null, reviewed_by: null };
 
@@ -901,7 +769,6 @@ export async function rejectTeamApplicationAction(formData: FormData) {
 
 export async function approveTeamApplicationAsSalesAction(formData: FormData) {
   const { supabase, user } = await requireAdminContext();
-  const serviceSupabase = createServiceRoleClient();
   const applicationId = clean(formData.get("application_id"));
 
   if (!applicationId) {
@@ -931,10 +798,20 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
   const displayName = typeof application.name === "string" ? application.name.trim() : "";
   const paymentNotes = typeof application.notes === "string" ? application.notes.trim() : "";
 
-  const { error: applicationUpdateError } = await serviceSupabase
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, email, display_name")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  const { error: applicationUpdateError } = await supabase
     .from("team_applications")
     .update({
-      status: "converted",
+      status: "approved",
       reviewed_at: new Date().toISOString(),
       reviewed_by: user.id,
     })
@@ -944,33 +821,78 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     throw new Error(applicationUpdateError.message);
   }
 
-  const authUser = await findAuthUserByEmail(serviceSupabase, email);
-
-  if (!authUser) {
-    const { error: inviteError } = await serviceSupabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: getInviteRedirectTo(),
-    });
-
-    if (inviteError) {
-      throw new Error(inviteError.message);
-    }
-
+  if (!profile) {
     revalidatePath("/admin");
-    revalidatePath("/sales");
-    return success("Invited. This applicant is awaiting signup with that email.");
+    return success("Approved. Use the manual invite panel to send this applicant the signup link.");
   }
 
-  const resolvedDisplayName = await activateSalesRepForAuthUser({
-    serviceSupabase,
-    authUser,
-    email,
-    displayName,
-    paymentNotes,
-  });
+  const resolvedDisplayName =
+    displayName ||
+    (typeof profile.display_name === "string" && profile.display_name.trim()) ||
+    (typeof profile.email === "string" && profile.email.trim()) ||
+    email;
+
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({ role: "sales" })
+    .eq("id", profile.id);
+
+  if (roleError) {
+    throw new Error(roleError.message);
+  }
+
+  const { data: existingRep, error: existingRepError } = await supabase
+    .from("sales_reps")
+    .select("payment_notes")
+    .eq("user_id", profile.id)
+    .maybeSingle();
+
+  if (existingRepError) {
+    throw new Error(existingRepError.message);
+  }
+
+  const { error: repError } = await supabase.from("sales_reps").upsert(
+    {
+      user_id: profile.id,
+      display_name: resolvedDisplayName,
+      payment_notes: existingRep?.payment_notes || paymentNotes || null,
+      active: true,
+    },
+    { onConflict: "user_id" }
+  );
+
+  if (repError) {
+    throw new Error(repError.message);
+  }
 
   revalidatePath("/admin");
   revalidatePath("/sales");
   return success(`${resolvedDisplayName} is active as a sales rep.`);
+}
+
+export async function markTeamInviteSentAction(formData: FormData) {
+  const { supabase, user } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+
+  if (!applicationId) {
+    throw new Error("Application is required.");
+  }
+
+  const { error } = await supabase
+    .from("team_applications")
+    .update({
+      status: "invite_sent",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .eq("id", applicationId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  return success("Invite marked as sent.");
 }
 
 export async function deleteTeamApplicationAction(formData: FormData) {
@@ -1186,7 +1108,6 @@ export async function approveJobApplicationAsPendingTeamMemberAction(formData: F
 
 export async function approveJobApplicationAsSalesRepAction(formData: FormData) {
   const { supabase, user } = await requireAdminContext();
-  const serviceSupabase = createServiceRoleClient();
   const applicationId = clean(formData.get("application_id"));
 
   if (!applicationId) {
@@ -1228,22 +1149,23 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
 
   const displayName = typeof application.full_name === "string" ? application.full_name.trim() : "";
   const paymentNotes = typeof application.notes === "string" ? application.notes.trim() : "";
-  const authUser = await findAuthUserByEmail(serviceSupabase, email);
 
-  if (!authUser) {
-    const { error: inviteError } = await serviceSupabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: getInviteRedirectTo(),
-    });
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, email, display_name")
+    .ilike("email", email)
+    .maybeSingle();
 
-    if (inviteError) {
-      throw new Error(inviteError.message);
-    }
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
 
-    const { error: teamApplicationError } = await serviceSupabase.from("team_applications").insert({
+  if (!profile) {
+    const { error: teamApplicationError } = await supabase.from("team_applications").insert({
       name: displayName || null,
       email,
       desired_role: "sales",
-      status: "converted",
+      status: "approved",
       notes: paymentNotes || "Created from approved job application.",
       reviewed_at: new Date().toISOString(),
       reviewed_by: user.id,
@@ -1254,17 +1176,47 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
     }
 
     revalidatePath("/admin");
-    revalidatePath("/sales");
-    return success("Applicant approved and invited. They are awaiting signup with that email.");
+    return success("Applicant approved. Use the manual invite panel to send this applicant the signup link.");
   }
 
-  const resolvedDisplayName = await activateSalesRepForAuthUser({
-    serviceSupabase,
-    authUser,
-    email,
-    displayName,
-    paymentNotes,
-  });
+  const resolvedDisplayName =
+    displayName ||
+    (typeof profile.display_name === "string" && profile.display_name.trim()) ||
+    (typeof profile.email === "string" && profile.email.trim()) ||
+    email;
+
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({ role: "sales" })
+    .eq("id", profile.id);
+
+  if (roleError) {
+    throw new Error(roleError.message);
+  }
+
+  const { data: existingRep, error: existingRepError } = await supabase
+    .from("sales_reps")
+    .select("payment_notes")
+    .eq("user_id", profile.id)
+    .maybeSingle();
+
+  if (existingRepError) {
+    throw new Error(existingRepError.message);
+  }
+
+  const { error: repError } = await supabase.from("sales_reps").upsert(
+    {
+      user_id: profile.id,
+      display_name: resolvedDisplayName,
+      payment_notes: existingRep?.payment_notes || paymentNotes || null,
+      active: true,
+    },
+    { onConflict: "user_id" }
+  );
+
+  if (repError) {
+    throw new Error(repError.message);
+  }
 
   revalidatePath("/admin");
   revalidatePath("/sales");
