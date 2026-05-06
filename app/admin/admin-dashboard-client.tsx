@@ -14,6 +14,7 @@ import {
   deleteJobApplicationAction,
   deleteJobListingAction,
   deleteTeamApplicationAction,
+  forceCreateSalesRepFromTeamApplicationAction,
   getResumeDownloadUrlAction,
   makeSalesRepAction,
   markTeamInviteSentAction,
@@ -745,6 +746,7 @@ export default function AdminDashboardClient({
                   const approveId = `approve-application-${application.id}`;
                   const rejectId = `reject-application-${application.id}`;
                   const deleteId = `delete-application-${application.id}`;
+                  const forceCreateRepId = `force-create-rep-${application.id}`;
                   const inviteSentId = `invite-sent-${application.id}`;
                   const teamStatus = getTeamApplicationStatus(application);
                   const isActiveApplication = teamStatus === "active";
@@ -789,6 +791,19 @@ export default function AdminDashboardClient({
                                   teamStatus === "invited"
                                 ? "Check / Activate"
                                 : "Approve as Sales Rep"}
+                            </button>
+                            <button
+                              type="button"
+                              className="us-btn-secondary px-3 py-2 text-xs"
+                              disabled={isPending}
+                              onClick={() =>
+                                runAction(
+                                  () => forceCreateSalesRepFromTeamApplicationAction(formData({ application_id: application.id })),
+                                  forceCreateRepId
+                                )
+                              }
+                            >
+                              {pendingActionId === forceCreateRepId ? "Activating..." : "Force Create Sales Rep From Email"}
                             </button>
                             <button
                               type="button"

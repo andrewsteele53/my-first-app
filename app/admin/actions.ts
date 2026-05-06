@@ -850,6 +850,23 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
   const { supabase, user } = await requireAdminContext();
   const applicationId = clean(formData.get("application_id"));
 
+  return activateTeamApplicationById(supabase, user.id, applicationId);
+}
+
+export async function forceCreateSalesRepFromTeamApplicationAction(
+  formData: FormData
+): Promise<AdminActionResult> {
+  const { supabase, user } = await requireAdminContext();
+  const applicationId = clean(formData.get("application_id"));
+
+  return activateTeamApplicationById(supabase, user.id, applicationId);
+}
+
+async function activateTeamApplicationById(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  adminUserId: string,
+  applicationId: string
+): Promise<AdminActionResult> {
   if (!applicationId) {
     throw new Error("Application is required.");
   }
@@ -878,7 +895,8 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
 
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
-    .select("id, email, display_name");
+    .select("id, email, display_name, role")
+    .in("role", ["sales", "subscriber", "admin"]);
 
   if (profileError) {
     throw new Error(profileError.message);
@@ -895,22 +913,12 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
   });
 
   if (!matchingProfile) {
-    const { error: applicationUpdateError } = await supabase
-      .from("team_applications")
-      .update({
-        status: "approved",
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: user.id,
-      })
-      .eq("id", applicationId);
-
-    if (applicationUpdateError) {
-      throw new Error(applicationUpdateError.message);
-    }
-
     revalidatePath("/admin");
     revalidatePath("/sales");
-    return { ok: false, message: "This person still needs to create a team account." };
+    return {
+      ok: false,
+      message: `No profile found for ${email}. Ask them to create a team account with that exact email.`,
+    };
   }
 
   const resolvedDisplayName = await activateSalesRepProfile({
@@ -925,7 +933,7 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     .update({
       status: "active",
       reviewed_at: new Date().toISOString(),
-      reviewed_by: user.id,
+      reviewed_by: adminUserId,
     })
     .eq("id", applicationId);
 
@@ -938,7 +946,7 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     .update({
       status: "active",
       reviewed_at: new Date().toISOString(),
-      reviewed_by: user.id,
+      reviewed_by: adminUserId,
     })
     .ilike("email", email)
     .in("status", TEAM_APPLICATION_ACTIVATION_STATUSES);
@@ -952,7 +960,7 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     .update({
       status: "active",
       reviewed_at: new Date().toISOString(),
-      reviewed_by: user.id,
+      reviewed_by: adminUserId,
     })
     .ilike("email", email)
     .in("status", ["approved", "active"]);
