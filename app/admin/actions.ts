@@ -924,64 +924,60 @@ async function activateTeamApplicationById(
       return { ok: false, message: applicationError.message };
     }
 
-    const normalize = (value: string) => value.toLowerCase().trim();
+    const normalizedEmail =
+      typeof application.email === "string" ? application.email.trim().toLowerCase() : "";
 
-    console.log("FETCHING PROFILES...");
-    const { data: profiles, error: profileError } = await supabase
+    if (!normalizedEmail) {
+      return { ok: false, message: "Application email is required." };
+    }
+
+    console.log("CHECK / ACTIVATE APP EMAIL:", application.email);
+    console.log("CHECK / ACTIVATE NORMALIZED EMAIL:", normalizedEmail);
+
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("*");
+      .select("id, display_name, email")
+      .ilike("email", normalizedEmail)
+      .single();
+
+    console.log("CHECK / ACTIVATE MATCHED PROFILE:", profile || null);
 
     if (profileError) {
-      console.error("ACTIVATION ERROR:", profileError);
+      console.error("PROFILE LOOKUP ERROR:", profileError);
       return { ok: false, message: profileError.message };
     }
 
-    console.log("PROFILES FOUND:", profiles);
-    console.info("Profiles count found:", profiles?.length ?? 0);
-
-    const matchingProfile = (
-      (profiles || []) as Array<{ id: string; email: string | null; display_name: string | null }>
-    ).find((profile) => normalize(profile.email || "") === normalize(application.email || ""));
-
-    console.log("APP EMAIL:", application.email);
-    console.log("MATCHED:", matchingProfile || null);
-    console.info("Activation email match details", {
-      normalizedApplicantEmail: normalize(application.email || ""),
-      matchedProfileId: matchingProfile?.id || null,
-      matchedProfileEmail: matchingProfile?.email || null,
-    });
-
-    if (!matchingProfile) {
-      console.error("NO MATCH FOUND", {
-        appEmail: application.email,
-        profiles: (profiles || []).map((profile) => profile.email),
-      });
+    if (!profile) {
       return { ok: false, message: "No matching profile found" };
     }
 
-    const { error: salesRepError } = await supabase.from("sales_reps").upsert(
-      {
-        user_id: matchingProfile.id,
-        display_name: matchingProfile.display_name || "Sales Rep",
-        active: true,
-      },
-      { onConflict: "user_id" }
-    );
+    console.log("CHECK / ACTIVATE PROFILE ID:", profile.id);
+
+    const { error: roleError } = await supabase
+      .from("profiles")
+      .update({ role: "sales" })
+      .eq("id", profile.id);
+
+    if (roleError) {
+      console.error("ACTIVATION ERROR:", roleError);
+      return { ok: false, message: roleError.message };
+    }
+
+    const salesRepPayload = {
+      user_id: profile.id,
+      display_name: profile.display_name || "Sales Rep",
+      active: true,
+    };
+    console.log("CHECK / ACTIVATE SALES REP UPSERT:", salesRepPayload);
+
+    const { error: salesRepError } = await supabase
+      .from("sales_reps")
+      .upsert(salesRepPayload, { onConflict: "user_id" });
 
     if (salesRepError) {
       console.error("SALES REP ERROR:", salesRepError);
       console.error("sales_reps upsert error:", salesRepError.message);
       return { ok: false, message: salesRepError.message };
-    }
-
-    const { error: roleError } = await supabase
-      .from("profiles")
-      .update({ role: "sales" })
-      .eq("id", matchingProfile.id);
-
-    if (roleError) {
-      console.error("ACTIVATION ERROR:", roleError);
-      return { ok: false, message: roleError.message };
     }
 
     const { error: applicationUpdateError } = await supabase
