@@ -157,6 +157,7 @@ async function activateSalesRepProfile({
   const { error: repError } = await supabase.from("sales_reps").upsert(
     {
       user_id: profile.id,
+      email: profile.email || null,
       display_name: resolvedDisplayName,
       payment_notes: rep?.payment_notes || (typeof paymentNotes === "string" && paymentNotes.trim()) || null,
       active: true,
@@ -885,6 +886,7 @@ async function activateTeamApplicationById(
     throw new Error("Application not found.");
   }
 
+  const normalize = (value: string) => value.toLowerCase().trim().replace(/\s+/g, "");
   const email = normalizeEmail(application.email);
 
   if (!email) {
@@ -895,8 +897,7 @@ async function activateTeamApplicationById(
 
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
-    .select("id, email, display_name, role")
-    .in("role", ["sales", "subscriber", "admin"]);
+    .select("*");
 
   if (profileError) {
     throw new Error(profileError.message);
@@ -904,7 +905,7 @@ async function activateTeamApplicationById(
 
   const matchingProfile =
     ((profileRows || []) as Array<{ id: string; email: string | null; display_name: string | null }>).find(
-      (profile) => normalizeEmail(profile.email) === email
+      (profile) => normalize(profile.email || "") === normalize(application.email || "")
     ) || null;
 
   console.info("Team application activation email match", {
@@ -921,7 +922,7 @@ async function activateTeamApplicationById(
     };
   }
 
-  const resolvedDisplayName = await activateSalesRepProfile({
+  await activateSalesRepProfile({
     supabase,
     profile: matchingProfile,
     displayName: matchingProfile.display_name || application.name || matchingProfile.email,
@@ -971,7 +972,7 @@ async function activateTeamApplicationById(
 
   revalidatePath("/admin");
   revalidatePath("/sales");
-  return success(`${resolvedDisplayName} is active as a sales rep.`);
+  return success("Sales rep activated.");
 }
 
 export async function markTeamInviteSentAction(formData: FormData) {

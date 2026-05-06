@@ -111,6 +111,7 @@ async function activateTeamAccount({
   const { error: repError } = await supabase.from("sales_reps").upsert(
     {
       user_id: userId,
+      email,
       display_name: displayName,
       payment_notes: existingRep?.payment_notes || application?.notes || null,
       active: true,
