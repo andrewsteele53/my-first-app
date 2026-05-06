@@ -141,29 +141,48 @@ async function activateSalesRepProfile({
     throw new Error(roleError.message);
   }
 
-  const { data: existingRep, error: existingRepError } = await supabase
-    .from("sales_reps")
-    .select("payment_notes")
-    .eq("user_id", profile.id)
-    .order("created_at", { ascending: true })
-    .limit(1);
+  const baseSalesRep = {
+    user_id: profile.id,
+    display_name: resolvedDisplayName,
+    active: true,
+  };
+  const salesRepWithNotes = {
+    ...baseSalesRep,
+    payment_notes: (typeof paymentNotes === "string" && paymentNotes.trim()) || null,
+  };
 
-  if (existingRepError) {
-    throw new Error(existingRepError.message);
+  const upsertWithNotes = await supabase
+    .from("sales_reps")
+    .upsert(salesRepWithNotes, { onConflict: "user_id" })
+    .select("id, user_id, display_name, active")
+    .maybeSingle();
+
+  let repError = upsertWithNotes.error;
+  let repData = upsertWithNotes.data;
+  let columnsAttempted = Object.keys(salesRepWithNotes);
+
+  if (repError && /payment_notes/i.test(repError.message)) {
+    console.warn("Sales reps upsert with payment_notes failed; retrying without payment_notes", {
+      error: repError.message,
+    });
+
+    const upsertWithoutNotes = await supabase
+      .from("sales_reps")
+      .upsert(baseSalesRep, { onConflict: "user_id" })
+      .select("id, user_id, display_name, active")
+      .maybeSingle();
+
+    repError = upsertWithoutNotes.error;
+    repData = upsertWithoutNotes.data;
+    columnsAttempted = Object.keys(baseSalesRep);
   }
 
-  const rep = Array.isArray(existingRep) ? existingRep[0] : null;
-
-  const { error: repError } = await supabase.from("sales_reps").upsert(
-    {
-      user_id: profile.id,
-      email: profile.email || null,
-      display_name: resolvedDisplayName,
-      payment_notes: rep?.payment_notes || (typeof paymentNotes === "string" && paymentNotes.trim()) || null,
-      active: true,
-    },
-    { onConflict: "user_id" }
-  );
+  console.info("Sales reps upsert result", {
+    matchedProfileId: profile.id,
+    columnsAttempted,
+    data: repData,
+    error: repError?.message || null,
+  });
 
   if (repError) {
     throw new Error(repError.message);
@@ -909,7 +928,9 @@ async function activateTeamApplicationById(
     ) || null;
 
   console.info("Team application activation email match", {
+    normalizedApplicationEmail: email,
     applicationEmail: application.email,
+    matchedProfileId: matchingProfile?.id || null,
     matchedProfileEmail: matchingProfile?.email || null,
   });
 

@@ -1,15 +1,15 @@
 create table if not exists public.sales_reps (
   id uuid primary key default gen_random_uuid(),
   user_id uuid unique,
-  email text,
   display_name text,
+  payment_notes text,
   active boolean default true,
   created_at timestamp default now()
 );
 
 alter table if exists public.sales_reps
-  add column if not exists email text,
   add column if not exists display_name text,
+  add column if not exists payment_notes text,
   add column if not exists active boolean default true,
   add column if not exists created_at timestamp default now();
 
