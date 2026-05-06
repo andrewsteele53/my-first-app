@@ -867,19 +867,35 @@ export async function rejectTeamApplicationAction(formData: FormData) {
 }
 
 export async function approveTeamApplicationAsSalesAction(formData: FormData) {
-  const { supabase, user } = await requireAdminContext();
-  const applicationId = clean(formData.get("application_id"));
+  try {
+    const { supabase, user } = await requireAdminContext();
+    const applicationId = clean(formData.get("application_id"));
 
-  return activateTeamApplicationById(supabase, user.id, applicationId);
+    return activateTeamApplicationById(supabase, user.id, applicationId);
+  } catch (error) {
+    console.error("ACTIVATION ERROR:", error);
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }
 
 export async function forceCreateSalesRepFromTeamApplicationAction(
   formData: FormData
 ): Promise<AdminActionResult> {
-  const { supabase, user } = await requireAdminContext();
-  const applicationId = clean(formData.get("application_id"));
+  try {
+    const { supabase, user } = await requireAdminContext();
+    const applicationId = clean(formData.get("application_id"));
 
-  return activateTeamApplicationById(supabase, user.id, applicationId);
+    return activateTeamApplicationById(supabase, user.id, applicationId);
+  } catch (error) {
+    console.error("ACTIVATION ERROR:", error);
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }
 
 async function activateTeamApplicationById(
@@ -887,132 +903,96 @@ async function activateTeamApplicationById(
   adminUserId: string,
   applicationId: string
 ): Promise<AdminActionResult> {
-  if (!applicationId) {
-    throw new Error("Application is required.");
-  }
+  try {
+    if (!applicationId) {
+      return { ok: false, message: "Application is required." };
+    }
 
-  const { data: application, error: applicationError } = await supabase
-    .from("team_applications")
-    .select("id, name, email, notes")
-    .eq("id", applicationId)
-    .maybeSingle();
+    const { data: application, error: applicationError } = await supabase
+      .from("team_applications")
+      .select("*")
+      .eq("id", applicationId)
+      .single();
 
-  if (applicationError) {
-    throw new Error(applicationError.message);
-  }
+    if (applicationError) {
+      console.error("ACTIVATION ERROR:", applicationError);
+      return { ok: false, message: applicationError.message };
+    }
 
-  if (!application) {
-    throw new Error("Application not found.");
-  }
+    const normalize = (value: string) => value.toLowerCase().trim();
 
-  const normalize = (value: string) => value.toLowerCase().trim();
-  const email = normalize(application.email || "");
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, email, display_name");
 
-  if (!email) {
-    throw new Error("Application email is required.");
-  }
+    if (profileError) {
+      console.error("ACTIVATION ERROR:", profileError);
+      return { ok: false, message: profileError.message };
+    }
 
-  const { data: profiles, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, email, display_name");
+    const matchingProfile = (
+      (profiles || []) as Array<{ id: string; email: string | null; display_name: string | null }>
+    ).find((profile) => normalize(profile.email || "") === normalize(application.email || ""));
 
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
+    console.log("APP EMAIL:", application.email);
+    console.log("MATCHED PROFILE:", matchingProfile || null);
 
-  const matchingProfile = (
-    (profiles || []) as Array<{ id: string; email: string | null; display_name: string | null }>
-  ).find((profile) => normalize(profile.email || "") === normalize(application.email || ""));
+    if (!matchingProfile) {
+      console.error("NO MATCH FOUND", {
+        appEmail: application.email,
+        profiles: (profiles || []).map((profile) => profile.email),
+      });
+      return { ok: false, message: "No matching profile found" };
+    }
 
-  console.log("APP EMAIL:", application.email);
-  console.log("MATCHED PROFILE:", matchingProfile || null);
-
-  if (!matchingProfile) {
-    console.error("NO MATCH FOUND", {
-      appEmail: application.email,
-      profiles: (profiles || []).map((profile) => profile.email),
-    });
-    throw new Error("No profile found");
-  }
-
-  const displayName = matchingProfile.display_name || application.name || "Sales Rep";
-
-  const { error: roleError } = await supabase
-    .from("profiles")
-    .update({ role: "sales" })
-    .eq("id", matchingProfile.id);
-
-  if (roleError) {
-    throw new Error(roleError.message);
-  }
-
-  const { data: salesRepData, error: salesRepError } = await supabase
-    .from("sales_reps")
-    .upsert(
+    const { error: salesRepError } = await supabase.from("sales_reps").upsert(
       {
         user_id: matchingProfile.id,
-        display_name: displayName,
+        display_name: matchingProfile.display_name || "Sales Rep",
         active: true,
       },
       { onConflict: "user_id" }
-    )
-    .select("id, user_id, display_name, active")
-    .maybeSingle();
+    );
 
-  console.info("Sales reps upsert result", {
-    matchedProfileId: matchingProfile.id,
-    data: salesRepData,
-    error: salesRepError?.message || null,
-  });
+    if (salesRepError) {
+      console.error("SALES REP ERROR:", salesRepError);
+      return { ok: false, message: salesRepError.message };
+    }
 
-  if (salesRepError) {
-    throw new Error(salesRepError.message);
+    const { error: roleError } = await supabase
+      .from("profiles")
+      .update({ role: "sales" })
+      .eq("id", matchingProfile.id);
+
+    if (roleError) {
+      console.error("ACTIVATION ERROR:", roleError);
+      return { ok: false, message: roleError.message };
+    }
+
+    const { error: applicationUpdateError } = await supabase
+      .from("team_applications")
+      .update({
+        status: "active",
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: adminUserId,
+      })
+      .eq("id", application.id);
+
+    if (applicationUpdateError) {
+      console.error("ACTIVATION ERROR:", applicationUpdateError);
+      return { ok: false, message: applicationUpdateError.message };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/sales");
+    return success("Sales rep activated.");
+  } catch (error) {
+    console.error("ACTIVATION ERROR:", error);
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
   }
-
-  const { error: applicationUpdateError } = await supabase
-    .from("team_applications")
-    .update({
-      status: "active",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: adminUserId,
-    })
-    .eq("id", applicationId);
-
-  if (applicationUpdateError) {
-    throw new Error(applicationUpdateError.message);
-  }
-
-  const { error: relatedApplicationsUpdateError } = await supabase
-    .from("team_applications")
-    .update({
-      status: "active",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: adminUserId,
-    })
-    .ilike("email", email)
-    .in("status", TEAM_APPLICATION_ACTIVATION_STATUSES);
-
-  if (relatedApplicationsUpdateError) {
-    throw new Error(relatedApplicationsUpdateError.message);
-  }
-
-  const { error: jobApplicationUpdateError } = await supabase
-    .from("job_applications")
-    .update({
-      status: "active",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: adminUserId,
-    })
-    .ilike("email", email)
-    .in("status", ["approved", "active"]);
-
-  if (jobApplicationUpdateError) {
-    throw new Error(jobApplicationUpdateError.message);
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/sales");
-  return success("Sales rep activated.");
 }
 
 export async function markTeamInviteSentAction(formData: FormData) {
