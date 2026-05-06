@@ -880,18 +880,19 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
   const displayName = typeof application.name === "string" ? application.name.trim() : "";
   const paymentNotes = typeof application.notes === "string" ? application.notes.trim() : "";
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
     .select("id, email, display_name")
-    .ilike("email", email)
-    .order("created_at", { ascending: true })
-    .limit(1);
+    .ilike("email", `%${email}%`);
 
   if (profileError) {
     throw new Error(profileError.message);
   }
 
-  const matchingProfile = Array.isArray(profile) ? profile[0] : null;
+  const matchingProfile =
+    ((profileRows || []) as Array<{ id: string; email: string | null; display_name: string | null }>).find(
+      (profile) => normalizeEmail(profile.email) === email
+    ) || null;
 
   if (!matchingProfile) {
     const { error: applicationUpdateError } = await supabase
@@ -926,11 +927,24 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
       reviewed_at: new Date().toISOString(),
       reviewed_by: user.id,
     })
-    .ilike("email", email)
-    .in("status", TEAM_APPLICATION_ACTIVATION_STATUSES);
+    .eq("id", applicationId);
 
   if (applicationUpdateError) {
     throw new Error(applicationUpdateError.message);
+  }
+
+  const { error: relatedApplicationsUpdateError } = await supabase
+    .from("team_applications")
+    .update({
+      status: "active",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .ilike("email", email)
+    .in("status", TEAM_APPLICATION_ACTIVATION_STATUSES);
+
+  if (relatedApplicationsUpdateError) {
+    throw new Error(relatedApplicationsUpdateError.message);
   }
 
   const { error: jobApplicationUpdateError } = await supabase
@@ -1272,18 +1286,19 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
   const displayName = typeof application.full_name === "string" ? application.full_name.trim() : "";
   const paymentNotes = typeof application.notes === "string" ? application.notes.trim() : "";
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
     .select("id, email, display_name")
-    .ilike("email", email)
-    .order("created_at", { ascending: true })
-    .limit(1);
+    .ilike("email", `%${email}%`);
 
   if (profileError) {
     throw new Error(profileError.message);
   }
 
-  const matchingProfile = Array.isArray(profile) ? profile[0] : null;
+  const matchingProfile =
+    ((profileRows || []) as Array<{ id: string; email: string | null; display_name: string | null }>).find(
+      (profile) => normalizeEmail(profile.email) === email
+    ) || null;
 
   if (!matchingProfile) {
     const { error: applicationError } = await supabase

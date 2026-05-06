@@ -459,7 +459,7 @@ export default function AdminDashboardClient({
   }
 
   function getTeamApplicationStatus(application: TeamApplicationRow) {
-    const rawStatus = application.status || "pending";
+    const rawStatus = (application.status || "pending").trim().toLowerCase();
     const profile = profileByEmail.get(application.email.trim().toLowerCase());
     const salesRep = profile ? salesRepByUserId.get(profile.id) : undefined;
 
@@ -747,7 +747,7 @@ export default function AdminDashboardClient({
                   const hasMatchingProfile = Boolean(profileByEmail.get(application.email.trim().toLowerCase()));
                   const showManualInvite =
                     !hasMatchingProfile &&
-                    (application.status === "approved" || application.status === "invite_sent");
+                    (teamStatus === "approved" || teamStatus === "invite_sent");
                   const inviteMessage = getTeamInviteMessage(application);
 
                   return (
@@ -780,10 +780,9 @@ export default function AdminDashboardClient({
                                 ? "Approving..."
                                 : isActiveApplication
                                 ? "Active"
-                                : application.status === "approved" ||
-                                  application.status === "invite_sent" ||
-                                  application.status === "invited" ||
-                                  application.status === "active"
+                                : teamStatus === "approved" ||
+                                  teamStatus === "invite_sent" ||
+                                  teamStatus === "invited"
                                 ? "Check / Activate"
                                 : "Approve as Sales Rep"}
                             </button>
