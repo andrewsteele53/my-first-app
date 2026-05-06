@@ -8,6 +8,7 @@ import {
   formatMoney,
   isActivePaidSubscription,
 } from "@/lib/sales-commission";
+import SalesLeadsClient, { type SalesLeadRow } from "./sales-leads-client";
 
 type ProfileRow = {
   id: string;
@@ -80,7 +81,7 @@ export default async function SalesPage() {
   console.log("USER ID:", user.id);
   const role = await requireAccountRole(supabase, user, ["sales", "admin"]);
 
-  const [salesRepResult, assignmentsResult, payoutsResult] = await Promise.all([
+  const [salesRepResult, assignmentsResult, payoutsResult, leadsResult] = await Promise.all([
     supabase
       .from("sales_reps")
       .select("*")
@@ -94,6 +95,12 @@ export default async function SalesPage() {
     supabase
       .from("commission_payouts")
       .select("id, sales_rep_id, amount, status, paid_at, notes, created_at")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("sales_leads")
+      .select("id, sales_rep_id, sales_rep_user_id, business_name, contact_name, phone, email, address, industry, status, notes, follow_up_date, subscribed_profile_id, subscribed_at, created_at, updated_at")
+      .eq("sales_rep_user_id", user.id)
+      .order("follow_up_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false }),
   ]);
 
@@ -125,17 +132,28 @@ export default async function SalesPage() {
           .in("id", subscriberIds)
       : { data: [], error: null };
   const subscribers = (subscriberData ?? []) as ProfileRow[];
+  const leads = hasSalesRep ? ((leadsResult.data ?? []) as SalesLeadRow[]) : [];
   const subscriberById = new Map(subscribers.map((subscriber) => [subscriber.id, subscriber]));
   const activePaidSubscribers = subscribers.filter((subscriber) =>
     isActivePaidSubscription(subscriber.subscription_status)
   );
-  const estimatedCommissionOwed =
-    activePaidSubscribers.length * COMMISSION_PER_ACTIVE_SUBSCRIBER;
+  const today = new Date().toISOString().slice(0, 10);
+  const contactedLeads = leads.filter((lead) => lead.status === "contacted");
+  const interestedLeads = leads.filter((lead) => lead.status === "interested");
+  const followUpsDue = leads.filter(
+    (lead) =>
+      lead.follow_up_date &&
+      lead.follow_up_date <= today &&
+      lead.status !== "subscribed" &&
+      lead.status !== "lost"
+  );
+  const subscribedLeads = leads.filter((lead) => lead.status === "subscribed");
+  const estimatedCommissionOwed = subscribedLeads.length * COMMISSION_PER_ACTIVE_SUBSCRIBER;
   const paidPayouts = payouts.filter((payout) => payout.status === "paid");
   const unpaidPayouts = payouts.filter((payout) => payout.status !== "paid");
   const paidTotal = paidPayouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0);
   const unpaidTotal = unpaidPayouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0);
-  const errors = [salesRepResult.error, assignmentsResult.error, payoutsResult.error, subscribersError]
+  const errors = [salesRepResult.error, assignmentsResult.error, payoutsResult.error, leadsResult.error, subscribersError]
     .filter(Boolean)
     .map((error) => error?.message)
     .join(" | ");
@@ -178,11 +196,17 @@ export default async function SalesPage() {
         {errors ? <div className="us-notice-danger text-sm">{errors}</div> : null}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Assigned Subscribers" value={String(subscribers.length)} />
-          <MetricCard label="Active Paid Assigned" value={String(activePaidSubscribers.length)} />
+          <MetricCard label="Total Leads" value={String(leads.length)} />
+          <MetricCard label="Contacted" value={String(contactedLeads.length)} />
+          <MetricCard label="Interested" value={String(interestedLeads.length)} />
+          <MetricCard label="Follow-ups Due" value={String(followUpsDue.length)} />
+          <MetricCard label="Subscribed Clients" value={String(subscribedLeads.length)} />
           <MetricCard label="Estimated Commission Owed" value={formatMoney(estimatedCommissionOwed)} />
           <MetricCard label="Paid / Unpaid History" value={`${formatMoney(paidTotal)} / ${formatMoney(unpaidTotal)}`} />
+          <MetricCard label="Active Paid Assigned" value={String(activePaidSubscribers.length)} />
         </section>
+
+        {hasSalesRep ? <SalesLeadsClient leads={leads} /> : null}
 
         <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
           <p className="us-kicker">Assigned Accounts</p>

@@ -70,6 +70,25 @@ export type SalesAssignmentRow = {
   created_at: string | null;
 };
 
+export type SalesLeadRow = {
+  id: string;
+  sales_rep_id: string | null;
+  sales_rep_user_id: string | null;
+  business_name: string;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  industry: string | null;
+  status: string | null;
+  notes: string | null;
+  follow_up_date: string | null;
+  subscribed_profile_id: string | null;
+  subscribed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 export type CommissionPayoutRow = {
   id: string;
   sales_rep_id: string | null;
@@ -185,6 +204,8 @@ type Props = {
   salesReps: SalesRepRow[];
   assignments: SalesAssignmentRow[];
   payouts: CommissionPayoutRow[];
+  salesLeads: SalesLeadRow[];
+  salesLeadsError: string | null;
   teamApplications: TeamApplicationRow[];
   teamApplicationsError: string | null;
   jobListings: JobListingRow[];
@@ -246,6 +267,8 @@ export default function AdminDashboardClient({
   salesReps,
   assignments,
   payouts,
+  salesLeads,
+  salesLeadsError,
   teamApplications,
   teamApplicationsError,
   jobListings,
@@ -264,6 +287,7 @@ export default function AdminDashboardClient({
   const [editJobApplication, setEditJobApplication] = useState<EditJobApplicationState | null>(null);
   const [jobApplicationStatusFilter, setJobApplicationStatusFilter] = useState("all");
   const [jobApplicationJobFilter, setJobApplicationJobFilter] = useState("all");
+  const [selectedPerformanceRepId, setSelectedPerformanceRepId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [payoutRepId, setPayoutRepId] = useState("");
   const [payoutAmount, setPayoutAmount] = useState("");
@@ -295,7 +319,7 @@ export default function AdminDashboardClient({
     [assignments]
   );
   const subscribers = profiles.filter((profile) => profile.role !== "admin" && profile.role !== "sales");
-  const repSummaries = activeSalesReps.map((rep) => {
+  const repSummaries = salesReps.map((rep) => {
     const repAssignments = assignments.filter((assignment) => assignment.sales_rep_id === rep.id);
     const assignedProfiles = repAssignments
       .map((assignment) => (assignment.subscriber_user_id ? profileById.get(assignment.subscriber_user_id) : undefined))
@@ -304,17 +328,29 @@ export default function AdminDashboardClient({
     const repPayouts = payouts.filter((payout) => payout.sales_rep_id === rep.id);
     const unpaidPayouts = repPayouts.filter((payout) => payout.status !== "paid");
     const paidPayouts = repPayouts.filter((payout) => payout.status === "paid");
+    const repLeads = salesLeads.filter((lead) => lead.sales_rep_id === rep.id || lead.sales_rep_user_id === rep.user_id);
+    const contactedLeads = repLeads.filter((lead) => lead.status === "contacted");
+    const interestedLeads = repLeads.filter((lead) => lead.status === "interested");
+    const subscribedLeads = repLeads.filter((lead) => lead.status === "subscribed");
 
     return {
       rep,
       profile: rep.user_id ? profileById.get(rep.user_id) : undefined,
       assignedCount: assignedProfiles.length,
       activeAssignedCount: activeAssigned.length,
-      estimatedOwed: activeAssigned.length * COMMISSION_PER_ACTIVE_SUBSCRIBER,
+      leadCount: repLeads.length,
+      contactedLeadCount: contactedLeads.length,
+      interestedLeadCount: interestedLeads.length,
+      subscribedLeadCount: subscribedLeads.length,
+      leads: repLeads,
+      estimatedOwed: subscribedLeads.length * COMMISSION_PER_ACTIVE_SUBSCRIBER,
       unpaidTotal: unpaidPayouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0),
       paidTotal: paidPayouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0),
     };
   });
+  const selectedPerformanceSummary = selectedPerformanceRepId
+    ? repSummaries.find((summary) => summary.rep.id === selectedPerformanceRepId)
+    : undefined;
   const jobListingById = useMemo(
     () => new Map(jobListings.map((job) => [job.id, job])),
     [jobListings]
@@ -605,6 +641,7 @@ export default function AdminDashboardClient({
           {message.message}
         </div>
       ) : null}
+      {salesLeadsError ? <div className="us-notice-danger text-sm">{salesLeadsError}</div> : null}
 
       <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
         <p className="us-kicker">Users</p>
@@ -1145,11 +1182,67 @@ export default function AdminDashboardClient({
       </section>
 
       <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+        <p className="us-kicker">Sales Rep Performance</p>
+        <h2 className="mt-2 text-2xl font-extrabold">Lead and commission stats</h2>
+        {repSummaries.length === 0 ? (
+          <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
+            No sales rep performance to show yet.
+          </p>
+        ) : (
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[1080px] text-left text-sm">
+              <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                <tr>
+                  <th className="py-3 pr-4">Sales Rep</th>
+                  <th className="py-3 pr-4">Active</th>
+                  <th className="py-3 pr-4">Total Leads</th>
+                  <th className="py-3 pr-4">Contacted</th>
+                  <th className="py-3 pr-4">Interested</th>
+                  <th className="py-3 pr-4">Subscribed</th>
+                  <th className="py-3 pr-4">Estimated Owed</th>
+                  <th className="py-3 pr-4">Paid / Unpaid</th>
+                  <th className="py-3 pr-4">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repSummaries.map((summary) => (
+                  <tr key={summary.rep.id} className="border-b border-[var(--color-border-muted)] align-top">
+                    <td className="py-4 pr-4">
+                      <p className="font-bold">{summary.rep.display_name || getProfileName(summary.profile)}</p>
+                      <p className="mt-1 break-all text-xs text-[var(--color-text-secondary)]">
+                        {summary.profile?.email || "No email"}
+                      </p>
+                    </td>
+                    <td className="py-4 pr-4">{summary.rep.active === false ? statusBadge("inactive") : statusBadge("active")}</td>
+                    <td className="py-4 pr-4">{summary.leadCount}</td>
+                    <td className="py-4 pr-4">{summary.contactedLeadCount}</td>
+                    <td className="py-4 pr-4">{summary.interestedLeadCount}</td>
+                    <td className="py-4 pr-4">{summary.subscribedLeadCount}</td>
+                    <td className="py-4 pr-4">{formatMoney(summary.estimatedOwed)}</td>
+                    <td className="py-4 pr-4">{`${formatMoney(summary.paidTotal)} / ${formatMoney(summary.unpaidTotal)}`}</td>
+                    <td className="py-4 pr-4">
+                      <button
+                        type="button"
+                        className="us-btn-secondary px-3 py-2 text-xs"
+                        onClick={() => setSelectedPerformanceRepId(summary.rep.id)}
+                      >
+                        View Leads
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
         <p className="us-kicker">Sales Reps</p>
         <h2 className="mt-2 text-2xl font-extrabold">Sales team members</h2>
         {repSummaries.length === 0 ? (
           <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
-            No active sales reps yet. Use Make Sales Rep from the users table above.
+            No sales reps yet. Use Make Sales Rep from the users table above.
           </p>
         ) : (
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -1382,6 +1475,75 @@ export default function AdminDashboardClient({
           </div>
         )}
       </section>
+
+      {selectedPerformanceSummary ? (
+        <Modal
+          title={`${selectedPerformanceSummary.rep.display_name || getProfileName(selectedPerformanceSummary.profile)} Leads`}
+          onCancel={() => setSelectedPerformanceRepId(null)}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <MiniStat label="Total Leads" value={String(selectedPerformanceSummary.leadCount)} />
+            <MiniStat label="Subscribed Clients" value={String(selectedPerformanceSummary.subscribedLeadCount)} />
+            <MiniStat label="Estimated Owed" value={formatMoney(selectedPerformanceSummary.estimatedOwed)} />
+            <MiniStat
+              label="Paid / Unpaid"
+              value={`${formatMoney(selectedPerformanceSummary.paidTotal)} / ${formatMoney(selectedPerformanceSummary.unpaidTotal)}`}
+            />
+          </div>
+          {selectedPerformanceSummary.leads.length === 0 ? (
+            <p className="mt-5 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
+              No leads recorded for this sales rep yet.
+            </p>
+          ) : (
+            <div className="mt-5 max-h-[52vh] overflow-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                  <tr>
+                    <th className="py-3 pr-4">Lead</th>
+                    <th className="py-3 pr-4">Status</th>
+                    <th className="py-3 pr-4">Follow-up</th>
+                    <th className="py-3 pr-4">Subscribed</th>
+                    <th className="py-3 pr-4">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedPerformanceSummary.leads.map((lead) => {
+                    const subscribedProfile = lead.subscribed_profile_id
+                      ? profileById.get(lead.subscribed_profile_id)
+                      : undefined;
+
+                    return (
+                      <tr key={lead.id} className="border-b border-[var(--color-border-muted)] align-top">
+                        <td className="py-4 pr-4">
+                          <p className="font-bold">{lead.business_name}</p>
+                          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                            {lead.contact_name || "No contact"} {lead.email ? `- ${lead.email}` : ""}
+                          </p>
+                        </td>
+                        <td className="py-4 pr-4">{statusBadge(lead.status)}</td>
+                        <td className="py-4 pr-4">{formatDate(lead.follow_up_date)}</td>
+                        <td className="py-4 pr-4">
+                          <p>{formatDate(lead.subscribed_at)}</p>
+                          {subscribedProfile ? (
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              {getProfileName(subscribedProfile)}
+                            </p>
+                          ) : null}
+                        </td>
+                        <td className="py-4 pr-4">
+                          <div className="max-w-xs whitespace-pre-wrap text-[var(--color-text-secondary)]">
+                            {lead.notes || "-"}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Modal>
+      ) : null}
 
       {editJobListing ? (
         <Modal title={editJobListing.job ? "Edit Job Listing" : "Create Job Listing"} onCancel={() => setEditJobListing(null)}>
