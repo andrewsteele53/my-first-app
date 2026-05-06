@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import LogoutButton from "@/components/logout-button";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/supabase/server";
 import { requireAccountRole } from "@/lib/roles";
 import {
   COMMISSION_PER_ACTIVE_SUBSCRIBER,
@@ -71,12 +71,13 @@ function statusBadge(status?: string | null) {
 }
 
 export default async function SalesPage() {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+  console.info("Sales portal current user id:", user.id);
   const role = await requireAccountRole(supabase, user, ["sales", "admin"]);
 
   const [salesRepResult, assignmentsResult, payoutsResult] = await Promise.all([
@@ -98,6 +99,10 @@ export default async function SalesPage() {
   ]);
 
   const salesRep = ((salesRepResult.data ?? []) as SalesRepRow[])[0] ?? null;
+  console.info("Sales portal sales_reps query result:", salesRepResult.data);
+  if (salesRepResult.error) {
+    console.error("Sales portal sales_reps query error:", salesRepResult.error);
+  }
   const assignments = salesRep
     ? ((assignmentsResult.data ?? []) as SalesAssignmentRow[]).filter(
         (assignment) => assignment.sales_rep_id === salesRep.id
