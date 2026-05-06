@@ -181,6 +181,7 @@ export default async function SalesPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
+              <Link href="/demo" className="us-btn-primary">Open Demo Preview</Link>
               {role === "admin" ? <Link href="/admin" className="us-btn-secondary">Admin</Link> : null}
               <Link href="/" className="us-btn-secondary">Dashboard</Link>
               <LogoutButton />

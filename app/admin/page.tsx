@@ -96,6 +96,7 @@ export default async function AdminPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <Link href="/demo" className="us-btn-primary">Open Demo Preview</Link>
               <Link href="/" className="us-btn-secondary">Dashboard</Link>
               <Link href="/sales" className="us-btn-secondary">Sales Portal</Link>
               <LogoutButton />
