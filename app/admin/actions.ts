@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseServiceClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/roles";
 
 export type AdminActionResult = {
@@ -98,7 +98,7 @@ function createServiceRoleClient() {
 }
 
 async function requireAdminContext() {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -118,7 +118,7 @@ async function activateSalesRepProfile({
   displayName,
   paymentNotes,
 }: {
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: Awaited<ReturnType<typeof createServerClient>>;
   profile: { id: string; email: string | null; display_name: string | null };
   displayName?: string | null;
   paymentNotes?: string | null;
@@ -899,7 +899,7 @@ export async function forceCreateSalesRepFromTeamApplicationAction(
 }
 
 async function activateTeamApplicationById(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
   adminUserId: string,
   applicationId: string
 ): Promise<AdminActionResult> {
@@ -921,21 +921,24 @@ async function activateTeamApplicationById(
 
     const normalize = (value: string) => value.toLowerCase().trim();
 
+    console.log("FETCHING PROFILES...");
     const { data: profiles, error: profileError } = await supabase
       .from("profiles")
-      .select("id, email, display_name");
+      .select("*");
 
     if (profileError) {
       console.error("ACTIVATION ERROR:", profileError);
       return { ok: false, message: profileError.message };
     }
 
+    console.log("PROFILES FOUND:", profiles);
+
     const matchingProfile = (
       (profiles || []) as Array<{ id: string; email: string | null; display_name: string | null }>
     ).find((profile) => normalize(profile.email || "") === normalize(application.email || ""));
 
     console.log("APP EMAIL:", application.email);
-    console.log("MATCHED PROFILE:", matchingProfile || null);
+    console.log("MATCHED:", matchingProfile || null);
 
     if (!matchingProfile) {
       console.error("NO MATCH FOUND", {
@@ -1426,7 +1429,7 @@ export async function getResumeDownloadUrlAction(
 }
 
 async function deactivateSalesRepForUser(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
   userId: string
 ) {
   const { data: rep, error: readError } = await supabase
