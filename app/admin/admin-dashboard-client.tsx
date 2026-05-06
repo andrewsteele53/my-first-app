@@ -214,7 +214,11 @@ function statusBadge(status?: string | null) {
   const className =
     normalized === "active" || normalized === "paid"
       ? "border-[rgba(46,125,90,0.2)] bg-[rgba(46,125,90,0.1)] text-[var(--color-success)]"
-      : normalized === "trialing" || normalized === "unpaid" || normalized === "invite_sent" || normalized === "approved"
+      : normalized === "trialing" ||
+        normalized === "unpaid" ||
+        normalized === "invite_sent" ||
+        normalized === "invited" ||
+        normalized === "approved"
       ? "border-[rgba(183,121,31,0.24)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]"
       : "border-[var(--color-border-muted)] bg-[var(--color-section)] text-[var(--color-text-secondary)]";
 
@@ -996,6 +1000,7 @@ export default function AdminDashboardClient({
               <option value="reviewing">reviewing</option>
               <option value="interview">interview</option>
               <option value="approved">approved</option>
+              <option value="active">active</option>
               <option value="rejected">rejected</option>
             </select>
           </div>
@@ -1445,6 +1450,7 @@ export default function AdminDashboardClient({
               <option value="reviewing">reviewing</option>
               <option value="interview">interview</option>
               <option value="approved">approved</option>
+              <option value="active">active</option>
               <option value="rejected">rejected</option>
             </select>
           </label>
@@ -1493,6 +1499,7 @@ export default function AdminDashboardClient({
                 <option value="pending">pending</option>
                 <option value="approved">approved</option>
                 <option value="invite_sent">invite_sent</option>
+                <option value="invited">invited</option>
                 <option value="active">active</option>
                 <option value="rejected">rejected</option>
               </select>

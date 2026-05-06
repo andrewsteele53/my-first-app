@@ -217,12 +217,16 @@ export async function createTeamAccountAction(formData: FormData): Promise<TeamS
         });
       } catch (activationError) {
         console.error("Team signup activation failed", activationError);
+        return {
+          ok: false,
+          message: "Account created, but sales access could not be activated yet. Please contact the admin.",
+        };
       }
     }
 
     return {
       ok: true,
-      message: "Account created. The admin will activate your sales portal shortly.",
+      message: "Account created. Your sales portal is active.",
     };
   } catch (error) {
     return {

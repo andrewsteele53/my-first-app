@@ -84,7 +84,8 @@ export default async function SalesPage() {
       .from("sales_reps")
       .select("id, user_id, display_name, payment_notes, created_at")
       .eq("user_id", user.id)
-      .maybeSingle(),
+      .order("created_at", { ascending: true })
+      .limit(1),
     supabase
       .from("sales_assignments")
       .select("id, sales_rep_id, subscriber_user_id, created_at")
@@ -95,13 +96,17 @@ export default async function SalesPage() {
       .order("created_at", { ascending: false }),
   ]);
 
-  const salesRep = (salesRepResult.data ?? null) as SalesRepRow | null;
-  const assignments = ((assignmentsResult.data ?? []) as SalesAssignmentRow[]).filter(
-    (assignment) => !salesRep || assignment.sales_rep_id === salesRep.id
-  );
-  const payouts = ((payoutsResult.data ?? []) as CommissionPayoutRow[]).filter(
-    (payout) => !salesRep || payout.sales_rep_id === salesRep.id
-  );
+  const salesRep = ((salesRepResult.data ?? []) as SalesRepRow[])[0] ?? null;
+  const assignments = salesRep
+    ? ((assignmentsResult.data ?? []) as SalesAssignmentRow[]).filter(
+        (assignment) => assignment.sales_rep_id === salesRep.id
+      )
+    : [];
+  const payouts = salesRep
+    ? ((payoutsResult.data ?? []) as CommissionPayoutRow[]).filter(
+        (payout) => payout.sales_rep_id === salesRep.id
+      )
+    : [];
   const subscriberIds = assignments
     .map((assignment) => assignment.subscriber_user_id)
     .filter((id): id is string => Boolean(id));
@@ -160,7 +165,7 @@ export default async function SalesPage() {
 
         {!salesRep ? (
           <div className="us-notice-info text-sm">
-            Your account has the sales role, but no sales rep record exists yet. Ask the admin to add you as a sales team member.
+            Your account has the sales role, but no sales rep record exists yet. Ask the admin to use Check / Activate or Approve Sales Rep so your sales dashboard can be connected.
           </div>
         ) : null}
         {errors ? <div className="us-notice-danger text-sm">{errors}</div> : null}

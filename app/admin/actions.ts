@@ -30,6 +30,7 @@ function cleanApplicationStatus(value: FormDataEntryValue | null) {
     status === "pending" ||
     status === "approved" ||
     status === "invite_sent" ||
+    status === "invited" ||
     status === "active" ||
     status === "rejected"
   ) {
@@ -50,7 +51,14 @@ function cleanJobStatus(value: FormDataEntryValue | null) {
 
 function cleanJobApplicationStatus(value: FormDataEntryValue | null) {
   const status = clean(value);
-  if (status === "new" || status === "reviewing" || status === "interview" || status === "approved" || status === "rejected") {
+  if (
+    status === "new" ||
+    status === "reviewing" ||
+    status === "interview" ||
+    status === "approved" ||
+    status === "active" ||
+    status === "rejected"
+  ) {
     return status;
   }
 
@@ -59,6 +67,10 @@ function cleanJobApplicationStatus(value: FormDataEntryValue | null) {
 
 function success(message: string): AdminActionResult {
   return { ok: true, message };
+}
+
+function normalizeEmail(value?: string | null) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
 function createServiceRoleClient() {
@@ -90,6 +102,65 @@ async function requireAdminContext() {
   }
 
   return { supabase, user };
+}
+
+async function activateSalesRepProfile({
+  supabase,
+  profile,
+  displayName,
+  paymentNotes,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  profile: { id: string; email: string | null; display_name: string | null };
+  displayName?: string | null;
+  paymentNotes?: string | null;
+}) {
+  const resolvedDisplayName =
+    (typeof profile.display_name === "string" && profile.display_name.trim()) ||
+    (typeof displayName === "string" && displayName.trim()) ||
+    (typeof profile.email === "string" && profile.email.trim()) ||
+    "Sales Rep";
+
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({
+      role: "sales",
+      display_name: resolvedDisplayName,
+    })
+    .eq("id", profile.id);
+
+  if (roleError) {
+    throw new Error(roleError.message);
+  }
+
+  const { data: existingRep, error: existingRepError } = await supabase
+    .from("sales_reps")
+    .select("payment_notes")
+    .eq("user_id", profile.id)
+    .maybeSingle();
+
+  if (existingRepError) {
+    throw new Error(existingRepError.message);
+  }
+
+  const { error: repError } = await supabase.from("sales_reps").upsert(
+    {
+      user_id: profile.id,
+      display_name: resolvedDisplayName,
+      payment_notes:
+        existingRep?.payment_notes ||
+        (typeof paymentNotes === "string" && paymentNotes.trim()) ||
+        null,
+      active: true,
+    },
+    { onConflict: "user_id" }
+  );
+
+  if (repError) {
+    throw new Error(repError.message);
+  }
+
+  return resolvedDisplayName;
 }
 
 export async function makeSalesRepAction(profileId: string): Promise<AdminActionResult> {
@@ -789,7 +860,7 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     throw new Error("Application not found.");
   }
 
-  const email = typeof application.email === "string" ? application.email.trim().toLowerCase() : "";
+  const email = normalizeEmail(application.email);
 
   if (!email) {
     throw new Error("Application email is required.");
@@ -808,10 +879,35 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
     throw new Error(profileError.message);
   }
 
+  if (!profile) {
+    const { error: applicationUpdateError } = await supabase
+      .from("team_applications")
+      .update({
+        status: "approved",
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user.id,
+      })
+      .eq("id", applicationId);
+
+    if (applicationUpdateError) {
+      throw new Error(applicationUpdateError.message);
+    }
+
+    revalidatePath("/admin");
+    return success("Approved. Use the manual invite panel to send this applicant the signup link.");
+  }
+
+  const resolvedDisplayName = await activateSalesRepProfile({
+    supabase,
+    profile,
+    displayName,
+    paymentNotes,
+  });
+
   const { error: applicationUpdateError } = await supabase
     .from("team_applications")
     .update({
-      status: "approved",
+      status: "active",
       reviewed_at: new Date().toISOString(),
       reviewed_by: user.id,
     })
@@ -819,50 +915,6 @@ export async function approveTeamApplicationAsSalesAction(formData: FormData) {
 
   if (applicationUpdateError) {
     throw new Error(applicationUpdateError.message);
-  }
-
-  if (!profile) {
-    revalidatePath("/admin");
-    return success("Approved. Use the manual invite panel to send this applicant the signup link.");
-  }
-
-  const resolvedDisplayName =
-    displayName ||
-    (typeof profile.display_name === "string" && profile.display_name.trim()) ||
-    (typeof profile.email === "string" && profile.email.trim()) ||
-    email;
-
-  const { error: roleError } = await supabase
-    .from("profiles")
-    .update({ role: "sales" })
-    .eq("id", profile.id);
-
-  if (roleError) {
-    throw new Error(roleError.message);
-  }
-
-  const { data: existingRep, error: existingRepError } = await supabase
-    .from("sales_reps")
-    .select("payment_notes")
-    .eq("user_id", profile.id)
-    .maybeSingle();
-
-  if (existingRepError) {
-    throw new Error(existingRepError.message);
-  }
-
-  const { error: repError } = await supabase.from("sales_reps").upsert(
-    {
-      user_id: profile.id,
-      display_name: resolvedDisplayName,
-      payment_notes: existingRep?.payment_notes || paymentNotes || null,
-      active: true,
-    },
-    { onConflict: "user_id" }
-  );
-
-  if (repError) {
-    throw new Error(repError.message);
   }
 
   revalidatePath("/admin");
@@ -1181,23 +1233,10 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
     throw new Error("Application not found.");
   }
 
-  const email = typeof application.email === "string" ? application.email.trim().toLowerCase() : "";
+  const email = normalizeEmail(application.email);
 
   if (!email) {
     throw new Error("Application email is required.");
-  }
-
-  const { error: applicationError } = await supabase
-    .from("job_applications")
-    .update({
-      status: "approved",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: user.id,
-    })
-    .eq("id", applicationId);
-
-  if (applicationError) {
-    throw new Error(applicationError.message);
   }
 
   const displayName = typeof application.full_name === "string" ? application.full_name.trim() : "";
@@ -1214,6 +1253,19 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
   }
 
   if (!profile) {
+    const { error: applicationError } = await supabase
+      .from("job_applications")
+      .update({
+        status: "approved",
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user.id,
+      })
+      .eq("id", applicationId);
+
+    if (applicationError) {
+      throw new Error(applicationError.message);
+    }
+
     const { error: teamApplicationError } = await supabase.from("team_applications").insert({
       name: displayName || null,
       email,
@@ -1232,43 +1284,38 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
     return success("Applicant approved. Use the manual invite panel to send this applicant the signup link.");
   }
 
-  const resolvedDisplayName =
-    displayName ||
-    (typeof profile.display_name === "string" && profile.display_name.trim()) ||
-    (typeof profile.email === "string" && profile.email.trim()) ||
-    email;
+  const resolvedDisplayName = await activateSalesRepProfile({
+    supabase,
+    profile,
+    displayName,
+    paymentNotes,
+  });
 
-  const { error: roleError } = await supabase
-    .from("profiles")
-    .update({ role: "sales" })
-    .eq("id", profile.id);
+  const { error: applicationError } = await supabase
+    .from("job_applications")
+    .update({
+      status: "active",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .eq("id", applicationId);
 
-  if (roleError) {
-    throw new Error(roleError.message);
+  if (applicationError) {
+    throw new Error(applicationError.message);
   }
 
-  const { data: existingRep, error: existingRepError } = await supabase
-    .from("sales_reps")
-    .select("payment_notes")
-    .eq("user_id", profile.id)
-    .maybeSingle();
+  const { error: teamApplicationUpdateError } = await supabase
+    .from("team_applications")
+    .update({
+      status: "active",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .ilike("email", email)
+    .in("status", ["approved", "invite_sent", "invited", "active"]);
 
-  if (existingRepError) {
-    throw new Error(existingRepError.message);
-  }
-
-  const { error: repError } = await supabase.from("sales_reps").upsert(
-    {
-      user_id: profile.id,
-      display_name: resolvedDisplayName,
-      payment_notes: existingRep?.payment_notes || paymentNotes || null,
-      active: true,
-    },
-    { onConflict: "user_id" }
-  );
-
-  if (repError) {
-    throw new Error(repError.message);
+  if (teamApplicationUpdateError) {
+    throw new Error(teamApplicationUpdateError.message);
   }
 
   revalidatePath("/admin");
