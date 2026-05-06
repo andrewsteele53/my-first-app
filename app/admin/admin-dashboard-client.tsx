@@ -13,6 +13,7 @@ import {
   createTeamApplicationAction,
   deleteJobListingAction,
   deleteTeamApplicationAction,
+  getResumeDownloadUrlAction,
   makeSalesRepAction,
   markPayoutPaidAction,
   rejectTeamApplicationAction,
@@ -114,6 +115,7 @@ export type JobApplicationRow = {
   availability: string | null;
   preferred_contact_method: string | null;
   resume_link: string | null;
+  resume_file_path: string | null;
   notes: string | null;
   status: string | null;
   created_at: string | null;
@@ -322,6 +324,27 @@ export default function AdminDashboardClient({
         setMessage({
           ok: false,
           message: error instanceof Error ? error.message : "Something went wrong.",
+        });
+      } finally {
+        setPendingActionId(null);
+      }
+    });
+  }
+
+  function viewResume(path: string) {
+    startTransition(async () => {
+      setMessage(null);
+      setPendingActionId(`resume-${path}`);
+      try {
+        const result = await getResumeDownloadUrlAction(path);
+        setMessage(result);
+        if (result.ok && result.url) {
+          window.open(result.url, "_blank", "noopener,noreferrer");
+        }
+      } catch (error) {
+        setMessage({
+          ok: false,
+          message: error instanceof Error ? error.message : "Unable to open resume.",
         });
       } finally {
         setPendingActionId(null);
@@ -883,6 +906,7 @@ export default function AdminDashboardClient({
                   <th className="py-3 pr-4">Applicant</th>
                   <th className="py-3 pr-4">Job</th>
                   <th className="py-3 pr-4">Status</th>
+                  <th className="py-3 pr-4">Resume</th>
                   <th className="py-3 pr-4">Location</th>
                   <th className="py-3 pr-4">Availability</th>
                   <th className="py-3 pr-4">Applied</th>
@@ -901,6 +925,19 @@ export default function AdminDashboardClient({
                       </td>
                       <td className="py-4 pr-4">{job?.title || "Listing removed"}</td>
                       <td className="py-4 pr-4">{statusBadge(application.status || "new")}</td>
+                      <td className="py-4 pr-4">
+                        {application.resume_file_path ? (
+                          <button
+                            type="button"
+                            className="us-btn-secondary px-3 py-2 text-xs"
+                            onClick={() => viewResume(application.resume_file_path as string)}
+                          >
+                            View Resume
+                          </button>
+                        ) : (
+                          <span className="text-[var(--color-text-secondary)]">No resume</span>
+                        )}
+                      </td>
                       <td className="py-4 pr-4">{application.location || "-"}</td>
                       <td className="py-4 pr-4">{application.availability || "-"}</td>
                       <td className="py-4 pr-4">{formatDate(application.created_at)}</td>
@@ -1256,11 +1293,17 @@ export default function AdminDashboardClient({
               <p className="font-bold">Why interested</p>
               <p className="mt-1 whitespace-pre-wrap text-[var(--color-text-secondary)]">{editJobApplication.application.why_interested || "-"}</p>
             </div>
-            {editJobApplication.application.resume_link ? (
-              <a className="us-link" href={editJobApplication.application.resume_link} target="_blank" rel="noreferrer">
-                Resume link
-              </a>
-            ) : null}
+            {editJobApplication.application.resume_file_path ? (
+              <button
+                type="button"
+                className="us-btn-secondary px-4 py-2 text-sm"
+                onClick={() => viewResume(editJobApplication.application.resume_file_path as string)}
+              >
+                View Resume
+              </button>
+            ) : (
+              <p className="text-[var(--color-text-secondary)]">No resume uploaded.</p>
+            )}
           </div>
           <label className="mt-4 grid gap-2 text-sm font-bold">
             Status

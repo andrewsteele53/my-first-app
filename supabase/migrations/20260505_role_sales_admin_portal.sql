@@ -175,6 +175,7 @@ create table if not exists public.job_applications (
   availability text,
   preferred_contact_method text,
   resume_link text,
+  resume_file_path text,
   notes text,
   status text default 'new',
   created_at timestamptz default now(),
@@ -233,6 +234,7 @@ alter table if exists public.job_applications
   add column if not exists availability text,
   add column if not exists preferred_contact_method text,
   add column if not exists resume_link text,
+  add column if not exists resume_file_path text,
   add column if not exists notes text,
   add column if not exists status text default 'new',
   add column if not exists created_at timestamptz default now(),
@@ -308,6 +310,10 @@ create index if not exists job_listings_status_idx on public.job_listings (statu
 create index if not exists job_applications_job_listing_id_idx on public.job_applications (job_listing_id);
 create index if not exists job_applications_status_idx on public.job_applications (status);
 create index if not exists job_applications_email_idx on public.job_applications (email);
+
+insert into storage.buckets (id, name, public)
+values ('resumes', 'resumes', false)
+on conflict (id) do update set public = false;
 
 alter table public.profiles enable row level security;
 alter table public.sales_reps enable row level security;
@@ -442,6 +448,18 @@ create policy "Admins can manage job applications"
   to authenticated
   using (app_private.current_user_role() = 'admin')
   with check (app_private.current_user_role() = 'admin');
+
+drop policy if exists "Anyone can upload resumes" on storage.objects;
+create policy "Anyone can upload resumes"
+  on storage.objects for insert
+  to anon, authenticated
+  with check (bucket_id = 'resumes');
+
+drop policy if exists "Admins can view resumes" on storage.objects;
+create policy "Admins can view resumes"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'resumes' and app_private.current_user_role() = 'admin');
 
 grant select, insert, update, delete on public.profiles to authenticated;
 grant select, insert, update, delete on public.sales_reps to authenticated;

@@ -50,7 +50,7 @@ export default async function AdminPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("job_applications")
-      .select("id, job_listing_id, full_name, email, phone, location, experience_summary, why_interested, availability, preferred_contact_method, resume_link, notes, status, created_at, reviewed_at, reviewed_by")
+      .select("id, job_listing_id, full_name, email, phone, location, experience_summary, why_interested, availability, preferred_contact_method, resume_link, resume_file_path, notes, status, created_at, reviewed_at, reviewed_by")
       .order("created_at", { ascending: false }),
   ]);
 

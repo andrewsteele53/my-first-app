@@ -6,9 +6,24 @@ import { submitJobApplicationAction, type CareerActionResult } from "../actions"
 export default function JobApplicationForm({ jobId }: { jobId: string }) {
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<CareerActionResult | null>(null);
+  const [resumeName, setResumeName] = useState("");
 
   function submit(formData: FormData) {
     setResult(null);
+    const resumeFile = formData.get("resume_file");
+
+    if (resumeFile instanceof File && resumeFile.size > 0) {
+      if (!resumeFile.name.toLowerCase().endsWith(".pdf")) {
+        setResult({ ok: false, message: "Please upload a PDF resume." });
+        return;
+      }
+
+      if (resumeFile.size > 5 * 1024 * 1024) {
+        setResult({ ok: false, message: "Resume PDF must be 5MB or smaller." });
+        return;
+      }
+    }
+
     startTransition(async () => {
       const actionResult = await submitJobApplicationAction(formData);
       setResult(actionResult);
@@ -65,8 +80,21 @@ export default function JobApplicationForm({ jobId }: { jobId: string }) {
         <textarea name="why_interested" className="us-textarea" disabled={isPending || result?.ok} />
       </label>
       <label className="grid gap-2 text-sm font-bold">
-        Resume link
-        <input name="resume_link" className="us-input" placeholder="Optional URL" disabled={isPending || result?.ok} />
+        Upload resume PDF
+        <input
+          name="resume_file"
+          type="file"
+          accept=".pdf,application/pdf"
+          className="us-input"
+          disabled={isPending || result?.ok}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            setResumeName(file ? file.name : "");
+          }}
+        />
+        <span className="text-xs font-semibold text-[var(--color-text-secondary)]">
+          {resumeName || "Optional. PDF only, 5MB maximum."}
+        </span>
       </label>
       <label className="grid gap-2 text-sm font-bold">
         Notes

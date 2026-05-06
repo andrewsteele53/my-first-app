@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/roles";
 export type AdminActionResult = {
   ok: boolean;
   message: string;
+  url?: string;
 };
 
 function clean(value: FormDataEntryValue | null) {
@@ -1151,6 +1152,31 @@ export async function approveJobApplicationAsSalesRepAction(formData: FormData) 
   revalidatePath("/admin");
   revalidatePath("/sales");
   return success(`${displayName} was approved and added as a sales rep.`);
+}
+
+export async function getResumeDownloadUrlAction(
+  resumeFilePath: string
+): Promise<AdminActionResult> {
+  const { supabase } = await requireAdminContext();
+  const path = resumeFilePath.trim();
+
+  if (!path) {
+    return { ok: false, message: "Resume file path is missing." };
+  }
+
+  const { data, error } = await supabase.storage
+    .from("resumes")
+    .createSignedUrl(path, 60);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  return {
+    ok: true,
+    message: "Resume link ready.",
+    url: data.signedUrl,
+  };
 }
 
 async function deactivateSalesRepForUser(
