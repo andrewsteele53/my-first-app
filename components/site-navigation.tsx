@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandLogo from "@/components/brand-logo";
 
 const navItems = [
   { label: "Home", href: "/" },
@@ -13,12 +14,7 @@ export default function SiteNavigation() {
     <header className="sticky top-0 z-40 border-b border-white/70 bg-white/90 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
         <Link href="/" className="group inline-flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary-active)] text-sm font-extrabold text-white shadow-[var(--shadow-card-soft)]">
-            US
-          </span>
-          <span className="text-base font-extrabold tracking-tight text-[var(--color-text)]">
-            Unified Steele
-          </span>
+          <BrandLogo size="sm" showTagline={false} />
         </Link>
 
         <div className="hidden items-center gap-1 rounded-2xl border border-[var(--color-border-muted)] bg-white/80 p-1 shadow-[var(--shadow-card-soft)] lg:flex">

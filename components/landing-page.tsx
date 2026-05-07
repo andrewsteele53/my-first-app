@@ -1,6 +1,7 @@
 import Link from "next/link";
 import DashboardMockup from "@/components/dashboard-mockup";
 import SiteNavigation from "@/components/site-navigation";
+import SiteFooter from "@/components/site-footer";
 
 const painPoints = [
   ["Lost leads", "Opportunities disappear when notes, forms, and inboxes are scattered."],
@@ -170,6 +171,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <SiteFooter />
     </main>
   );
 }

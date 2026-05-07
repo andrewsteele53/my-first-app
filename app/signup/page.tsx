@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import BrandLogo from "@/components/brand-logo";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -50,7 +51,7 @@ export default function SignupPage() {
   return (
     <main className="us-page flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-[1.8rem] border border-[var(--color-border)] bg-white p-9 shadow-[var(--shadow-card)]">
-        <p className="us-kicker text-center">Unified Steele</p>
+        <BrandLogo size="md" className="justify-center" />
         <h1 className="mt-4 text-center text-3xl font-extrabold text-[var(--color-text)]">
           Stop losing money from missed invoices and disorganized jobs.
         </h1>

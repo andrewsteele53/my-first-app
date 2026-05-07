@@ -1,5 +1,7 @@
 import Link from "next/link";
+import BrandLogo from "@/components/brand-logo";
 import SiteNavigation from "@/components/site-navigation";
+import SiteFooter from "@/components/site-footer";
 import WebsiteCheckoutButton from "@/components/website-checkout-button";
 import WebsiteQuoteForm from "@/components/website-quote-form";
 
@@ -149,6 +151,7 @@ export default function WebsiteDevelopmentPage() {
       <section className="bg-[linear-gradient(135deg,#f8fbff_0%,#eef5f9_54%,#e7f3ee_100%)]">
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[0.96fr_1.04fr] lg:px-8 lg:py-24">
           <div>
+            <BrandLogo size="md" className="mb-6 rounded-2xl bg-white/75 p-2 shadow-[var(--shadow-card-soft)]" />
             <p className="us-kicker">Website development services</p>
             <h1 className="mt-5 text-5xl font-extrabold leading-[1.02] tracking-tight text-[var(--color-text)] sm:text-6xl">
               Professional Websites for Modern Businesses
@@ -370,6 +373,8 @@ export default function WebsiteDevelopmentPage() {
         </div>
         <WebsiteQuoteForm />
       </section>
+
+      <SiteFooter />
     </main>
   );
 }

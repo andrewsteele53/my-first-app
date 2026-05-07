@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import BrandLogo from "@/components/brand-logo";
 import { createClient } from "@/lib/supabase/client";
 
 function getRoleHomePath(role?: string | null) {
@@ -103,9 +104,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10 sm:px-6">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-8">
         <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">
-            Unified Steele
-          </p>
+          <BrandLogo size="md" className="justify-center" />
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900">
             Sign In
           </h1>

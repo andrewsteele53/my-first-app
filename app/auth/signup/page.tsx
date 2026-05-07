@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import BrandLogo from "@/components/brand-logo";
 import { createClient } from "@/lib/supabase/client";
 
 function getRoleHomePath(role?: string | null) {
@@ -105,7 +106,7 @@ export default function SignupPage() {
     <main className="us-page flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
       <div className="w-full max-w-md rounded-[1.8rem] border border-[var(--color-border)] bg-white p-7 shadow-[var(--shadow-card)] sm:p-9">
         <div className="text-center">
-          <p className="us-kicker">Unified Steele</p>
+          <BrandLogo size="md" className="justify-center" />
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[var(--color-text)]">
             Stop losing money from missed invoices and disorganized jobs.
           </h1>
