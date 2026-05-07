@@ -5,11 +5,31 @@ import SiteFooter from "@/components/site-footer";
 import WebsiteQuoteForm from "@/components/website-quote-form";
 
 const portfolio = [
-  ["Restaurant demo", "Menu, local SEO, maps, and reservation-focused calls to action"],
-  ["Medical office demo", "Trust-building service pages with mobile appointment prompts"],
-  ["Retail demo", "Product-forward homepage with promotions, gallery, and location details"],
-  ["Fitness studio demo", "Membership CTAs, class highlights, and mobile-first scheduling"],
-];
+  {
+    title: "Restaurant demo",
+    businessName: "Riverstone Grill",
+    text: "Menu, local SEO, maps, and reservation-focused calls to action.",
+    mockup: "restaurant",
+  },
+  {
+    title: "Medical office demo",
+    businessName: "Northpoint Family Clinic",
+    text: "Trust-building service pages with mobile appointment prompts.",
+    mockup: "clinic",
+  },
+  {
+    title: "Retail demo",
+    businessName: "Maple & Main Boutique",
+    text: "Product-forward homepage with promotions, gallery, and location details.",
+    mockup: "retail",
+  },
+  {
+    title: "Fitness studio demo",
+    businessName: "ForgeFit Studio",
+    text: "Membership CTAs, class highlights, and mobile-first scheduling.",
+    mockup: "fitness",
+  },
+] as const;
 
 const howItWorks = [
   [
@@ -178,6 +198,260 @@ function DevicePreview({ title }: { title: string }) {
   );
 }
 
+function MiniBrowser({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-[var(--color-border-muted)] bg-white shadow-[var(--shadow-card-soft)]">
+      <div className="flex items-center gap-1.5 border-b border-[var(--color-border-muted)] bg-white px-3 py-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-[#c75050]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-[#b7791f]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-[#2e7d5a]" />
+        <span className="ml-2 h-2 w-24 rounded-full bg-[var(--color-border-muted)]" />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function MiniPhone({ tone = "primary" }: { tone?: "primary" | "warm" | "dark" }) {
+  const accent =
+    tone === "warm"
+      ? "bg-[#9f4f24]"
+      : tone === "dark"
+      ? "bg-[#111827]"
+      : "bg-[var(--color-primary)]";
+
+  return (
+    <div className="absolute bottom-4 right-4 w-20 rounded-[1rem] border border-[#0f2233]/15 bg-[#0f2233] p-2 shadow-[var(--shadow-card)]">
+      <div className="mx-auto mb-2 h-1 w-6 rounded-full bg-white/40" />
+      <div className="h-24 rounded-lg bg-white p-1">
+        <div className={`h-5 rounded ${accent}`} />
+        <div className="mt-2 h-8 rounded bg-[var(--color-surface-secondary)]" />
+        <div className="mt-2 h-2 rounded bg-[var(--color-border)]" />
+        <div className="mt-1 h-2 w-2/3 rounded bg-[var(--color-border)]" />
+      </div>
+    </div>
+  );
+}
+
+function RestaurantMockup() {
+  return (
+    <div className="relative h-72 overflow-hidden rounded-xl bg-[#fbf1e7] p-4">
+      <MiniBrowser>
+        <div className="bg-[#fffaf4]">
+          <div className="flex items-center justify-between px-4 py-3 text-[10px] font-extrabold text-[#5f2f18]">
+            <span>Riverstone Grill</span>
+            <span className="rounded-full bg-[#9f4f24] px-3 py-1 text-white">
+              Reserve
+            </span>
+          </div>
+          <div className="bg-[linear-gradient(135deg,#3b1f16,#b45d2a)] px-4 py-6 text-white">
+            <p className="text-[10px] font-bold uppercase text-white/70">
+              Wood-fired dinner and local favorites
+            </p>
+            <h4 className="mt-2 text-xl font-extrabold">Riverstone Grill</h4>
+            <div className="mt-4 flex gap-2">
+              {["Menu", "Catering", "Map"].map((item) => (
+                <span key={item} className="rounded-full bg-white/14 px-3 py-1 text-[10px] font-bold">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 p-4">
+            {["Steaks", "Tacos", "Desserts"].map((item) => (
+              <div key={item} className="rounded-lg bg-[#f3dcc7] p-2">
+                <div className="h-8 rounded bg-[#c9834b]" />
+                <p className="mt-2 text-[10px] font-extrabold text-[#5f2f18]">
+                  {item}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mx-4 mb-4 rounded-lg border border-[#ecd0b7] bg-white px-3 py-2 text-[10px] font-bold text-[#5f2f18]">
+            Downtown location open until 10 PM
+          </div>
+        </div>
+      </MiniBrowser>
+      <MiniPhone tone="warm" />
+    </div>
+  );
+}
+
+function ClinicMockup() {
+  return (
+    <div className="relative h-72 overflow-hidden rounded-xl bg-[#eef8fb] p-4">
+      <MiniBrowser>
+        <div className="bg-[#f8fdff]">
+          <div className="flex items-center justify-between px-4 py-3 text-[10px] font-extrabold text-[#145268]">
+            <span>Northpoint Family Clinic</span>
+            <span className="rounded-full bg-[#1f7a8c] px-3 py-1 text-white">
+              Appointment
+            </span>
+          </div>
+          <div className="grid grid-cols-[1.1fr_0.9fr] gap-3 px-4 py-5">
+            <div>
+              <p className="text-[10px] font-bold uppercase text-[#1f7a8c]">
+                Family care close to home
+              </p>
+              <h4 className="mt-2 text-lg font-extrabold text-[#123744]">
+                Care for every stage of life
+              </h4>
+              <div className="mt-3 flex gap-2">
+                {["Same week", "Insured", "Local"].map((item) => (
+                  <span key={item} className="rounded-full bg-[#d7eef3] px-2 py-1 text-[9px] font-bold text-[#145268]">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl bg-[#d7eef3] p-3">
+              <div className="h-12 rounded-lg bg-[#88c7d4]" />
+              <p className="mt-2 text-[10px] font-extrabold text-[#145268]">
+                Dr. care team
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 px-4 pb-4">
+            {["Primary", "Pediatrics", "Wellness"].map((item) => (
+              <div key={item} className="rounded-lg border border-[#c7e5ec] bg-white p-2 text-[10px] font-bold text-[#145268]">
+                {item}
+              </div>
+            ))}
+          </div>
+          <div className="mx-4 mb-4 rounded-lg bg-[#1f7a8c] px-3 py-2 text-[10px] font-extrabold text-white">
+            Book your visit from your phone
+          </div>
+        </div>
+      </MiniBrowser>
+      <MiniPhone />
+    </div>
+  );
+}
+
+function RetailMockup() {
+  return (
+    <div className="relative h-72 overflow-hidden rounded-xl bg-[#f6eef7] p-4">
+      <MiniBrowser>
+        <div className="bg-[#fffaff]">
+          <div className="bg-[#5c2d65] px-4 py-2 text-center text-[10px] font-extrabold text-white">
+            Spring sale this weekend
+          </div>
+          <div className="flex items-center justify-between px-4 py-3 text-[10px] font-extrabold text-[#3d2544]">
+            <span>Maple & Main Boutique</span>
+            <span>Shop local</span>
+          </div>
+          <div className="grid grid-cols-[0.95fr_1.05fr] gap-3 px-4 py-4">
+            <div className="rounded-xl bg-[#ead5ee] p-3">
+              <div className="h-20 rounded-lg bg-[#b67ac0]" />
+              <p className="mt-2 text-[10px] font-extrabold text-[#3d2544]">
+                Featured collection
+              </p>
+            </div>
+            <div>
+              <h4 className="text-lg font-extrabold text-[#3d2544]">
+                Fresh arrivals for everyday style
+              </h4>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {["Tops", "Gifts", "Home", "Sale"].map((item) => (
+                  <div key={item} className="rounded-lg bg-[#f1e3f3] p-2 text-[10px] font-bold text-[#5c2d65]">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="mx-4 mb-4 rounded-lg border border-[#ead5ee] bg-white px-3 py-2 text-[10px] font-bold text-[#5c2d65]">
+            Visit us on Main Street
+          </div>
+        </div>
+      </MiniBrowser>
+      <MiniPhone />
+    </div>
+  );
+}
+
+function FitnessMockup() {
+  return (
+    <div className="relative h-72 overflow-hidden rounded-xl bg-[#111827] p-4">
+      <MiniBrowser>
+        <div className="bg-[#101827] text-white">
+          <div className="flex items-center justify-between px-4 py-3 text-[10px] font-extrabold">
+            <span>ForgeFit Studio</span>
+            <span className="rounded-full bg-[#f97316] px-3 py-1 text-white">
+              Join
+            </span>
+          </div>
+          <div className="px-4 py-5">
+            <p className="text-[10px] font-bold uppercase text-[#f97316]">
+              Strength classes and coaching
+            </p>
+            <h4 className="mt-2 text-xl font-extrabold">
+              Train hard. Book fast.
+            </h4>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {["6 AM HIIT", "Noon Lift", "5 PM Burn"].map((item) => (
+                <div key={item} className="rounded-lg bg-white/10 p-2 text-[10px] font-bold">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mx-4 mb-4 grid grid-cols-[0.75fr_1.25fr] gap-3">
+            <div className="rounded-lg bg-[#f97316] p-3 text-[10px] font-extrabold">
+              Book class
+            </div>
+            <div className="rounded-lg border border-white/15 bg-white/8 p-3 text-[10px] font-bold text-white/80">
+              Trainer spotlight and memberships
+            </div>
+          </div>
+        </div>
+      </MiniBrowser>
+      <MiniPhone tone="dark" />
+    </div>
+  );
+}
+
+function DemoMockup({ type }: { type: (typeof portfolio)[number]["mockup"] }) {
+  switch (type) {
+    case "restaurant":
+      return <RestaurantMockup />;
+    case "clinic":
+      return <ClinicMockup />;
+    case "retail":
+      return <RetailMockup />;
+    case "fitness":
+      return <FitnessMockup />;
+  }
+}
+
+function DemoWebsiteCard({
+  demo,
+}: {
+  demo: (typeof portfolio)[number];
+}) {
+  return (
+    <article className="group rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-[var(--shadow-card-soft)] transition hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[var(--shadow-card)]">
+      <DemoMockup type={demo.mockup} />
+      <div className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-[rgba(47,93,138,0.18)] bg-[rgba(47,93,138,0.08)] px-3 py-1 text-xs font-extrabold text-[var(--color-primary)]">
+            Demo preview
+          </span>
+          <span className="text-xs font-bold text-[var(--color-text-muted)]">
+            {demo.businessName}
+          </span>
+        </div>
+        <h3 className="mt-4 text-xl font-extrabold text-[var(--color-text)]">
+          {demo.title}
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
+          {demo.text}
+        </p>
+      </div>
+    </article>
+  );
+}
+
 export default function WebsiteDevelopmentPage() {
   return (
     <main className="us-page overflow-hidden">
@@ -216,25 +490,16 @@ export default function WebsiteDevelopmentPage() {
           <div className="max-w-3xl">
             <p className="us-kicker">Portfolio / Demo Websites</p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
-              Modern layouts for restaurants, clinics, retail, gyms, local services, and more.
+              Demo websites built for real local business needs.
             </h2>
+            <p className="mt-4 text-base leading-7 text-[var(--color-text-secondary)]">
+              Preview the kinds of websites Unified Steele can create for
+              restaurants, clinics, retail shops, gyms, and service businesses.
+            </p>
           </div>
           <div className="mt-8 grid gap-5 md:grid-cols-2">
-            {portfolio.map(([title, text]) => (
-              <article
-                key={title}
-                className="group rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-[var(--shadow-card-soft)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-card)]"
-              >
-                <DevicePreview title={title} />
-                <div className="p-3">
-                  <h3 className="text-xl font-extrabold text-[var(--color-text)]">
-                    {title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
-                    {text}
-                  </p>
-                </div>
-              </article>
+            {portfolio.map((demo) => (
+              <DemoWebsiteCard key={demo.title} demo={demo} />
             ))}
           </div>
         </div>
