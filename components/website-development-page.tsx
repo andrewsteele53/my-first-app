@@ -1,86 +1,124 @@
 import Link from "next/link";
 import SiteNavigation from "@/components/site-navigation";
 import WebsiteCheckoutButton from "@/components/website-checkout-button";
+import WebsiteQuoteForm from "@/components/website-quote-form";
 
-const industries = [
-  "Contractors",
-  "Restaurants",
-  "Salons",
-  "Gyms",
-  "Auto Shops",
-  "Retail Stores",
-  "Real Estate",
-  "Medical Offices",
-  "Startups",
-  "Local Businesses",
+const portfolio = [
+  ["Restaurant demo", "Menu, local SEO, maps, and reservation-focused calls to action"],
+  ["Medical office demo", "Trust-building service pages with mobile appointment prompts"],
+  ["Retail demo", "Product-forward homepage with promotions, gallery, and location details"],
+  ["Fitness studio demo", "Membership CTAs, class highlights, and mobile-first scheduling"],
 ];
 
-const packageFeatures = [
-  "Responsive design",
+const howItWorks = [
+  [
+    "Request a Quote",
+    "Tell us about your business and what kind of website you need.",
+  ],
+  [
+    "We Build Your Website",
+    "We design a modern, mobile-friendly website tailored to your brand.",
+  ],
+  [
+    "Launch Online",
+    "Your business goes live with a professional online presence.",
+  ],
+];
+
+const whyChooseUs = [
+  "Built for all businesses, not just one industry",
+  "Affordable websites without agency-level pricing",
+  "Clean mobile-first layouts that help customers take action",
+  "Optional management when you want updates handled for you",
+  "Stripe-ready payment structure for website builds and subscriptions",
+  "Professional online presence connected to a broader business platform",
+];
+
+const professionalFeatures = [
+  "Professional modern design",
+  "Mobile optimization",
   "Contact forms",
   "SEO setup",
   "Social links",
-  "Google Maps",
-  "Image galleries",
-  "Fast loading",
-  "Mobile optimization",
+  "Google Maps integration",
+  "Image gallery",
+  "Fast-loading layout",
+  "Lead/contact section",
+];
+
+const managedFeatures = [
+  "Full professional website build",
+  "Website edits and updates",
+  "Ongoing support",
+  "Maintenance",
+  "Optimization",
+  "Analytics monitoring",
+  "Hosting assistance",
+  "Mobile-friendly design",
+];
+
+const customFeatures = [
+  "Ecommerce options",
+  "Booking systems",
+  "Custom integrations",
+  "Larger websites",
+  "Advanced forms",
+  "Custom workflows",
+  "Business-specific features",
 ];
 
 const websitePackages = [
   {
-    title: "Starter Website",
-    type: "One-time payment",
-    description: "A clean foundation for businesses that need a credible online presence quickly.",
-    item: "starter-website" as const,
+    title: "Professional Website",
+    price: "$499.99",
+    cadence: "one-time",
+    description:
+      "For businesses that want a professional website with full ownership and no required monthly commitment.",
+    features: professionalFeatures,
+    cta: "Request Website",
+    note: "No forced monthly contract.",
+    action: "checkout" as const,
+    item: "professional-website" as const,
   },
   {
-    title: "Professional Business Website",
-    type: "One-time payment",
-    description: "A fuller site for businesses that need stronger service pages, lead capture, and polish.",
-    item: "professional-website" as const,
+    title: "Professional Website + Management",
+    price: "$249.99 setup + $59.99/month",
+    cadence: "setup plus monthly",
+    description:
+      "For businesses that want a lower upfront cost with ongoing website support and management.",
+    features: managedFeatures,
+    cta: "Start Your Project",
+    note: "Cancel anytime. You still own your website.",
+    action: "checkout" as const,
+    item: "professional-website-managed" as const,
     featured: true,
   },
   {
     title: "Custom Website",
-    type: "Custom quote",
-    description: "A tailored build for advanced layouts, deeper content, integrations, or custom workflows.",
-    item: "custom-website" as const,
+    price: "Custom Quote",
+    cadence: "tailored project",
+    description:
+      "For advanced businesses that need larger websites, ecommerce, booking systems, integrations, or custom functionality.",
+    features: customFeatures,
+    cta: "Request Custom Quote",
+    note: "Scoped around your goals and requirements.",
+    action: "quote" as const,
   },
-];
-
-const managementPlans = [
-  {
-    title: "Website Management",
-    item: "website-management-basic" as const,
-    text: "Ongoing care for businesses that want edits, support, and routine maintenance handled.",
-  },
-  {
-    title: "Growth Management",
-    item: "website-management-growth" as const,
-    text: "A recurring support layer for optimization, analytics monitoring, and stronger web operations.",
-  },
-];
-
-const portfolio = [
-  ["Restaurant demo", "Online menu, local SEO, reservation-focused layout"],
-  ["Clinic demo", "Trust-building service pages with mobile appointment CTA"],
-  ["Retail demo", "Product-forward homepage with promotions and maps"],
-  ["Gym demo", "Membership CTA, class highlights, and mobile-first schedule"],
 ];
 
 function DevicePreview({ title }: { title: string }) {
   return (
-    <div className="relative h-56 overflow-hidden rounded-xl border border-[var(--color-border-muted)] bg-[linear-gradient(135deg,#f8fafc,#e8f4ef)] p-4">
+    <div className="relative h-60 overflow-hidden rounded-xl border border-[var(--color-border-muted)] bg-[linear-gradient(135deg,#f8fafc,#e8f4ef)] p-4">
       <div className="h-full rounded-lg border border-white/80 bg-white p-3 shadow-[var(--shadow-card-soft)]">
         <div className="flex gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-[#c75050]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[#b7791f]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[#2e7d5a]" />
         </div>
-        <div className="mt-4 h-10 rounded-lg bg-[var(--color-primary-active)]" />
+        <div className="mt-4 h-11 rounded-lg bg-[var(--color-primary-active)]" />
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <div className="col-span-2 h-20 rounded-lg bg-[rgba(47,93,138,0.12)]" />
-          <div className="h-20 rounded-lg bg-[rgba(46,125,90,0.14)]" />
+          <div className="col-span-2 h-24 rounded-lg bg-[rgba(47,93,138,0.12)]" />
+          <div className="h-24 rounded-lg bg-[rgba(46,125,90,0.14)]" />
         </div>
         <div className="mt-3 space-y-2">
           <div className="h-2 rounded-full bg-[var(--color-border)]" />
@@ -117,145 +155,20 @@ export default function WebsiteDevelopmentPage() {
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--color-text-secondary)]">
               We create clean, fast, mobile-friendly websites designed to help
-              businesses build credibility and generate customers online.
+              businesses across all industries build credibility and generate
+              customers online.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/contact?service=website" className="us-btn-primary min-h-14 px-8">
+              <Link href="#request-quote" className="us-btn-primary min-h-14 px-8">
                 Request a Quote
               </Link>
               <Link href="#portfolio" className="us-btn-secondary min-h-14 px-8">
-                View Portfolio
+                View Demo Websites
               </Link>
             </div>
           </div>
           <div className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-4 shadow-[var(--shadow-card)]">
-            <DevicePreview title="Live Preview" />
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <div className="max-w-3xl">
-          <p className="us-kicker">Industries</p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
-            Websites for businesses across every local market.
-          </h2>
-        </div>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {industries.map((industry) => (
-            <div key={industry} className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-card)]">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface-secondary)] text-xs font-extrabold text-[var(--color-primary)] ring-1 ring-[var(--color-border-muted)]">
-                {industry.slice(0, 2).toUpperCase()}
-              </div>
-              <p className="mt-4 text-base font-extrabold text-[var(--color-text)]">
-                {industry}
-              </p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-6 rounded-2xl border border-[rgba(47,93,138,0.18)] bg-[rgba(47,93,138,0.08)] px-5 py-4 text-sm font-bold text-[var(--color-primary-active)]">
-          Don&apos;t see your industry? We can still help.
-        </p>
-      </section>
-
-      <section className="border-y border-white/80 bg-white/55 py-16" id="packages">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <div className="max-w-3xl">
-            <p className="us-kicker">Website packages</p>
-            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
-              One-time website builds prepared for future Stripe pricing.
-            </h2>
-          </div>
-          <div className="mt-8 grid gap-5 lg:grid-cols-3">
-            {websitePackages.map((pkg) => (
-              <article
-                key={pkg.title}
-                className={`flex min-h-[32rem] flex-col rounded-2xl border p-6 shadow-[var(--shadow-card-soft)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-card)] ${
-                  pkg.featured
-                    ? "border-[rgba(47,93,138,0.3)] bg-[rgba(47,93,138,0.07)]"
-                    : "border-[var(--color-border)] bg-white"
-                }`}
-              >
-                <p className="text-sm font-extrabold uppercase text-[var(--color-primary)]">
-                  {pkg.type}
-                </p>
-                <h3 className="mt-3 text-2xl font-extrabold text-[var(--color-text)]">
-                  {pkg.title}
-                </h3>
-                <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
-                  {pkg.description}
-                </p>
-                <p className="mt-5 rounded-xl border border-dashed border-[var(--color-border)] bg-white/70 px-4 py-3 text-sm font-bold text-[var(--color-text-secondary)]">
-                  Stripe price placeholder
-                </p>
-                <ul className="mt-5 grid flex-1 gap-3 text-sm font-semibold text-[var(--color-text)]">
-                  {packageFeatures.map((feature) => (
-                    <li key={feature} className="flex gap-3">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-success)]" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-6 grid gap-3">
-                  <Link href="/contact?service=website" className="us-btn-primary w-full text-sm">
-                    Request a Quote
-                  </Link>
-                  <WebsiteCheckoutButton item={pkg.item}>
-                    Future Stripe Checkout
-                  </WebsiteCheckoutButton>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
-          <div>
-            <p className="us-kicker">Recurring subscriptions</p>
-            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
-              Optional Website Management
-            </h2>
-            <p className="mt-4 text-base leading-7 text-[var(--color-text-secondary)]">
-              Add recurring support when you want help keeping your site fresh,
-              healthy, and aligned with business changes.
-            </p>
-          </div>
-          <div className="grid gap-5 md:grid-cols-2">
-            {managementPlans.map((plan) => (
-              <article key={plan.title} className="rounded-2xl border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
-                <p className="text-sm font-extrabold uppercase text-[var(--color-primary)]">
-                  Subscription placeholder
-                </p>
-                <h3 className="mt-3 text-2xl font-extrabold text-[var(--color-text)]">
-                  {plan.title}
-                </h3>
-                <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
-                  {plan.text}
-                </p>
-                <ul className="mt-5 space-y-3 text-sm font-semibold text-[var(--color-text)]">
-                  {[
-                    "Website edits",
-                    "Ongoing support",
-                    "Optimization",
-                    "Maintenance",
-                    "Hosting assistance",
-                    "Analytics monitoring",
-                  ].map((feature) => (
-                    <li key={feature} className="flex gap-3">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-primary)]" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-6">
-                  <WebsiteCheckoutButton item={plan.item}>
-                    Future Subscription Checkout
-                  </WebsiteCheckoutButton>
-                </div>
-              </article>
-            ))}
+            <DevicePreview title="Business Website" />
           </div>
         </div>
       </section>
@@ -263,14 +176,17 @@ export default function WebsiteDevelopmentPage() {
       <section id="portfolio" className="border-y border-white/80 bg-white/55 py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="max-w-3xl">
-            <p className="us-kicker">Portfolio</p>
+            <p className="us-kicker">Portfolio / Demo Websites</p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
-              Placeholder demo projects with desktop and mobile previews.
+              Modern layouts for restaurants, clinics, retail, gyms, local services, and more.
             </h2>
           </div>
           <div className="mt-8 grid gap-5 md:grid-cols-2">
             {portfolio.map(([title, text]) => (
-              <article key={title} className="group rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-[var(--shadow-card-soft)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-card)]">
+              <article
+                key={title}
+                className="group rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-[var(--shadow-card-soft)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-card)]"
+              >
                 <DevicePreview title={title} />
                 <div className="p-3">
                   <h3 className="text-xl font-extrabold text-[var(--color-text)]">
@@ -287,21 +203,172 @@ export default function WebsiteDevelopmentPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <div className="rounded-[1.6rem] border border-[var(--color-border)] bg-[var(--color-primary-active)] p-8 text-white shadow-[var(--shadow-card)]">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-extrabold uppercase text-white/70">
-                Ready when you are
+        <div className="max-w-3xl">
+          <p className="us-kicker">How It Works</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
+            A simple path from idea to launch.
+          </h2>
+        </div>
+        <div className="mt-8 grid gap-5 md:grid-cols-3">
+          {howItWorks.map(([title, text], index) => (
+            <article
+              key={title}
+              className="rounded-2xl border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-primary-active)] text-lg font-extrabold text-white">
+                {index + 1}
+              </div>
+              <h3 className="mt-5 text-xl font-extrabold text-[var(--color-text)]">
+                {title}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                {text}
               </p>
-              <h2 className="mt-3 text-3xl font-extrabold">
-                Build a website that makes your business easier to trust.
-              </h2>
-            </div>
-            <Link href="/contact?service=website" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-6 text-sm font-extrabold text-[var(--color-primary-active)]">
-              Request a Quote
-            </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y border-white/80 bg-white/55 py-16">
+        <div className="mx-auto grid max-w-7xl gap-8 px-5 lg:grid-cols-[0.82fr_1.18fr] lg:px-8">
+          <div>
+            <p className="us-kicker">Why Choose Us</p>
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
+              Professional websites without overcomplicated agency pricing.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-[var(--color-text-secondary)]">
+              Website development is available for all businesses. Whether you
+              run a restaurant, salon, medical office, gym, retail shop, startup,
+              or local service business, the goal is the same: a credible site
+              that helps customers contact you.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {whyChooseUs.map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card-soft)]"
+              >
+                <div className="h-1.5 w-12 rounded-full bg-[var(--color-success)]" />
+                <p className="mt-4 text-sm font-extrabold leading-6 text-[var(--color-text)]">
+                  {item}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8" id="packages">
+        <div className="max-w-3xl">
+          <p className="us-kicker">Website Packages</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
+            Clear website pricing with flexible ownership and management options.
+          </h2>
+        </div>
+        <div className="mt-8 grid gap-5 lg:grid-cols-3">
+          {websitePackages.map((pkg) => (
+            <article
+              key={pkg.title}
+              className={`relative flex min-h-[38rem] flex-col rounded-2xl border p-6 transition hover:-translate-y-1 ${
+                pkg.featured
+                  ? "border-[rgba(47,93,138,0.62)] bg-white shadow-[0_26px_70px_rgba(47,93,138,0.18)] ring-4 ring-[rgba(47,93,138,0.08)]"
+                  : "border-[var(--color-border)] bg-white shadow-[var(--shadow-card-soft)] hover:shadow-[var(--shadow-card)]"
+              }`}
+            >
+              {pkg.featured ? (
+                <div className="absolute -top-4 left-6 rounded-full bg-[var(--color-primary-active)] px-4 py-2 text-xs font-extrabold text-white shadow-[var(--shadow-card-soft)]">
+                  MOST POPULAR
+                </div>
+              ) : null}
+              <p className="text-sm font-extrabold uppercase text-[var(--color-primary)]">
+                {pkg.cadence}
+              </p>
+              <h3 className="mt-3 text-2xl font-extrabold text-[var(--color-text)]">
+                {pkg.title}
+              </h3>
+              <p className="mt-4 text-4xl font-extrabold tracking-tight text-[var(--color-text)]">
+                {pkg.price}
+              </p>
+              <p className="mt-4 text-sm leading-6 text-[var(--color-text-secondary)]">
+                {pkg.description}
+              </p>
+              <ul className="mt-6 grid flex-1 gap-3 text-sm font-semibold text-[var(--color-text)]">
+                {pkg.features.map((feature) => (
+                  <li key={feature} className="flex gap-3">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-success)]" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 grid gap-3">
+                {pkg.action === "checkout" ? (
+                  <WebsiteCheckoutButton
+                    item={pkg.item}
+                    className={pkg.featured ? "us-btn-primary w-full text-sm" : "us-btn-secondary w-full text-sm"}
+                  >
+                    {pkg.cta}
+                  </WebsiteCheckoutButton>
+                ) : (
+                  <Link href="#request-quote" className="us-btn-primary w-full text-sm">
+                    {pkg.cta}
+                  </Link>
+                )}
+                <p className="text-center text-xs font-bold leading-5 text-[var(--color-text-secondary)]">
+                  {pkg.note}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y border-white/80 bg-white/55 py-16">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="rounded-[1.6rem] border border-[var(--color-border)] bg-[var(--color-primary-active)] p-8 text-white shadow-[var(--shadow-card)]">
+            <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+              <div>
+                <p className="text-sm font-extrabold uppercase text-white/70">
+                  Ownership and management
+                </p>
+                <h2 className="mt-3 text-3xl font-extrabold">
+                  Your website should work for your business, not lock you in.
+                </h2>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  "No forced monthly contracts.",
+                  "You own your website.",
+                  "Management is optional.",
+                  "Cancel anytime on the managed plan.",
+                  "Affordable websites without agency-level pricing.",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-xl border border-white/15 bg-white/10 p-4 text-sm font-bold leading-6 text-white"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="request-quote" className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
+        <div>
+          <p className="us-kicker">Contact / Request Quote</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
+            Tell us what kind of website your business needs.
+          </h2>
+          <p className="mt-4 text-base leading-7 text-[var(--color-text-secondary)]">
+            Share a few details and we&apos;ll help you choose the right path:
+            one-time professional website, managed website plan, or a custom
+            project quote.
+          </p>
+        </div>
+        <WebsiteQuoteForm />
       </section>
     </main>
   );

@@ -1,43 +1,28 @@
 export type WebsiteCheckoutMode = "payment" | "subscription";
 
 export type WebsiteCheckoutItem =
-  | "starter-website"
   | "professional-website"
-  | "custom-website"
-  | "website-management-basic"
-  | "website-management-growth";
+  | "professional-website-managed";
 
 export type WebsiteStripePriceConfig = {
   item: WebsiteCheckoutItem;
   mode: WebsiteCheckoutMode;
-  envKey: string;
+  envKeys: string[];
 };
 
 export const websiteStripePrices: WebsiteStripePriceConfig[] = [
   {
-    item: "starter-website",
-    mode: "payment",
-    envKey: "STRIPE_WEBSITE_STARTER_PRICE_ID",
-  },
-  {
     item: "professional-website",
     mode: "payment",
-    envKey: "STRIPE_WEBSITE_PROFESSIONAL_PRICE_ID",
+    envKeys: ["NEXT_PUBLIC_STRIPE_WEBSITE_ONE_TIME_PRICE_ID"],
   },
   {
-    item: "custom-website",
-    mode: "payment",
-    envKey: "STRIPE_WEBSITE_CUSTOM_DEPOSIT_PRICE_ID",
-  },
-  {
-    item: "website-management-basic",
+    item: "professional-website-managed",
     mode: "subscription",
-    envKey: "STRIPE_WEBSITE_MANAGEMENT_BASIC_PRICE_ID",
-  },
-  {
-    item: "website-management-growth",
-    mode: "subscription",
-    envKey: "STRIPE_WEBSITE_MANAGEMENT_GROWTH_PRICE_ID",
+    envKeys: [
+      "NEXT_PUBLIC_STRIPE_WEBSITE_MANAGED_SETUP_PRICE_ID",
+      "NEXT_PUBLIC_STRIPE_WEBSITE_MANAGEMENT_MONTHLY_PRICE_ID",
+    ],
   },
 ];
 
@@ -45,14 +30,20 @@ export function getWebsiteStripePriceConfig(item: WebsiteCheckoutItem) {
   return websiteStripePrices.find((config) => config.item === item) ?? null;
 }
 
-export function getWebsiteStripePriceId(item: WebsiteCheckoutItem) {
+export function getWebsiteStripePriceIds(item: WebsiteCheckoutItem) {
   const config = getWebsiteStripePriceConfig(item);
 
-  if (!config) return null;
+  if (!config) {
+    return { priceIds: [], missingEnvKeys: [] };
+  }
 
-  const priceId = process.env[config.envKey];
+  const priceIds = config.envKeys
+    .map((envKey) => process.env[envKey])
+    .filter((priceId): priceId is string =>
+      typeof priceId === "string" && priceId.trim().length > 0
+    );
 
-  return typeof priceId === "string" && priceId.trim().length > 0
-    ? priceId
-    : null;
+  const missingEnvKeys = config.envKeys.filter((envKey) => !process.env[envKey]);
+
+  return { priceIds, missingEnvKeys };
 }

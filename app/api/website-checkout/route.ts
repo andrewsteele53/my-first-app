@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import {
   getWebsiteStripePriceConfig,
-  getWebsiteStripePriceId,
+  getWebsiteStripePriceIds,
   type WebsiteCheckoutItem,
 } from "@/lib/website-stripe";
 
@@ -12,11 +12,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 function isWebsiteCheckoutItem(value: unknown): value is WebsiteCheckoutItem {
   return (
-    value === "starter-website" ||
     value === "professional-website" ||
-    value === "custom-website" ||
-    value === "website-management-basic" ||
-    value === "website-management-growth"
+    value === "professional-website-managed"
   );
 }
 
@@ -40,14 +37,14 @@ export async function POST(req: Request) {
     }
 
     const config = getWebsiteStripePriceConfig(item);
-    const priceId = getWebsiteStripePriceId(item);
+    const { priceIds, missingEnvKeys } = getWebsiteStripePriceIds(item);
 
-    if (!config || !priceId) {
+    if (!config || missingEnvKeys.length > 0) {
       return NextResponse.json(
         {
           error:
-            "Website Stripe pricing is not configured yet. Add the matching website price ID before enabling checkout.",
-          missingEnv: config?.envKey ?? null,
+            "Website checkout is almost ready. Please contact us to start this project.",
+          missingEnv: missingEnvKeys,
         },
         { status: 501 }
       );
@@ -58,12 +55,10 @@ export async function POST(req: Request) {
 
     const session = await stripe.checkout.sessions.create({
       mode: config.mode,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: priceIds.map((price) => ({
+        price,
+        quantity: 1,
+      })),
       metadata: {
         business_model: "website-development",
         website_item: item,
