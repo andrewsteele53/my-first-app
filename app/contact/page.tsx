@@ -1,6 +1,5 @@
 import Link from "next/link";
 import BrandLogo from "@/components/brand-logo";
-import ContactRequestForm from "@/components/contact-request-form";
 import SiteFooter from "@/components/site-footer";
 import SiteNavigation from "@/components/site-navigation";
 import { createPageMetadata } from "@/lib/seo";
@@ -11,6 +10,9 @@ export const metadata = createPageMetadata({
     "Contact Unified Steele about the SaaS platform, website development services, or business support.",
   path: "/contact",
 });
+
+const previewEmailHref =
+  "mailto:unifiedsteele@gmail.com?subject=Website%20Preview%20Request";
 
 export default function ContactPage() {
   return (
@@ -38,10 +40,54 @@ export default function ContactPage() {
         </div>
         <div className="rounded-2xl border border-[var(--color-border)] bg-white p-7 shadow-[var(--shadow-card)]">
           <BrandLogo size="sm" className="mb-5" />
-          <p className="text-sm font-extrabold uppercase text-[var(--color-primary)]">
-            Request details
+          <p className="us-kicker">
+            Direct Contact
           </p>
-          <ContactRequestForm />
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)]">
+            Request a Free Website Preview
+          </h2>
+          <p className="mt-4 text-base leading-7 text-[var(--color-text-secondary)]">
+            Tell us about your business and we&apos;ll create a website preview
+            mockup for you. If you like it, we&apos;ll send secure Stripe
+            payment options to move forward.
+          </p>
+
+          <div className="mt-6 rounded-2xl border border-[var(--color-border-muted)] bg-[var(--color-surface-secondary)] p-5">
+            <p className="text-xs font-extrabold uppercase text-[var(--color-primary)]">
+              Email
+            </p>
+            <a
+              href={previewEmailHref}
+              className="mt-2 inline-flex break-all text-xl font-extrabold text-[var(--color-primary-active)] transition hover:text-[var(--color-primary-hover)]"
+            >
+              unifiedsteele@gmail.com
+            </a>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <a href={previewEmailHref} className="us-btn-primary min-h-12 px-6">
+              Email Unified Steele
+            </a>
+            <Link href="/website-development#packages" className="us-btn-secondary min-h-12 px-6">
+              Website Development
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {[
+              "Usually responds within 24 hours",
+              "No upfront payment required for previews",
+              "Secure Stripe payment after approval",
+              "You own your website after purchase",
+            ].map((item) => (
+              <div
+                key={item}
+                className="rounded-xl border border-[var(--color-border-muted)] bg-white px-4 py-3 text-sm font-bold leading-6 text-[var(--color-text)] shadow-[var(--shadow-card-soft)]"
+              >
+                {item}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
       <SiteFooter />
