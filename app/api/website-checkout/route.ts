@@ -58,6 +58,7 @@ export async function POST(req: Request) {
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
 
+    // TODO: Future improvement: enforce or invoice remaining 3-month minimum management balance if a managed website customer cancels early.
     const session = await stripe.checkout.sessions.create({
       mode: config.mode,
       line_items: priceIds.map((price) => ({

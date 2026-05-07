@@ -52,6 +52,30 @@ const previewTrustItems = [
   "Optional website management available",
 ];
 
+const managedMinimumTermText =
+  "Includes a 3-month minimum management term. If cancelled before the initial term ends, the remaining management balance may be due. After the initial term, cancel anytime. You still own your website.";
+
+const managedMinimumTermSummary =
+  "Managed website plans include a short minimum term to cover setup, support, and launch work. If cancelled before the initial term ends, the remaining management balance may be due. After the initial term, you can cancel anytime and still own your website.";
+
+const websiteFaqs = [
+  {
+    question: "Can I cancel the website management plan?",
+    answer:
+      "Yes. The managed website plan includes a 3-month minimum management term. If cancelled before the initial term ends, the remaining management balance may be due. After the initial term, you can cancel anytime. You still own your website.",
+  },
+  {
+    question: "Why is there a minimum term?",
+    answer:
+      "The managed plan lowers the upfront website cost, so the short minimum term helps cover setup, development, support, updates, and launch work while keeping the starting price affordable.",
+  },
+  {
+    question: "How much would the early cancellation balance be?",
+    answer:
+      "The managed plan is $59.99/month with a 3-month minimum management term. If cancelled early, the remaining balance would be based on the unpaid months left in the initial term.",
+  },
+];
+
 const professionalFeatures = [
   "Professional modern design",
   "Mobile optimization",
@@ -104,7 +128,7 @@ const websitePackages = [
       "For businesses that want a lower upfront cost with ongoing website support and management.",
     features: managedFeatures,
     cta: "Request Free Preview",
-    note: "No upfront payment required for preview.",
+    note: managedMinimumTermText,
     featured: true,
   },
   {
@@ -325,6 +349,13 @@ export default function WebsiteDevelopmentPage() {
                 <p className="text-center text-xs font-bold leading-5 text-[var(--color-text-secondary)]">
                   {pkg.note}
                 </p>
+                {pkg.featured ? (
+                  <p className="rounded-xl border border-[rgba(183,121,31,0.25)] bg-[rgba(183,121,31,0.08)] px-3 py-2 text-center text-xs font-semibold leading-5 text-[var(--color-text-secondary)]">
+                    Example: If a customer cancels after the first month, the
+                    remaining two months of the initial management term may
+                    still be due.
+                  </p>
+                ) : null}
               </div>
             </article>
           ))}
@@ -342,6 +373,9 @@ export default function WebsiteDevelopmentPage() {
                 <h2 className="mt-3 text-3xl font-extrabold">
                   Your website should work for your business, not lock you in.
                 </h2>
+                <p className="mt-4 text-sm font-semibold leading-6 text-white/80">
+                  {managedMinimumTermSummary}
+                </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {previewTrustItems.map((item) => (
@@ -355,6 +389,30 @@ export default function WebsiteDevelopmentPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="us-kicker">Website Management FAQ</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
+            Clear terms before you move forward.
+          </h2>
+        </div>
+        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+          {websiteFaqs.map((item) => (
+            <article
+              key={item.question}
+              className="rounded-2xl border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]"
+            >
+              <h3 className="text-lg font-extrabold text-[var(--color-text)]">
+                {item.question}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                {item.answer}
+              </p>
+            </article>
+          ))}
         </div>
       </section>
 
