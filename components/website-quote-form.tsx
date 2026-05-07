@@ -5,11 +5,12 @@ import { useState } from "react";
 export default function WebsiteQuoteForm() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <form
       className="rounded-2xl border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)]"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
 
         const formData = new FormData(event.currentTarget);
@@ -31,8 +32,40 @@ export default function WebsiteQuoteForm() {
           return;
         }
 
-        // TODO: Store website preview requests in Supabase and trigger email notifications.
+        setIsSubmitting(true);
         setError("");
+
+        const response = await fetch("/api/website-preview-requests", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: String(formData.get("name") || ""),
+            businessName: String(formData.get("businessName") || ""),
+            email: String(formData.get("email") || ""),
+            phone: String(formData.get("phone") || ""),
+            industry: String(formData.get("industry") || ""),
+            currentWebsiteUrl: String(formData.get("currentWebsiteUrl") || ""),
+            businessProfileUrl: String(formData.get("businessProfileUrl") || ""),
+            servicesOffered: String(formData.get("servicesOffered") || ""),
+            preferredColorsStyle: String(formData.get("preferredColorsStyle") || ""),
+            websitesTheyLike: String(formData.get("websitesTheyLike") || ""),
+            packageInterested: String(formData.get("package") || ""),
+            message: String(formData.get("message") || ""),
+          }),
+        });
+
+        const result = await response.json().catch(() => null);
+        setIsSubmitting(false);
+
+        if (!response.ok) {
+          setSubmitted(false);
+          setError(result?.error || "We could not submit your request right now. Please try again.");
+          return;
+        }
+
+        event.currentTarget.reset();
         setSubmitted(true);
       }}
     >
@@ -87,7 +120,7 @@ export default function WebsiteQuoteForm() {
 
         <label className="grid gap-2 text-sm font-bold text-[var(--color-text)]">
           Facebook/business profile link, if any
-          <input name="businessProfileLink" type="url" className="us-input" placeholder="https://facebook.com/yourbusiness" />
+          <input name="businessProfileUrl" type="url" className="us-input" placeholder="https://facebook.com/yourbusiness" />
         </label>
 
         <label className="grid gap-2 text-sm font-bold text-[var(--color-text)] md:col-span-2">
@@ -132,8 +165,8 @@ export default function WebsiteQuoteForm() {
         </label>
       </div>
 
-      <button type="submit" className="us-btn-primary mt-5 w-full">
-        Request Free Preview
+      <button type="submit" className="us-btn-primary mt-5 w-full" disabled={isSubmitting}>
+        {isSubmitting ? "Submitting..." : "Request Free Preview"}
       </button>
     </form>
   );

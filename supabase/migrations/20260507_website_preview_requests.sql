@@ -7,7 +7,7 @@ create table if not exists public.website_preview_requests (
   phone text not null,
   industry text,
   current_website_url text,
-  business_profile_link text,
+  business_profile_url text,
   services_offered text,
   preferred_colors_style text,
   websites_they_like text,

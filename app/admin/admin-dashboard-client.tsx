@@ -104,7 +104,7 @@ export type WebsitePreviewRequestRow = {
   phone: string;
   industry: string | null;
   current_website_url: string | null;
-  business_profile_link: string | null;
+  business_profile_url: string | null;
   services_offered: string | null;
   preferred_colors_style: string | null;
   websites_they_like: string | null;
@@ -1663,7 +1663,7 @@ export default function AdminDashboardClient({
             </label>
             <div className="grid gap-4">
               <DetailBlock label="Current website URL" value={selectedWebsitePreviewRequest.current_website_url} />
-              <DetailBlock label="Facebook/business profile URL" value={selectedWebsitePreviewRequest.business_profile_link} />
+              <DetailBlock label="Facebook/business profile URL" value={selectedWebsitePreviewRequest.business_profile_url} />
               <DetailBlock label="Services offered" value={selectedWebsitePreviewRequest.services_offered} />
               <DetailBlock label="Preferred style" value={selectedWebsitePreviewRequest.preferred_colors_style} />
               <DetailBlock label="Websites liked" value={selectedWebsitePreviewRequest.websites_they_like} />
