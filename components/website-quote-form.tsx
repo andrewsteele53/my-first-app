@@ -47,7 +47,7 @@ export default function WebsiteQuoteForm() {
             phone: String(formData.get("phone") || ""),
             industry: String(formData.get("industry") || ""),
             currentWebsiteUrl: String(formData.get("currentWebsiteUrl") || ""),
-            businessProfileUrl: String(formData.get("businessProfileUrl") || ""),
+            business_profile_url: String(formData.get("business_profile_url") || ""),
             servicesOffered: String(formData.get("servicesOffered") || ""),
             preferredColorsStyle: String(formData.get("preferredColorsStyle") || ""),
             websitesTheyLike: String(formData.get("websitesTheyLike") || ""),
@@ -120,7 +120,7 @@ export default function WebsiteQuoteForm() {
 
         <label className="grid gap-2 text-sm font-bold text-[var(--color-text)]">
           Facebook/business profile link, if any
-          <input name="businessProfileUrl" type="url" className="us-input" placeholder="https://facebook.com/yourbusiness" />
+          <input name="business_profile_url" type="url" className="us-input" placeholder="https://facebook.com/yourbusiness" />
         </label>
 
         <label className="grid gap-2 text-sm font-bold text-[var(--color-text)] md:col-span-2">

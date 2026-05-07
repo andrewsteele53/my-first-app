@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       phone,
       industry: clean(body.industry) || null,
       current_website_url: clean(body.currentWebsiteUrl) || null,
-      business_profile_url: clean(body.businessProfileUrl) || null,
+      business_profile_url: clean(body.business_profile_url) || null,
       services_offered: clean(body.servicesOffered) || null,
       preferred_colors_style: clean(body.preferredColorsStyle) || null,
       websites_they_like: clean(body.websitesTheyLike) || null,
