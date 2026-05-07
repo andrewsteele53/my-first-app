@@ -1,5 +1,6 @@
 import Link from "next/link";
 import BrandLogo from "@/components/brand-logo";
+import ContactRequestForm from "@/components/contact-request-form";
 import SiteFooter from "@/components/site-footer";
 import SiteNavigation from "@/components/site-navigation";
 import { createPageMetadata } from "@/lib/seo";
@@ -40,44 +41,7 @@ export default function ContactPage() {
           <p className="text-sm font-extrabold uppercase text-[var(--color-primary)]">
             Request details
           </p>
-          <form
-            action="mailto:unifiedsteele@gmail.com"
-            method="post"
-            encType="text/plain"
-            className="mt-5 grid gap-4"
-          >
-            {[
-              ["name", "Name"],
-              ["business", "Business"],
-              ["email", "Email"],
-              ["message", "What can we help with?"],
-            ].map(([name, label]) => (
-              <label key={name} className="grid gap-2 text-sm font-bold text-[var(--color-text)]">
-                {label}
-                {name === "message" ? (
-                  <textarea
-                    name={name}
-                    className="us-textarea"
-                    placeholder="Tell us about your goals, timeline, and services needed."
-                  />
-                ) : (
-                  <input
-                    name={name}
-                    className="us-input"
-                    placeholder={label}
-                    type={name === "email" ? "email" : "text"}
-                  />
-                )}
-              </label>
-            ))}
-            <button type="submit" className="us-btn-primary mt-2">
-              Send Request
-            </button>
-            <p className="text-xs leading-5 text-[var(--color-text-muted)]">
-              This opens your email client with the request details so the lead
-              can be sent without adding a new backend workflow yet.
-            </p>
-          </form>
+          <ContactRequestForm />
         </div>
       </section>
       <SiteFooter />
