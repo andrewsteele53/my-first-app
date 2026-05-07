@@ -23,6 +23,21 @@ const features = [
   ["Mobile Friendly", "Manage key workflows from the field, office, or wherever work happens."],
 ];
 
+const websiteServiceCards = [
+  [
+    "One-time website builds",
+    "Get a clean, professional website built for your business so customers can find you, trust you, and contact you online.",
+  ],
+  [
+    "Recurring management",
+    "Need updates after launch? Unified Steele can help manage edits, content changes, and improvements over time.",
+  ],
+  [
+    "Stripe-ready payments",
+    "Add payment links, quote requests, service forms, or checkout flows so customers can take action directly from your site.",
+  ],
+];
+
 export default function LandingPage() {
   return (
     <main className="us-page overflow-hidden">
@@ -115,43 +130,60 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-[0.88fr_1.12fr] lg:px-8">
-        <div className="rounded-[1.6rem] border border-[rgba(47,93,138,0.18)] bg-[var(--color-primary-active)] p-8 text-white shadow-[var(--shadow-card)]">
-          <p className="text-sm font-extrabold uppercase text-white/70">
-            Website development
-          </p>
-          <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Need a Website for Your Business?
-          </h2>
-          <p className="mt-4 text-base leading-7 text-white/82">
-            We build modern, mobile-friendly websites for businesses across all
-            industries.
-          </p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Link href="/website-development" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-6 text-sm font-extrabold text-[var(--color-primary-active)]">
-              View Website Services
-            </Link>
-            <Link href="/contact?service=website" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/25 px-6 text-sm font-extrabold text-white">
-              Request a Quote
-            </Link>
-          </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {["One-time website builds", "Recurring management", "Stripe-ready payments"].map((item) => (
-            <div key={item} className="rounded-2xl border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
-              <p className="text-3xl font-extrabold text-[var(--color-primary)]">+</p>
-              <p className="mt-4 text-lg font-extrabold text-[var(--color-text)]">
-                {item}
+      <section className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
+        <div className="grid gap-5 rounded-[1.6rem] border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card)] lg:grid-cols-[0.9fr_1.1fr] lg:p-7">
+          <div className="flex flex-col justify-between rounded-[1.25rem] bg-[var(--color-primary-active)] p-7 text-white">
+            <div>
+              <p className="text-sm font-extrabold uppercase text-white/70">
+                Website development
               </p>
-              <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
-                Built to support businesses that want a stronger web presence without adding operational complexity.
+              <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                Need a Website for Your Business?
+              </h2>
+              <p className="mt-4 text-base leading-7 text-white/82">
+                Unified Steele builds clean, mobile-friendly websites for small
+                service businesses that need a professional online presence
+                without the hassle.
               </p>
             </div>
-          ))}
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/contact"
+                className="inline-flex min-h-13 items-center justify-center rounded-xl bg-white px-6 text-sm font-extrabold text-[var(--color-primary-active)] shadow-[0_14px_30px_rgba(255,255,255,0.16)] transition hover:-translate-y-0.5 hover:bg-[var(--color-surface-secondary)]"
+              >
+                Request a Website Quote
+              </Link>
+              <Link
+                href="/website-development"
+                className="inline-flex min-h-13 items-center justify-center rounded-xl border border-white/30 px-6 text-sm font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
+              >
+                View Services
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+            {websiteServiceCards.map(([title, text], index) => (
+              <article
+                key={title}
+                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] p-5 shadow-[var(--shadow-card-soft)] transition hover:-translate-y-1 hover:bg-white hover:shadow-[var(--shadow-card)]"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-sm font-extrabold text-[var(--color-primary)] ring-1 ring-[var(--color-border-muted)]">
+                  {index + 1}
+                </div>
+                <h3 className="mt-4 text-lg font-extrabold text-[var(--color-text)]">
+                  {title}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                  {text}
+                </p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 pb-16 lg:px-8">
+      <section className="mx-auto max-w-7xl px-5 pb-10 lg:px-8">
         <div className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-7 shadow-[var(--shadow-card)]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -165,7 +197,7 @@ export default function LandingPage() {
                 Start Free Trial
               </Link>
               <Link href="/contact" className="us-btn-secondary min-w-44">
-                Contact
+                Contact Unified Steele
               </Link>
             </div>
           </div>

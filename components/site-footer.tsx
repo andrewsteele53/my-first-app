@@ -4,9 +4,9 @@ import BrandLogo from "@/components/brand-logo";
 export default function SiteFooter() {
   return (
     <footer className="border-t border-[var(--color-border-muted)] bg-white">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-        <BrandLogo size="md" />
-        <div className="flex flex-wrap gap-4 text-sm font-bold text-[var(--color-text-secondary)]">
+      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-7 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+        <BrandLogo size="sm" />
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-bold text-[var(--color-text-secondary)]">
           <Link href="/" className="transition hover:text-[var(--color-primary-active)]">
             Home
           </Link>
