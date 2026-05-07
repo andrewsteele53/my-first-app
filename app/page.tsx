@@ -37,6 +37,15 @@ function addDays(date: Date, days: number) {
   return nextDate;
 }
 
+function getMonthStartString(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+function getNextMonthStartString(date = new Date()) {
+  const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+  return getMonthStartString(nextMonth);
+}
+
 export default async function Dashboard() {
   const supabase = await createClient();
 
@@ -90,6 +99,9 @@ export default async function Dashboard() {
     industryLabel === "Demolition" ? "Map Demolition Sales Route" : "View Sales Mapping";
   const todayDate = getLocalDateString();
   const tomorrowDate = getLocalDateString(addDays(new Date(), 1));
+  const weekEndDate = getLocalDateString(addDays(new Date(), 7));
+  const monthStartDate = getMonthStartString();
+  const nextMonthStartDate = getNextMonthStartString();
   const [
     newLeadsResult,
     followUpsDueResult,
@@ -101,6 +113,9 @@ export default async function Dashboard() {
     wonLeadsResult,
     lostLeadsResult,
     scheduledFollowUpsResult,
+    upcomingBookingsResult,
+    pendingBookingsResult,
+    completedBookingsResult,
   ] =
     await Promise.all([
       supabase
@@ -155,6 +170,25 @@ export default async function Dashboard() {
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .not("follow_up_date", "is", null),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .neq("status", "cancelled")
+        .gte("booking_date", todayDate)
+        .lte("booking_date", weekEndDate),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "pending"),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .gte("booking_date", monthStartDate)
+        .lt("booking_date", nextMonthStartDate),
     ]);
   const dashboardCountErrors = [
     ["New leads", newLeadsResult.error],
@@ -167,6 +201,9 @@ export default async function Dashboard() {
     ["Won leads", wonLeadsResult.error],
     ["Lost leads", lostLeadsResult.error],
     ["Scheduled follow-ups", scheduledFollowUpsResult.error],
+    ["Upcoming bookings", upcomingBookingsResult.error],
+    ["Pending bookings", pendingBookingsResult.error],
+    ["Completed bookings", completedBookingsResult.error],
   ]
     .filter((entry): entry is [string, NonNullable<typeof newLeadsResult.error>] =>
       Boolean(entry[1])
@@ -182,10 +219,14 @@ export default async function Dashboard() {
   const wonLeadsCount = wonLeadsResult.count;
   const lostLeadsCount = lostLeadsResult.count;
   const scheduledFollowUpsCount = scheduledFollowUpsResult.count;
+  const upcomingBookingsCount = upcomingBookingsResult.count;
+  const pendingBookingsCount = pendingBookingsResult.count;
+  const completedBookingsCount = completedBookingsResult.count;
 
   const sections = [
     { title: "Leads", description: "Organize contacts, lead notes, follow-ups, service types, and estimated job value in one place.", href: "/leads", cta: leadCta, tone: "primary" },
     { title: "Customers", description: "Store customer records, follow-up dates, sales status, notes, and quick outreach actions in one CRM view.", href: "/customers", cta: "Add / View Customers", tone: "primary" },
+    { title: "Scheduling", description: "Manage appointments, booked jobs, estimates, consultations, and service calls from one calendar-style view.", href: "/scheduling", cta: "Open Scheduling", tone: "primary" },
     { title: "Quotes", description: "Create estimates and proposals, manage quote statuses, and convert approved quotes into invoices.", href: defaultQuoteHref, cta: `Create ${quoteLabel} Quote`, tone: "primary" },
     { title: "Invoices", description: "Create, save, and manage customer-ready invoices for every service type.", href: defaultInvoiceHref, cta: `Create ${invoiceLabel} Invoice`, tone: "primary" },
     { title: "Sales Mapping", description: "Track neighborhoods, route opportunities, and area performance with a cleaner field-sales view.", href: "/mapping", cta: mappingCta, tone: "secondary" },
@@ -201,13 +242,16 @@ export default async function Dashboard() {
     (followUpsDueCount ?? 0) === 0 &&
     (overdueFollowUpsCount ?? 0) === 0 &&
     (upcomingFollowUpsCount ?? 0) === 0 &&
-    (openQuotesCount ?? 0) === 0;
+    (openQuotesCount ?? 0) === 0 &&
+    (upcomingBookingsCount ?? 0) === 0 &&
+    (pendingBookingsCount ?? 0) === 0;
   const hasNoPipelineActivity =
     (leadsCreatedCount ?? 0) === 0 &&
     (wonLeadsCount ?? 0) === 0 &&
     (lostLeadsCount ?? 0) === 0 &&
     (scheduledFollowUpsCount ?? 0) === 0 &&
-    (openQuotesCount ?? 0) === 0;
+    (openQuotesCount ?? 0) === 0 &&
+    (completedBookingsCount ?? 0) === 0;
   const nextStepGuidance =
     (leadsCreatedCount ?? 0) === 0
       ? "Start by adding your first lead"
@@ -249,6 +293,18 @@ export default async function Dashboard() {
       href: "/quotes",
       colorClass: "border-[rgba(47,93,138,0.22)] bg-[rgba(47,93,138,0.08)] text-[var(--color-primary)]",
     },
+    {
+      label: "Bookings This Week",
+      value: upcomingBookingsCount ?? 0,
+      href: "/scheduling",
+      colorClass: "border-[rgba(46,125,90,0.22)] bg-[rgba(46,125,90,0.1)] text-[var(--color-success)]",
+    },
+    {
+      label: "Pending Bookings",
+      value: pendingBookingsCount ?? 0,
+      href: "/scheduling",
+      colorClass: "border-[rgba(183,121,31,0.25)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]",
+    },
   ];
   const pipelineCards = [
     {
@@ -270,6 +326,11 @@ export default async function Dashboard() {
       label: "Follow-Ups",
       value: scheduledFollowUpsCount ?? 0,
       colorClass: "border-[rgba(183,121,31,0.25)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]",
+    },
+    {
+      label: "Completed Bookings",
+      value: completedBookingsCount ?? 0,
+      colorClass: "border-[rgba(46,125,90,0.22)] bg-[rgba(46,125,90,0.1)] text-[var(--color-success)]",
     },
   ];
 
