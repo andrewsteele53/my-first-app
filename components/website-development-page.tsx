@@ -78,7 +78,7 @@ const websitePackages = [
     cta: "Request Website",
     note: "No forced monthly contract.",
     action: "checkout" as const,
-    item: "professional-website" as const,
+    checkoutType: "one_time_website" as const,
   },
   {
     title: "Professional Website + Management",
@@ -90,7 +90,7 @@ const websitePackages = [
     cta: "Start Your Project",
     note: "Cancel anytime. You still own your website.",
     action: "checkout" as const,
-    item: "professional-website-managed" as const,
+    checkoutType: "managed_website" as const,
     featured: true,
   },
   {
@@ -304,7 +304,7 @@ export default function WebsiteDevelopmentPage() {
               <div className="mt-6 grid gap-3">
                 {pkg.action === "checkout" ? (
                   <WebsiteCheckoutButton
-                    item={pkg.item}
+                    type={pkg.checkoutType}
                     className={pkg.featured ? "us-btn-primary w-full text-sm" : "us-btn-secondary w-full text-sm"}
                   >
                     {pkg.cta}

@@ -1,16 +1,16 @@
 "use client";
 
-import type { WebsiteCheckoutItem } from "@/lib/website-stripe";
+import type { WebsiteCheckoutType } from "@/lib/website-stripe";
 import { useWebsiteCheckout } from "@/hooks/use-website-checkout";
 
 type WebsiteCheckoutButtonProps = {
-  item: WebsiteCheckoutItem;
+  type: WebsiteCheckoutType;
   children: React.ReactNode;
   className?: string;
 };
 
 export default function WebsiteCheckoutButton({
-  item,
+  type,
   children,
   className = "us-btn-secondary w-full text-sm",
 }: WebsiteCheckoutButtonProps) {
@@ -22,9 +22,9 @@ export default function WebsiteCheckoutButton({
         type="button"
         className={className}
         disabled={isLoading}
-        onClick={() => startCheckout(item)}
+        onClick={() => startCheckout(type)}
       >
-        {isLoading ? "Opening Stripe..." : children}
+        {isLoading ? "Redirecting..." : children}
       </button>
       {error ? (
         <p className="text-xs font-semibold leading-5 text-[var(--color-danger)]">

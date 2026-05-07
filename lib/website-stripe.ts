@@ -1,37 +1,33 @@
-export type WebsiteCheckoutMode = "payment" | "subscription";
-
-export type WebsiteCheckoutItem =
-  | "professional-website"
-  | "professional-website-managed";
+export type WebsiteCheckoutType = "one_time_website" | "managed_website";
 
 export type WebsiteStripePriceConfig = {
-  item: WebsiteCheckoutItem;
-  mode: WebsiteCheckoutMode;
+  type: WebsiteCheckoutType;
+  mode: "payment" | "subscription";
   envKeys: string[];
 };
 
 export const websiteStripePrices: WebsiteStripePriceConfig[] = [
   {
-    item: "professional-website",
+    type: "one_time_website",
     mode: "payment",
     envKeys: ["NEXT_PUBLIC_STRIPE_WEBSITE_ONE_TIME_PRICE_ID"],
   },
   {
-    item: "professional-website-managed",
+    type: "managed_website",
     mode: "subscription",
     envKeys: [
-      "NEXT_PUBLIC_STRIPE_WEBSITE_MANAGED_SETUP_PRICE_ID",
+      "NEXT_PUBLIC_STRIPE_WEBSITE_SETUP_PRICE_ID",
       "NEXT_PUBLIC_STRIPE_WEBSITE_MANAGEMENT_MONTHLY_PRICE_ID",
     ],
   },
 ];
 
-export function getWebsiteStripePriceConfig(item: WebsiteCheckoutItem) {
-  return websiteStripePrices.find((config) => config.item === item) ?? null;
+export function getWebsiteStripePriceConfig(type: WebsiteCheckoutType) {
+  return websiteStripePrices.find((config) => config.type === type) ?? null;
 }
 
-export function getWebsiteStripePriceIds(item: WebsiteCheckoutItem) {
-  const config = getWebsiteStripePriceConfig(item);
+export function getWebsiteStripePriceIds(type: WebsiteCheckoutType) {
+  const config = getWebsiteStripePriceConfig(type);
 
   if (!config) {
     return { priceIds: [], missingEnvKeys: [] };

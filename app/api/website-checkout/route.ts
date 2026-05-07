@@ -3,55 +3,60 @@ import Stripe from "stripe";
 import {
   getWebsiteStripePriceConfig,
   getWebsiteStripePriceIds,
-  type WebsiteCheckoutItem,
+  type WebsiteCheckoutType,
 } from "@/lib/website-stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-03-25.dahlia",
 });
 
-function isWebsiteCheckoutItem(value: unknown): value is WebsiteCheckoutItem {
-  return (
-    value === "professional-website" ||
-    value === "professional-website-managed"
-  );
+function isWebsiteCheckoutType(value: unknown): value is WebsiteCheckoutType {
+  return value === "one_time_website" || value === "managed_website";
 }
 
 export async function POST(req: Request) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("Website checkout is missing Stripe server configuration.");
+
       return NextResponse.json(
-        { error: "Missing STRIPE_SECRET_KEY in .env.local" },
+        {
+          error:
+            "We could not start checkout right now. Please contact us to start your project.",
+        },
         { status: 500 }
       );
     }
 
     const body = await req.json().catch(() => ({}));
-    const item = body?.item;
+    const checkoutType = body?.type;
 
-    if (!isWebsiteCheckoutItem(item)) {
+    if (!isWebsiteCheckoutType(checkoutType)) {
       return NextResponse.json(
-        { error: "Unknown website checkout item." },
+        { error: "Invalid website checkout type." },
         { status: 400 }
       );
     }
 
-    const config = getWebsiteStripePriceConfig(item);
-    const { priceIds, missingEnvKeys } = getWebsiteStripePriceIds(item);
+    const config = getWebsiteStripePriceConfig(checkoutType);
+    const { priceIds, missingEnvKeys } = getWebsiteStripePriceIds(checkoutType);
 
     if (!config || missingEnvKeys.length > 0) {
+      console.error("Website checkout pricing is not configured.", {
+        checkoutType,
+        missingEnvKeys,
+      });
+
       return NextResponse.json(
         {
           error:
-            "Website checkout is almost ready. Please contact us to start this project.",
-          missingEnv: missingEnvKeys,
+            "We could not start checkout right now. Please contact us to start your project.",
         },
-        { status: 501 }
+        { status: 500 }
       );
     }
 
-    const origin =
-      req.headers.get("origin") || body?.origin || "http://localhost:3000";
+    const origin = req.headers.get("origin") || "http://localhost:3000";
 
     const session = await stripe.checkout.sessions.create({
       mode: config.mode,
@@ -61,19 +66,22 @@ export async function POST(req: Request) {
       })),
       metadata: {
         business_model: "website-development",
-        website_item: item,
+        checkout_type: checkoutType,
       },
-      success_url: `${origin}/website-development?checkout=success&item=${item}`,
-      cancel_url: `${origin}/website-development?checkout=cancelled&item=${item}`,
+      success_url: `${origin}/website-development?checkout=success`,
+      cancel_url: `${origin}/website-development?checkout=cancelled`,
     });
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error("Website Stripe checkout error:", error);
 
-    const message =
-      error instanceof Error ? error.message : "Website checkout failed.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        error:
+          "We could not start checkout right now. Please contact us to start your project.",
+      },
+      { status: 500 }
+    );
   }
 }

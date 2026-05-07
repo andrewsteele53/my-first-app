@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { WebsiteCheckoutItem } from "@/lib/website-stripe";
+import type { WebsiteCheckoutType } from "@/lib/website-stripe";
 
 type CheckoutStatus = "idle" | "loading" | "error";
 
@@ -9,7 +9,7 @@ export function useWebsiteCheckout() {
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [error, setError] = useState("");
 
-  async function startCheckout(item: WebsiteCheckoutItem) {
+  async function startCheckout(type: WebsiteCheckoutType) {
     let didRedirect = false;
 
     try {
@@ -22,25 +22,33 @@ export function useWebsiteCheckout() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          item,
-          origin: window.location.origin,
+          type,
         }),
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.error || "Website checkout is not ready yet.");
+        throw new Error(
+          data.error ||
+            "We could not start checkout right now. Please contact us to start your project."
+        );
       }
 
       if (!data.url) {
-        throw new Error("Website checkout did not return a redirect URL.");
+        throw new Error(
+          "We could not start checkout right now. Please contact us to start your project."
+        );
       }
 
       didRedirect = true;
       window.location.href = data.url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "We could not start checkout right now. Please contact us to start your project."
+      );
     } finally {
       if (!didRedirect) {
         setStatus("error");
