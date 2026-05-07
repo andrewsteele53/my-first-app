@@ -2,7 +2,6 @@ import Link from "next/link";
 import BrandLogo from "@/components/brand-logo";
 import SiteNavigation from "@/components/site-navigation";
 import SiteFooter from "@/components/site-footer";
-import WebsiteCheckoutButton from "@/components/website-checkout-button";
 import WebsiteQuoteForm from "@/components/website-quote-form";
 
 const portfolio = [
@@ -14,16 +13,24 @@ const portfolio = [
 
 const howItWorks = [
   [
-    "Request a Quote",
+    "Request a Free Preview",
     "Tell us about your business and what kind of website you need.",
   ],
   [
-    "We Build Your Website",
-    "We design a modern, mobile-friendly website tailored to your brand.",
+    "We Build a Preview",
+    "We create a website mockup and send screenshots by email.",
   ],
   [
-    "Launch Online",
-    "Your business goes live with a professional online presence.",
+    "You Review It",
+    "You can request changes or decide if you want to move forward.",
+  ],
+  [
+    "Pay Securely Through Stripe",
+    "If you approve the preview, we send a secure Stripe payment link or checkout option.",
+  ],
+  [
+    "Website Gets Finalized",
+    "After payment, we finalize your website and prepare it for launch.",
   ],
 ];
 
@@ -32,8 +39,17 @@ const whyChooseUs = [
   "Affordable websites without agency-level pricing",
   "Clean mobile-first layouts that help customers take action",
   "Optional management when you want updates handled for you",
-  "Stripe-ready payment structure for website builds and subscriptions",
+  "Secure Stripe payment options after you approve the preview",
   "Professional online presence connected to a broader business platform",
+];
+
+const previewTrustItems = [
+  "No upfront payment required for preview",
+  "Preview screenshots sent by email",
+  "Pay only if you want to move forward",
+  "Secure Stripe payment after approval",
+  "You own your website after purchase",
+  "Optional website management available",
 ];
 
 const professionalFeatures = [
@@ -77,10 +93,8 @@ const websitePackages = [
     description:
       "For businesses that want a professional website with full ownership and no required monthly commitment.",
     features: professionalFeatures,
-    cta: "Request Website",
-    note: "No forced monthly contract.",
-    action: "checkout" as const,
-    checkoutType: "one_time_website" as const,
+    cta: "Request Free Preview",
+    note: "No upfront payment required for preview.",
   },
   {
     title: "Professional Website + Management",
@@ -89,10 +103,8 @@ const websitePackages = [
     description:
       "For businesses that want a lower upfront cost with ongoing website support and management.",
     features: managedFeatures,
-    cta: "Start Your Project",
-    note: "Cancel anytime. You still own your website.",
-    action: "checkout" as const,
-    checkoutType: "managed_website" as const,
+    cta: "Request Free Preview",
+    note: "No upfront payment required for preview.",
     featured: true,
   },
   {
@@ -102,9 +114,8 @@ const websitePackages = [
     description:
       "For advanced businesses that need larger websites, ecommerce, booking systems, integrations, or custom functionality.",
     features: customFeatures,
-    cta: "Request Custom Quote",
-    note: "Scoped around your goals and requirements.",
-    action: "quote" as const,
+    cta: "Request Custom Preview",
+    note: "Start with a free preview conversation.",
   },
 ];
 
@@ -162,8 +173,8 @@ export default function WebsiteDevelopmentPage() {
               customers online.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="#request-quote" className="us-btn-primary min-h-14 px-8">
-                Request a Quote
+              <Link href="#request-preview" className="us-btn-primary min-h-14 px-8">
+                Request Free Preview
               </Link>
               <Link href="#portfolio" className="us-btn-secondary min-h-14 px-8">
                 View Demo Websites
@@ -212,7 +223,7 @@ export default function WebsiteDevelopmentPage() {
             A simple path from idea to launch.
           </h2>
         </div>
-        <div className="mt-8 grid gap-5 md:grid-cols-3">
+        <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-5">
           {howItWorks.map(([title, text], index) => (
             <article
               key={title}
@@ -305,18 +316,12 @@ export default function WebsiteDevelopmentPage() {
                 ))}
               </ul>
               <div className="mt-6 grid gap-3">
-                {pkg.action === "checkout" ? (
-                  <WebsiteCheckoutButton
-                    type={pkg.checkoutType}
-                    className={pkg.featured ? "us-btn-primary w-full text-sm" : "us-btn-secondary w-full text-sm"}
-                  >
-                    {pkg.cta}
-                  </WebsiteCheckoutButton>
-                ) : (
-                  <Link href="#request-quote" className="us-btn-primary w-full text-sm">
-                    {pkg.cta}
-                  </Link>
-                )}
+                <Link
+                  href="#request-preview"
+                  className={pkg.featured ? "us-btn-primary w-full text-sm" : "us-btn-secondary w-full text-sm"}
+                >
+                  {pkg.cta}
+                </Link>
                 <p className="text-center text-xs font-bold leading-5 text-[var(--color-text-secondary)]">
                   {pkg.note}
                 </p>
@@ -339,13 +344,7 @@ export default function WebsiteDevelopmentPage() {
                 </h2>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  "No forced monthly contracts.",
-                  "You own your website.",
-                  "Management is optional.",
-                  "Cancel anytime on the managed plan.",
-                  "Affordable websites without agency-level pricing.",
-                ].map((item) => (
+                {previewTrustItems.map((item) => (
                   <div
                     key={item}
                     className="rounded-xl border border-white/15 bg-white/10 p-4 text-sm font-bold leading-6 text-white"
@@ -359,17 +358,27 @@ export default function WebsiteDevelopmentPage() {
         </div>
       </section>
 
-      <section id="request-quote" className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
+      <section id="request-preview" className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
         <div>
-          <p className="us-kicker">Contact / Request Quote</p>
+          <p className="us-kicker">Free Website Preview</p>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-4xl">
-            Tell us what kind of website your business needs.
+            Get a free preview before you pay.
           </h2>
           <p className="mt-4 text-base leading-7 text-[var(--color-text-secondary)]">
-            Share a few details and we&apos;ll help you choose the right path:
-            one-time professional website, managed website plan, or a custom
-            project quote.
+            Tell us about your business and we&apos;ll create preview screenshots.
+            If you like the direction, we&apos;ll send secure Stripe payment
+            options to move forward.
           </p>
+          <div className="mt-6 grid gap-3">
+            {previewTrustItems.map((item) => (
+              <div
+                key={item}
+                className="rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm font-bold text-[var(--color-text)] shadow-[var(--shadow-card-soft)]"
+              >
+                {item}
+              </div>
+            ))}
+          </div>
         </div>
         <WebsiteQuoteForm />
       </section>
