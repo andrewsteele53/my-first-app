@@ -75,6 +75,22 @@ function cleanSalesLeadStatus(value: FormDataEntryValue | null) {
   throw new Error("Choose a valid lead status.");
 }
 
+function cleanWebsitePreviewStatus(value: FormDataEntryValue | null) {
+  const status = clean(value);
+  if (
+    status === "new" ||
+    status === "in_review" ||
+    status === "preview_sent" ||
+    status === "waiting_on_payment" ||
+    status === "paid" ||
+    status === "closed"
+  ) {
+    return status;
+  }
+
+  throw new Error("Choose a valid website preview status.");
+}
+
 const TEAM_APPLICATION_ACTIVATION_STATUSES = [
   "pending",
   "approved",
@@ -1498,6 +1514,28 @@ export async function deleteSalesLeadAdminAction(formData: FormData): Promise<Ad
   revalidatePath("/admin");
   revalidatePath("/sales");
   return success("Lead deleted.");
+}
+
+export async function updateWebsitePreviewRequestStatusAction(formData: FormData): Promise<AdminActionResult> {
+  const { supabase } = await requireAdminContext();
+  const requestId = clean(formData.get("request_id"));
+  const status = cleanWebsitePreviewStatus(formData.get("status"));
+
+  if (!requestId) {
+    throw new Error("Choose a website preview request to update.");
+  }
+
+  const { error } = await supabase
+    .from("website_preview_requests")
+    .update({ status })
+    .eq("id", requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  return success("Website preview request updated.");
 }
 
 async function deactivateSalesRepForUser(

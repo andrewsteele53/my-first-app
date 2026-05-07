@@ -10,6 +10,7 @@ import AdminDashboardClient, {
   type SalesAssignmentRow,
   type SalesLeadRow,
   type SalesRepRow,
+  type WebsitePreviewRequestRow,
   type JobApplicationRow,
   type JobListingRow,
   type TeamApplicationRow,
@@ -24,7 +25,17 @@ export default async function AdminPage() {
   if (!user) redirect("/login");
   await requireAdmin(supabase, user);
 
-  const [profilesResult, salesRepsResult, assignmentsResult, payoutsResult, salesLeadsResult, applicationsResult, jobListingsResult, jobApplicationsResult] = await Promise.all([
+  const [
+    profilesResult,
+    salesRepsResult,
+    assignmentsResult,
+    payoutsResult,
+    salesLeadsResult,
+    websitePreviewRequestsResult,
+    applicationsResult,
+    jobListingsResult,
+    jobApplicationsResult,
+  ] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, email, display_name, business_name, owner_name, role, subscription_status, trial_start, trial_end, trial_ends_at, created_at")
@@ -46,6 +57,10 @@ export default async function AdminPage() {
       .select("id, sales_rep_id, business_name, owner_name, phone, email, status, signed_up, signed_up_at, created_at")
       .order("created_at", { ascending: false }),
     supabase
+      .from("website_preview_requests")
+      .select("id, created_at, name, business_name, email, phone, industry, current_website_url, business_profile_link, services_offered, preferred_colors_style, websites_they_like, package_interested, message, status, admin_notes")
+      .order("created_at", { ascending: false }),
+    supabase
       .from("team_applications")
       .select("id, name, email, phone, desired_role, status, notes, created_at, reviewed_at, reviewed_by")
       .order("created_at", { ascending: false }),
@@ -64,6 +79,7 @@ export default async function AdminPage() {
   const assignments = ((assignmentsResult.data ?? []) as SalesAssignmentRow[]);
   const payouts = ((payoutsResult.data ?? []) as CommissionPayoutRow[]);
   const salesLeads = ((salesLeadsResult.data ?? []) as SalesLeadRow[]);
+  const websitePreviewRequests = ((websitePreviewRequestsResult.data ?? []) as WebsitePreviewRequestRow[]);
   const teamApplications = ((applicationsResult.data ?? []) as TeamApplicationRow[]);
   const jobListings = ((jobListingsResult.data ?? []) as JobListingRow[]);
   const jobApplications = ((jobApplicationsResult.data ?? []) as JobApplicationRow[]);
@@ -75,7 +91,14 @@ export default async function AdminPage() {
   const trialUsers = subscribers.filter((profile) => profile.subscription_status === "trialing");
   const estimatedMrr = activePaidSubscribers.length * MONTHLY_SUBSCRIPTION_AMOUNT;
 
-  const errors = [profilesResult.error, salesRepsResult.error, assignmentsResult.error, payoutsResult.error, salesLeadsResult.error]
+  const errors = [
+    profilesResult.error,
+    salesRepsResult.error,
+    assignmentsResult.error,
+    payoutsResult.error,
+    salesLeadsResult.error,
+    websitePreviewRequestsResult.error,
+  ]
     .filter(Boolean)
     .map((error) => error?.message)
     .join(" | ");
@@ -121,6 +144,8 @@ export default async function AdminPage() {
           payouts={payouts}
           salesLeads={salesLeads}
           salesLeadsError={salesLeadsResult.error?.message || null}
+          websitePreviewRequests={websitePreviewRequests}
+          websitePreviewRequestsError={websitePreviewRequestsResult.error?.message || null}
           teamApplications={teamApplications}
           teamApplicationsError={applicationsResult.error?.message || null}
           jobListings={jobListings}

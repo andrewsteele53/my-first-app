@@ -31,6 +31,7 @@ import {
   updateTeamApplicationAction,
   updateSalesRepAction,
   updateUserAction,
+  updateWebsitePreviewRequestStatusAction,
   type AdminActionResult,
 } from "./actions";
 import {
@@ -41,6 +42,14 @@ import {
 
 const TEAM_SIGNUP_LINK = "https://unifiedsteele.app/team-signup";
 const PENDING_TEAM_APPLICATION_STATUSES = new Set(["pending", "approved", "invite_sent", "invited"]);
+const WEBSITE_PREVIEW_STATUSES = [
+  { value: "new", label: "New" },
+  { value: "in_review", label: "In Review" },
+  { value: "preview_sent", label: "Preview Sent" },
+  { value: "waiting_on_payment", label: "Waiting on Payment" },
+  { value: "paid", label: "Paid" },
+  { value: "closed", label: "Closed" },
+];
 
 export type ProfileRow = {
   id: string;
@@ -84,6 +93,25 @@ export type SalesLeadRow = {
   signed_up: boolean | null;
   signed_up_at: string | null;
   created_at: string | null;
+};
+
+export type WebsitePreviewRequestRow = {
+  id: string;
+  created_at: string | null;
+  name: string;
+  business_name: string;
+  email: string;
+  phone: string;
+  industry: string | null;
+  current_website_url: string | null;
+  business_profile_link: string | null;
+  services_offered: string | null;
+  preferred_colors_style: string | null;
+  websites_they_like: string | null;
+  package_interested: string;
+  message: string | null;
+  status: string | null;
+  admin_notes: string | null;
 };
 
 export type CommissionPayoutRow = {
@@ -212,6 +240,8 @@ type Props = {
   payouts: CommissionPayoutRow[];
   salesLeads: SalesLeadRow[];
   salesLeadsError: string | null;
+  websitePreviewRequests: WebsitePreviewRequestRow[];
+  websitePreviewRequestsError: string | null;
   teamApplications: TeamApplicationRow[];
   teamApplicationsError: string | null;
   jobListings: JobListingRow[];
@@ -275,6 +305,8 @@ export default function AdminDashboardClient({
   payouts,
   salesLeads,
   salesLeadsError,
+  websitePreviewRequests,
+  websitePreviewRequestsError,
   teamApplications,
   teamApplicationsError,
   jobListings,
@@ -292,6 +324,7 @@ export default function AdminDashboardClient({
   const [editJobListing, setEditJobListing] = useState<EditJobListingState | null>(null);
   const [editJobApplication, setEditJobApplication] = useState<EditJobApplicationState | null>(null);
   const [editSalesLead, setEditSalesLead] = useState<EditSalesLeadState | null>(null);
+  const [selectedWebsitePreviewRequest, setSelectedWebsitePreviewRequest] = useState<WebsitePreviewRequestRow | null>(null);
   const [jobApplicationStatusFilter, setJobApplicationStatusFilter] = useState("all");
   const [jobApplicationJobFilter, setJobApplicationJobFilter] = useState("all");
   const [selectedPerformanceRepId, setSelectedPerformanceRepId] = useState<string | null>(null);
@@ -663,6 +696,19 @@ export default function AdminDashboardClient({
     );
   }
 
+  function updateWebsitePreviewStatus(request: WebsitePreviewRequestRow, status: string) {
+    runAction(
+      () =>
+        updateWebsitePreviewRequestStatusAction(
+          formData({
+            request_id: request.id,
+            status,
+          })
+        ),
+      `website-preview-${request.id}`
+    );
+  }
+
   return (
     <>
       {message ? (
@@ -671,6 +717,81 @@ export default function AdminDashboardClient({
         </div>
       ) : null}
       {salesLeadsError ? <div className="us-notice-danger text-sm">{salesLeadsError}</div> : null}
+      {websitePreviewRequestsError ? <div className="us-notice-danger text-sm">{websitePreviewRequestsError}</div> : null}
+
+      <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="us-kicker">Website Preview Requests</p>
+            <h2 className="mt-2 text-2xl font-extrabold">Website preview requests</h2>
+            <p className="mt-2 max-w-2xl text-sm text-[var(--color-text-secondary)]">
+              Review free preview leads, track follow-up status, and keep website build opportunities organized.
+            </p>
+          </div>
+          <MiniStat label="Open Requests" value={String(websitePreviewRequests.filter((request) => request.status !== "closed").length)} />
+        </div>
+        {websitePreviewRequests.length === 0 ? (
+          <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
+            No website preview requests yet.
+          </p>
+        ) : (
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[1120px] text-left text-sm">
+              <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                <tr>
+                  <th className="py-3 pr-4">Business</th>
+                  <th className="py-3 pr-4">Contact</th>
+                  <th className="py-3 pr-4">Email</th>
+                  <th className="py-3 pr-4">Phone</th>
+                  <th className="py-3 pr-4">Industry</th>
+                  <th className="py-3 pr-4">Package</th>
+                  <th className="py-3 pr-4">Status</th>
+                  <th className="py-3 pr-4">Created</th>
+                  <th className="py-3 pr-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {websitePreviewRequests.map((request) => (
+                  <tr key={request.id} className="border-b border-[var(--color-border-muted)] align-top">
+                    <td className="py-4 pr-4 font-bold">{request.business_name}</td>
+                    <td className="py-4 pr-4">{request.name}</td>
+                    <td className="py-4 pr-4 break-all">{request.email}</td>
+                    <td className="py-4 pr-4">{request.phone}</td>
+                    <td className="py-4 pr-4">{request.industry || "-"}</td>
+                    <td className="py-4 pr-4">{request.package_interested}</td>
+                    <td className="py-4 pr-4">{statusBadge(request.status || "new")}</td>
+                    <td className="py-4 pr-4">{formatDate(request.created_at)}</td>
+                    <td className="py-4 pr-4">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="us-btn-secondary px-3 py-2 text-xs"
+                          onClick={() => setSelectedWebsitePreviewRequest(request)}
+                        >
+                          View
+                        </button>
+                        <select
+                          className="us-input min-w-44 text-xs"
+                          value={request.status || "new"}
+                          disabled={isPending}
+                          onChange={(event) => updateWebsitePreviewStatus(request, event.target.value)}
+                          aria-label={`Update status for ${request.business_name}`}
+                        >
+                          {WEBSITE_PREVIEW_STATUSES.map((status) => (
+                            <option key={status.value} value={status.value}>
+                              {status.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
         <p className="us-kicker">Users</p>
@@ -1507,6 +1628,51 @@ export default function AdminDashboardClient({
         )}
       </section>
 
+      {selectedWebsitePreviewRequest ? (
+        <Modal
+          title={`${selectedWebsitePreviewRequest.business_name} Preview Request`}
+          onCancel={() => setSelectedWebsitePreviewRequest(null)}
+        >
+          <div className="space-y-5 text-sm">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MiniStat label="Contact" value={selectedWebsitePreviewRequest.name} />
+              <MiniStat label="Package" value={selectedWebsitePreviewRequest.package_interested} />
+              <MiniStat label="Email" value={selectedWebsitePreviewRequest.email} />
+              <MiniStat label="Phone" value={selectedWebsitePreviewRequest.phone} />
+              <MiniStat label="Industry" value={selectedWebsitePreviewRequest.industry || "-"} />
+              <MiniStat label="Created" value={formatDate(selectedWebsitePreviewRequest.created_at)} />
+            </div>
+            <label className="grid gap-2 text-sm font-bold">
+              Status
+              <select
+                className="us-input"
+                value={selectedWebsitePreviewRequest.status || "new"}
+                disabled={isPending}
+                onChange={(event) => {
+                  const status = event.target.value;
+                  setSelectedWebsitePreviewRequest({ ...selectedWebsitePreviewRequest, status });
+                  updateWebsitePreviewStatus(selectedWebsitePreviewRequest, status);
+                }}
+              >
+                {WEBSITE_PREVIEW_STATUSES.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="grid gap-4">
+              <DetailBlock label="Current website URL" value={selectedWebsitePreviewRequest.current_website_url} />
+              <DetailBlock label="Facebook/business profile URL" value={selectedWebsitePreviewRequest.business_profile_link} />
+              <DetailBlock label="Services offered" value={selectedWebsitePreviewRequest.services_offered} />
+              <DetailBlock label="Preferred style" value={selectedWebsitePreviewRequest.preferred_colors_style} />
+              <DetailBlock label="Websites liked" value={selectedWebsitePreviewRequest.websites_they_like} />
+              <DetailBlock label="Message / project details" value={selectedWebsitePreviewRequest.message} />
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+
       {selectedPerformanceSummary ? (
         <Modal
           title={`${selectedPerformanceSummary.rep.display_name || getProfileName(selectedPerformanceSummary.profile)} Leads`}
@@ -1924,6 +2090,29 @@ function Modal({
         </div>
         <div className="mt-5">{children}</div>
       </div>
+    </div>
+  );
+}
+
+function DetailBlock({ label, value }: { label: string; value?: string | null }) {
+  const displayValue = value?.trim() || "-";
+  const isUrl = /^https?:\/\//i.test(displayValue);
+
+  return (
+    <div className="rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4">
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">{label}</p>
+      {isUrl ? (
+        <a
+          href={displayValue}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 block break-all font-bold text-[var(--color-primary-active)] hover:underline"
+        >
+          {displayValue}
+        </a>
+      ) : (
+        <p className="mt-2 whitespace-pre-wrap break-words text-[var(--color-text)]">{displayValue}</p>
+      )}
     </div>
   );
 }
