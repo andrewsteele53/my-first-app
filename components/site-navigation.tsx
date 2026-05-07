@@ -1,15 +1,23 @@
 import Link from "next/link";
 import BrandLogo from "@/components/brand-logo";
 
-const navItems = [
-  { label: "Home", href: "/" },
-  { label: "Features", href: "/#features" },
-  { label: "Pricing", href: "/subscribe" },
-  { label: "Website Development", href: "/website-development" },
-  { label: "Contact", href: "/contact" },
-];
+type SiteNavigationProps = {
+  featuresHref?: string;
+  pricingHref?: string;
+};
 
-export default function SiteNavigation() {
+export default function SiteNavigation({
+  featuresHref = "/#features",
+  pricingHref = "/#pricing",
+}: SiteNavigationProps) {
+  const navItems = [
+    { label: "Home", href: "/" },
+    { label: "Features", href: featuresHref },
+    { label: "Pricing", href: pricingHref },
+    { label: "Website Development", href: "/website-development" },
+    { label: "Contact", href: "/contact" },
+  ];
+
   return (
     <header className="sticky top-0 z-40 border-b border-white/70 bg-white/90 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">

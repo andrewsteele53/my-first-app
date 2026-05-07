@@ -455,7 +455,7 @@ function DemoWebsiteCard({
 export default function WebsiteDevelopmentPage() {
   return (
     <main className="us-page overflow-hidden">
-      <SiteNavigation />
+      <SiteNavigation pricingHref="#packages" />
 
       <section className="bg-[linear-gradient(135deg,#f8fbff_0%,#eef5f9_54%,#e7f3ee_100%)]">
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[0.96fr_1.04fr] lg:px-8 lg:py-24">

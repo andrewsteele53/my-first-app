@@ -89,7 +89,7 @@ const websitePlanFeatures = [
 export default function LandingPage() {
   return (
     <main className="us-page overflow-hidden">
-      <SiteNavigation />
+      <SiteNavigation featuresHref="#features" pricingHref="#pricing" />
 
       <section className="relative border-b border-white/70 bg-[linear-gradient(135deg,#f8fbff_0%,#edf4f9_48%,#e8f4ef_100%)]">
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-14 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:py-22">
