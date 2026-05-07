@@ -1538,6 +1538,27 @@ export async function updateWebsitePreviewRequestStatusAction(formData: FormData
   return success("Website preview request updated.");
 }
 
+export async function updateWebsitePreviewRequestNotesAction(formData: FormData): Promise<AdminActionResult> {
+  const { supabase } = await requireAdminContext();
+  const requestId = clean(formData.get("request_id"));
+
+  if (!requestId) {
+    throw new Error("Choose a website preview request to update.");
+  }
+
+  const { error } = await supabase
+    .from("website_preview_requests")
+    .update({ admin_notes: clean(formData.get("admin_notes")) || null })
+    .eq("id", requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  return success("Admin notes saved.");
+}
+
 async function deactivateSalesRepForUser(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   userId: string

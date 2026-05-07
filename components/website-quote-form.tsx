@@ -13,6 +13,8 @@ export default function WebsiteQuoteForm() {
       onSubmit={async (event) => {
         event.preventDefault();
 
+        if (isSubmitting) return;
+
         const formData = new FormData(event.currentTarget);
         const requiredFields = [
           "name",
@@ -35,38 +37,44 @@ export default function WebsiteQuoteForm() {
         setIsSubmitting(true);
         setError("");
 
-        const response = await fetch("/api/website-preview-requests", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: String(formData.get("name") || ""),
-            businessName: String(formData.get("businessName") || ""),
-            email: String(formData.get("email") || ""),
-            phone: String(formData.get("phone") || ""),
-            industry: String(formData.get("industry") || ""),
-            currentWebsiteUrl: String(formData.get("currentWebsiteUrl") || ""),
-            business_profile_url: String(formData.get("business_profile_url") || ""),
-            servicesOffered: String(formData.get("servicesOffered") || ""),
-            preferredColorsStyle: String(formData.get("preferredColorsStyle") || ""),
-            websitesTheyLike: String(formData.get("websitesTheyLike") || ""),
-            packageInterested: String(formData.get("package") || ""),
-            message: String(formData.get("message") || ""),
-          }),
-        });
+        try {
+          const response = await fetch("/api/website-preview-requests", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: String(formData.get("name") || ""),
+              businessName: String(formData.get("businessName") || ""),
+              email: String(formData.get("email") || ""),
+              phone: String(formData.get("phone") || ""),
+              industry: String(formData.get("industry") || ""),
+              currentWebsiteUrl: String(formData.get("currentWebsiteUrl") || ""),
+              business_profile_url: String(formData.get("business_profile_url") || ""),
+              servicesOffered: String(formData.get("servicesOffered") || ""),
+              preferredColorsStyle: String(formData.get("preferredColorsStyle") || ""),
+              websitesTheyLike: String(formData.get("websitesTheyLike") || ""),
+              packageInterested: String(formData.get("package") || ""),
+              message: String(formData.get("message") || ""),
+            }),
+          });
 
-        const result = await response.json().catch(() => null);
-        setIsSubmitting(false);
+          const result = await response.json().catch(() => null);
 
-        if (!response.ok) {
+          if (!response.ok) {
+            setSubmitted(false);
+            setError(result?.error || "We could not submit your request right now. Please try again.");
+            return;
+          }
+
+          event.currentTarget.reset();
+          setSubmitted(true);
+        } catch {
           setSubmitted(false);
-          setError(result?.error || "We could not submit your request right now. Please try again.");
-          return;
+          setError("We could not submit your request right now. Please try again.");
+        } finally {
+          setIsSubmitting(false);
         }
-
-        event.currentTarget.reset();
-        setSubmitted(true);
       }}
     >
       <div className="mb-6">
@@ -80,13 +88,6 @@ export default function WebsiteQuoteForm() {
           forward.
         </p>
       </div>
-
-      {submitted ? (
-        <div className="mb-5 rounded-xl border border-[rgba(46,125,90,0.22)] bg-[rgba(46,125,90,0.1)] px-4 py-3 text-sm font-bold text-[var(--color-success)]">
-          Your website preview request has been submitted. We&apos;ll review
-          your business and send preview screenshots by email.
-        </div>
-      ) : null}
 
       {error ? (
         <div className="mb-5 rounded-xl border border-[rgba(199,80,80,0.22)] bg-[rgba(199,80,80,0.1)] px-4 py-3 text-sm font-bold text-[var(--color-danger)]">
@@ -168,6 +169,30 @@ export default function WebsiteQuoteForm() {
       <button type="submit" className="us-btn-primary mt-5 w-full" disabled={isSubmitting}>
         {isSubmitting ? "Submitting..." : "Request Free Preview"}
       </button>
+
+      {submitted ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl border border-[rgba(46,125,90,0.18)] bg-white p-6 text-center shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in fade-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(46,125,90,0.12)] text-[var(--color-success)]">
+              <span className="text-3xl font-black leading-none">✓</span>
+            </div>
+            <h3 className="mt-5 text-2xl font-extrabold text-[var(--color-text)]">
+              Request Submitted Successfully
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+              Thank you for your submission. Unified Steele will review your
+              business and send website preview screenshots within 2 business days.
+            </p>
+            <button
+              type="button"
+              className="us-btn-primary mt-6 w-full"
+              onClick={() => setSubmitted(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

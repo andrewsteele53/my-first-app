@@ -31,6 +31,7 @@ import {
   updateTeamApplicationAction,
   updateSalesRepAction,
   updateUserAction,
+  updateWebsitePreviewRequestNotesAction,
   updateWebsitePreviewRequestStatusAction,
   type AdminActionResult,
 } from "./actions";
@@ -325,6 +326,7 @@ export default function AdminDashboardClient({
   const [editJobApplication, setEditJobApplication] = useState<EditJobApplicationState | null>(null);
   const [editSalesLead, setEditSalesLead] = useState<EditSalesLeadState | null>(null);
   const [selectedWebsitePreviewRequest, setSelectedWebsitePreviewRequest] = useState<WebsitePreviewRequestRow | null>(null);
+  const [websitePreviewAdminNotes, setWebsitePreviewAdminNotes] = useState("");
   const [jobApplicationStatusFilter, setJobApplicationStatusFilter] = useState("all");
   const [jobApplicationJobFilter, setJobApplicationJobFilter] = useState("all");
   const [selectedPerformanceRepId, setSelectedPerformanceRepId] = useState<string | null>(null);
@@ -697,6 +699,10 @@ export default function AdminDashboardClient({
   }
 
   function updateWebsitePreviewStatus(request: WebsitePreviewRequestRow, status: string) {
+    setSelectedWebsitePreviewRequest((current) =>
+      current?.id === request.id ? { ...current, status } : current
+    );
+
     runAction(
       () =>
         updateWebsitePreviewRequestStatusAction(
@@ -706,6 +712,28 @@ export default function AdminDashboardClient({
           })
         ),
       `website-preview-${request.id}`
+    );
+  }
+
+  function openWebsitePreviewRequest(request: WebsitePreviewRequestRow) {
+    setSelectedWebsitePreviewRequest(request);
+    setWebsitePreviewAdminNotes(request.admin_notes || "");
+  }
+
+  function saveWebsitePreviewNotes(request: WebsitePreviewRequestRow) {
+    runAction(
+      () =>
+        updateWebsitePreviewRequestNotesAction(
+          formData({
+            request_id: request.id,
+            admin_notes: websitePreviewAdminNotes,
+          })
+        ),
+      `website-preview-notes-${request.id}`,
+      () =>
+        setSelectedWebsitePreviewRequest((current) =>
+          current?.id === request.id ? { ...current, admin_notes: websitePreviewAdminNotes } : current
+        )
     );
   }
 
@@ -766,7 +794,7 @@ export default function AdminDashboardClient({
                         <button
                           type="button"
                           className="us-btn-secondary px-3 py-2 text-xs"
-                          onClick={() => setSelectedWebsitePreviewRequest(request)}
+                          onClick={() => openWebsitePreviewRequest(request)}
                         >
                           View
                         </button>
@@ -1630,44 +1658,110 @@ export default function AdminDashboardClient({
 
       {selectedWebsitePreviewRequest ? (
         <Modal
-          title={`${selectedWebsitePreviewRequest.business_name} Preview Request`}
+          title="Website Preview Request"
+          size="xl"
           onCancel={() => setSelectedWebsitePreviewRequest(null)}
         >
           <div className="space-y-5 text-sm">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <MiniStat label="Contact" value={selectedWebsitePreviewRequest.name} />
-              <MiniStat label="Package" value={selectedWebsitePreviewRequest.package_interested} />
-              <MiniStat label="Email" value={selectedWebsitePreviewRequest.email} />
-              <MiniStat label="Phone" value={selectedWebsitePreviewRequest.phone} />
-              <MiniStat label="Industry" value={selectedWebsitePreviewRequest.industry || "-"} />
-              <MiniStat label="Created" value={formatDate(selectedWebsitePreviewRequest.created_at)} />
+            <div className="rounded-[1.2rem] border border-[var(--color-border)] bg-[linear-gradient(135deg,#ffffff_0%,#f7faf8_100%)] p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                    Preview Lead
+                  </p>
+                  <h3 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">
+                    {selectedWebsitePreviewRequest.business_name}
+                  </h3>
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                    {selectedWebsitePreviewRequest.name} | {selectedWebsitePreviewRequest.email} | {selectedWebsitePreviewRequest.phone}
+                  </p>
+                </div>
+                <label className="grid min-w-56 gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">
+                  Status
+                  <select
+                    className="us-input min-h-11 rounded-xl text-sm font-bold normal-case tracking-normal"
+                    value={selectedWebsitePreviewRequest.status || "new"}
+                    disabled={isPending}
+                    onChange={(event) => updateWebsitePreviewStatus(selectedWebsitePreviewRequest, event.target.value)}
+                  >
+                    {WEBSITE_PREVIEW_STATUSES.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <CompactInfo label="Package" value={selectedWebsitePreviewRequest.package_interested} />
+                <CompactInfo label="Created" value={formatDate(selectedWebsitePreviewRequest.created_at)} />
+                <CompactInfo label="Industry" value={selectedWebsitePreviewRequest.industry} />
+                <CompactInfo label="Status" value={WEBSITE_PREVIEW_STATUSES.find((status) => status.value === (selectedWebsitePreviewRequest.status || "new"))?.label || "New"} />
+              </div>
             </div>
-            <label className="grid gap-2 text-sm font-bold">
-              Status
-              <select
-                className="us-input"
-                value={selectedWebsitePreviewRequest.status || "new"}
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <button
+                type="button"
+                className="us-btn-secondary px-4 py-3 text-sm"
                 disabled={isPending}
-                onChange={(event) => {
-                  const status = event.target.value;
-                  setSelectedWebsitePreviewRequest({ ...selectedWebsitePreviewRequest, status });
-                  updateWebsitePreviewStatus(selectedWebsitePreviewRequest, status);
-                }}
+                onClick={() => updateWebsitePreviewStatus(selectedWebsitePreviewRequest, "preview_sent")}
               >
-                {WEBSITE_PREVIEW_STATUSES.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="grid gap-4">
-              <DetailBlock label="Current website URL" value={selectedWebsitePreviewRequest.current_website_url} />
-              <DetailBlock label="Facebook/business profile URL" value={selectedWebsitePreviewRequest.business_profile_url} />
+                Mark Preview Sent
+              </button>
+              <button
+                type="button"
+                className="us-btn-secondary px-4 py-3 text-sm"
+                disabled={isPending}
+                onClick={() => updateWebsitePreviewStatus(selectedWebsitePreviewRequest, "paid")}
+              >
+                Mark Paid
+              </button>
+              <button
+                type="button"
+                className="us-btn-secondary px-4 py-3 text-sm"
+                disabled={isPending}
+                onClick={() => updateWebsitePreviewStatus(selectedWebsitePreviewRequest, "closed")}
+              >
+                Close Request
+              </button>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <DetailBlock label="Website URL" value={selectedWebsitePreviewRequest.current_website_url} />
+              <DetailBlock label="Business profile URL" value={selectedWebsitePreviewRequest.business_profile_url} />
               <DetailBlock label="Services offered" value={selectedWebsitePreviewRequest.services_offered} />
               <DetailBlock label="Preferred style" value={selectedWebsitePreviewRequest.preferred_colors_style} />
               <DetailBlock label="Websites liked" value={selectedWebsitePreviewRequest.websites_they_like} />
-              <DetailBlock label="Message / project details" value={selectedWebsitePreviewRequest.message} />
+              <DetailBlock label="Project details" value={selectedWebsitePreviewRequest.message} />
+            </div>
+
+            <div className="rounded-[1.1rem] border border-[var(--color-border)] bg-white p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                    Admin Notes
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                    Internal notes for follow-up, preview progress, and payment status.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="us-btn-primary px-4 py-2 text-sm"
+                  disabled={isPending}
+                  onClick={() => saveWebsitePreviewNotes(selectedWebsitePreviewRequest)}
+                >
+                  {pendingActionId === `website-preview-notes-${selectedWebsitePreviewRequest.id}` ? "Saving..." : "Save Notes"}
+                </button>
+              </div>
+              <textarea
+                className="us-textarea mt-3 min-h-28"
+                value={websitePreviewAdminNotes}
+                onChange={(event) => setWebsitePreviewAdminNotes(event.target.value)}
+                placeholder="Add internal notes, follow-up details, or next steps."
+              />
             </div>
           </div>
         </Modal>
@@ -2074,32 +2168,36 @@ function Modal({
   title,
   children,
   onCancel,
+  size = "md",
 }: {
   title: string;
   children: ReactNode;
   onCancel: () => void;
+  size?: "md" | "xl";
 }) {
+  const widthClass = size === "xl" ? "max-w-5xl" : "max-w-lg";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-      <div className="w-full max-w-lg rounded-[1.5rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)]">
-        <div className="flex items-start justify-between gap-4">
+      <div className={`flex max-h-[88vh] w-full ${widthClass} flex-col rounded-[1.5rem] border border-[var(--color-border)] bg-white shadow-[var(--shadow-card)]`}>
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border-muted)] px-6 py-5">
           <h2 className="text-xl font-extrabold text-[var(--color-text)]">{title}</h2>
           <button type="button" className="us-btn-secondary px-3 py-1 text-sm" onClick={onCancel}>
             Close
           </button>
         </div>
-        <div className="mt-5">{children}</div>
+        <div className="overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>
   );
 }
 
 function DetailBlock({ label, value }: { label: string; value?: string | null }) {
-  const displayValue = value?.trim() || "-";
+  const displayValue = value?.trim() || "Not provided";
   const isUrl = /^https?:\/\//i.test(displayValue);
 
   return (
-    <div className="rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4">
+    <div className="rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-3">
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">{label}</p>
       {isUrl ? (
         <a
@@ -2111,8 +2209,19 @@ function DetailBlock({ label, value }: { label: string; value?: string | null })
           {displayValue}
         </a>
       ) : (
-        <p className="mt-2 whitespace-pre-wrap break-words text-[var(--color-text)]">{displayValue}</p>
+        <p className={`mt-2 whitespace-pre-wrap break-words text-sm leading-6 ${displayValue === "Not provided" ? "text-[var(--color-text-secondary)]" : "text-[var(--color-text)]"}`}>
+          {displayValue}
+        </p>
       )}
+    </div>
+  );
+}
+
+function CompactInfo({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="rounded-xl border border-[var(--color-border-muted)] bg-white/80 p-3">
+      <p className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">{label}</p>
+      <p className="mt-1 text-sm font-extrabold text-[var(--color-text)]">{value?.trim() || "Not provided"}</p>
     </div>
   );
 }
