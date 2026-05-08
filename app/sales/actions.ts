@@ -9,8 +9,11 @@ export type SalesLeadActionResult = {
   message: string;
 };
 
-const SALES_LEAD_STATUSES = ["new", "contacted", "interested", "signed_up"] as const;
+const SAAS_LEAD_STATUSES = ["new", "contacted", "follow_up", "demo_scheduled", "signed_up", "not_interested"] as const;
+const WEBSITE_LEAD_STATUSES = ["website_lead_submitted", "admin_reviewing", "admin_contacted", "website_sold", "not_interested"] as const;
+const SALES_LEAD_STATUSES = [...SAAS_LEAD_STATUSES, ...WEBSITE_LEAD_STATUSES] as const;
 type SalesLeadStatus = (typeof SALES_LEAD_STATUSES)[number];
+type LeadType = "saas" | "website_creation";
 
 function clean(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
@@ -27,6 +30,11 @@ function cleanStatus(value: FormDataEntryValue | null): SalesLeadStatus {
   }
 
   throw new Error("Choose a valid lead status.");
+}
+
+function cleanLeadType(value: FormDataEntryValue | null): LeadType {
+  const leadType = clean(value);
+  return leadType === "website_creation" ? "website_creation" : "saas";
 }
 
 function success(message: string): SalesLeadActionResult {
@@ -74,16 +82,49 @@ function leadPayload(formData: FormData) {
     owner_name: optional(clean(formData.get("owner_name"))),
     phone: optional(clean(formData.get("phone"))),
     email: optional(clean(formData.get("email"))),
+    address: optional(clean(formData.get("address"))),
+    city: optional(clean(formData.get("city"))),
+    state: optional(clean(formData.get("state"))),
+    industry: optional(clean(formData.get("industry"))),
+    service_type: optional(clean(formData.get("service_type"))),
+    notes: optional(clean(formData.get("notes"))),
+  };
+}
+
+function websiteLeadPayload(formData: FormData) {
+  const businessName = clean(formData.get("business_name"));
+  if (!businessName) {
+    throw new Error("Business name is required.");
+  }
+
+  return {
+    business_name: businessName,
+    owner_name: optional(clean(formData.get("owner_name"))),
+    phone: optional(clean(formData.get("phone"))),
+    email: optional(clean(formData.get("email"))),
+    address: optional(clean(formData.get("address"))),
+    city: optional(clean(formData.get("city"))),
+    state: optional(clean(formData.get("state"))),
+    industry: optional(clean(formData.get("industry"))),
+    website_url: optional(clean(formData.get("website_url"))),
+    has_existing_website: clean(formData.get("has_existing_website")) === "yes",
+    website_lead_notes: optional(clean(formData.get("website_lead_notes"))),
+    notes: optional(clean(formData.get("notes"))),
   };
 }
 
 export async function createSalesLeadAction(formData: FormData): Promise<SalesLeadActionResult> {
   const { supabase, user } = await requireSalesRepContext();
+  const leadType = cleanLeadType(formData.get("lead_type"));
+  const isWebsiteLead = leadType === "website_creation";
 
   const { error } = await supabase.from("sales_leads").insert({
-    ...leadPayload(formData),
+    ...(isWebsiteLead ? websiteLeadPayload(formData) : leadPayload(formData)),
     sales_rep_id: user.id,
-    status: "new",
+    created_by: user.id,
+    assigned_to: isWebsiteLead ? null : user.id,
+    lead_type: leadType,
+    status: isWebsiteLead ? "website_lead_submitted" : "new",
     signed_up: false,
   });
 
@@ -93,7 +134,7 @@ export async function createSalesLeadAction(formData: FormData): Promise<SalesLe
 
   revalidatePath("/sales");
   revalidatePath("/admin");
-  return success("Lead added.");
+  return success(isWebsiteLead ? "Website lead submitted to admin for review." : "Lead added.");
 }
 
 export async function updateSalesLeadAction(formData: FormData): Promise<SalesLeadActionResult> {
@@ -104,6 +145,10 @@ export async function updateSalesLeadAction(formData: FormData): Promise<SalesLe
   }
 
   const status = cleanStatus(formData.get("status") || "new");
+  if (!SAAS_LEAD_STATUSES.includes(status as (typeof SAAS_LEAD_STATUSES)[number])) {
+    throw new Error("Sales reps can only update SaaS lead statuses.");
+  }
+
   const { error } = await supabase
     .from("sales_leads")
     .update({
@@ -113,7 +158,8 @@ export async function updateSalesLeadAction(formData: FormData): Promise<SalesLe
       signed_up_at: status === "signed_up" ? new Date().toISOString() : null,
     })
     .eq("id", leadId)
-    .eq("sales_rep_id", user.id);
+    .eq("lead_type", "saas")
+    .or(`sales_rep_id.eq.${user.id},created_by.eq.${user.id},assigned_to.eq.${user.id}`);
 
   if (error) {
     throw new Error(error.message);
@@ -135,7 +181,8 @@ export async function deleteSalesLeadAction(formData: FormData): Promise<SalesLe
     .from("sales_leads")
     .delete()
     .eq("id", leadId)
-    .eq("sales_rep_id", user.id);
+    .eq("lead_type", "saas")
+    .eq("created_by", user.id);
 
   if (error) {
     throw new Error(error.message);
@@ -150,6 +197,9 @@ export async function updateSalesLeadStatusAction(formData: FormData): Promise<S
   const { supabase, user } = await requireSalesRepContext();
   const leadId = clean(formData.get("lead_id"));
   const status = cleanStatus(formData.get("status"));
+  if (!SAAS_LEAD_STATUSES.includes(status as (typeof SAAS_LEAD_STATUSES)[number])) {
+    throw new Error("Sales reps can only update SaaS lead statuses.");
+  }
 
   if (!leadId) {
     throw new Error("Choose a lead to update.");
@@ -163,7 +213,8 @@ export async function updateSalesLeadStatusAction(formData: FormData): Promise<S
       signed_up_at: status === "signed_up" ? new Date().toISOString() : null,
     })
     .eq("id", leadId)
-    .eq("sales_rep_id", user.id);
+    .eq("lead_type", "saas")
+    .or(`sales_rep_id.eq.${user.id},created_by.eq.${user.id},assigned_to.eq.${user.id}`);
 
   if (error) {
     throw new Error(error.message);

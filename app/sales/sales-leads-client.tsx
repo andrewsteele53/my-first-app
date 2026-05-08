@@ -13,28 +13,52 @@ import {
 export type SalesLeadRow = {
   id: string;
   sales_rep_id: string | null;
+  created_by: string | null;
+  assigned_to: string | null;
   business_name: string;
   owner_name: string | null;
   phone: string | null;
   email: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  industry: string | null;
+  service_type: string | null;
+  lead_type: "saas" | "website_creation" | null;
   status: string | null;
+  notes: string | null;
+  website_url: string | null;
+  has_existing_website: boolean | null;
+  website_lead_notes: string | null;
   signed_up: boolean | null;
   signed_up_at: string | null;
   created_at: string | null;
+  updated_at: string | null;
 };
 
 type LeadEditorState = {
   lead?: SalesLeadRow;
+  leadType: "saas" | "website_creation";
   businessName: string;
   ownerName: string;
   phone: string;
   email: string;
+  address: string;
+  city: string;
+  state: string;
+  industry: string;
+  serviceType: string;
   status: string;
+  notes: string;
+  websiteUrl: string;
+  hasExistingWebsite: string;
+  websiteLeadNotes: string;
 };
 
 type ConfirmState = { lead: SalesLeadRow } | null;
 
-const STATUS_OPTIONS = ["new", "contacted", "interested", "signed_up"];
+const SAAS_STATUS_OPTIONS = ["new", "contacted", "follow_up", "demo_scheduled", "signed_up", "not_interested"];
+const WEBSITE_STATUS_OPTIONS = ["website_lead_submitted", "admin_reviewing", "admin_contacted", "website_sold", "not_interested"];
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -49,9 +73,9 @@ function statusLabel(status?: string | null) {
 function statusBadge(status?: string | null, signedUp?: boolean | null) {
   const normalized = signedUp ? "signed_up" : status || "new";
   const className =
-    normalized === "signed_up" || normalized === "interested"
+    normalized === "signed_up" || normalized === "website_sold"
       ? "border-[rgba(46,125,90,0.2)] bg-[rgba(46,125,90,0.1)] text-[var(--color-success)]"
-      : normalized === "contacted"
+      : normalized === "contacted" || normalized === "follow_up" || normalized === "demo_scheduled" || normalized === "admin_reviewing" || normalized === "admin_contacted"
       ? "border-[rgba(183,121,31,0.24)] bg-[rgba(183,121,31,0.1)] text-[var(--color-warning)]"
       : "border-[var(--color-border-muted)] bg-[var(--color-section)] text-[var(--color-text-secondary)]";
 
@@ -71,11 +95,21 @@ function formData(values: Record<string, string>) {
 function leadToEditor(lead?: SalesLeadRow): LeadEditorState {
   return {
     lead,
+    leadType: lead?.lead_type || "saas",
     businessName: lead?.business_name || "",
     ownerName: lead?.owner_name || "",
     phone: lead?.phone || "",
     email: lead?.email || "",
+    address: lead?.address || "",
+    city: lead?.city || "",
+    state: lead?.state || "",
+    industry: lead?.industry || "",
+    serviceType: lead?.service_type || "",
     status: lead?.status || "new",
+    notes: lead?.notes || "",
+    websiteUrl: lead?.website_url || "",
+    hasExistingWebsite: lead?.has_existing_website ? "yes" : "no",
+    websiteLeadNotes: lead?.website_lead_notes || "",
   };
 }
 
@@ -112,11 +146,21 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
   function submitEditor() {
     if (!editor) return;
     const data = formData({
+      lead_type: editor.leadType,
       business_name: editor.businessName,
       owner_name: editor.ownerName,
       phone: editor.phone,
       email: editor.email,
+      address: editor.address,
+      city: editor.city,
+      state: editor.state,
+      industry: editor.industry,
+      service_type: editor.serviceType,
       status: editor.status,
+      notes: editor.notes,
+      website_url: editor.websiteUrl,
+      has_existing_website: editor.hasExistingWebsite,
+      website_lead_notes: editor.websiteLeadNotes,
     });
 
     if (editor.lead) {
@@ -141,9 +185,14 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
           <p className="us-kicker">My Leads</p>
           <h2 className="mt-2 text-2xl font-extrabold">Lead tracking</h2>
         </div>
-        <button type="button" className="us-btn-primary px-4 py-2 text-sm" onClick={() => setEditor(leadToEditor())}>
-          Add Lead
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="us-btn-secondary px-4 py-2 text-sm" onClick={() => setEditor({ ...leadToEditor(), leadType: "website_creation", status: "website_lead_submitted" })}>
+            Submit Website Lead
+          </button>
+          <button type="button" className="us-btn-primary px-4 py-2 text-sm" onClick={() => setEditor(leadToEditor())}>
+            Add SaaS Lead
+          </button>
+        </div>
       </div>
 
       {message ? (
@@ -162,6 +211,7 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
             <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
               <tr>
                 <th className="py-3 pr-4">Lead</th>
+                <th className="py-3 pr-4">Type</th>
                 <th className="py-3 pr-4">Status</th>
                 <th className="py-3 pr-4">Created</th>
                 <th className="py-3 pr-4">Actions</th>
@@ -178,6 +228,16 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
                     <p className="mt-1 break-all text-xs text-[var(--color-text-secondary)]">
                       {[lead.phone, lead.email].filter(Boolean).join(" | ") || "No phone or email"}
                     </p>
+                    {lead.lead_type === "website_creation" ? (
+                      <p className="mt-2 max-w-md rounded-lg border border-[rgba(183,121,31,0.2)] bg-[rgba(183,121,31,0.08)] px-3 py-2 text-xs font-semibold text-[var(--color-warning)]">
+                        Website lead submitted to admin. Sales reps do not sell website creation services.
+                      </p>
+                    ) : null}
+                  </td>
+                  <td className="py-4 pr-4">
+                    <span className="inline-flex rounded-full border border-[var(--color-border-muted)] bg-[var(--color-section)] px-3 py-1 text-xs font-bold">
+                      {lead.lead_type === "website_creation" ? "Website Lead" : "SaaS Lead"}
+                    </span>
                   </td>
                   <td className="py-4 pr-4">
                     {statusBadge(lead.status, lead.signed_up)}
@@ -196,40 +256,44 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
                         disabled={isPending}
                         onClick={() => setEditor(leadToEditor(lead))}
                       >
-                        Edit
+                        {lead.lead_type === "website_creation" ? "View" : "Edit"}
                       </button>
-                      <button
-                        type="button"
-                        className="us-btn-secondary px-3 py-2 text-xs"
-                        disabled={isPending}
-                        onClick={() => changeStatus(lead, "contacted")}
-                      >
-                        {pendingActionId === `contacted-${lead.id}` ? "Saving..." : "Mark Contacted"}
-                      </button>
-                      <button
-                        type="button"
-                        className="us-btn-secondary px-3 py-2 text-xs"
-                        disabled={isPending}
-                        onClick={() => changeStatus(lead, "interested")}
-                      >
-                        {pendingActionId === `interested-${lead.id}` ? "Saving..." : "Mark Interested"}
-                      </button>
-                      <button
-                        type="button"
-                        className="us-btn-primary px-3 py-2 text-xs"
-                        disabled={isPending}
-                        onClick={() => changeStatus(lead, "signed_up")}
-                      >
-                        {pendingActionId === `signed_up-${lead.id}` ? "Saving..." : "Mark Signed Up"}
-                      </button>
-                      <button
-                        type="button"
-                        className="us-btn-danger px-3 py-2 text-xs"
-                        disabled={isPending}
-                        onClick={() => setConfirm({ lead })}
-                      >
-                        Delete
-                      </button>
+                      {lead.lead_type === "website_creation" ? null : (
+                        <>
+                          <button
+                            type="button"
+                            className="us-btn-secondary px-3 py-2 text-xs"
+                            disabled={isPending}
+                            onClick={() => changeStatus(lead, "contacted")}
+                          >
+                            {pendingActionId === `contacted-${lead.id}` ? "Saving..." : "Mark Contacted"}
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-secondary px-3 py-2 text-xs"
+                            disabled={isPending}
+                            onClick={() => changeStatus(lead, "follow_up")}
+                          >
+                            {pendingActionId === `follow_up-${lead.id}` ? "Saving..." : "Follow Up"}
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-primary px-3 py-2 text-xs"
+                            disabled={isPending}
+                            onClick={() => changeStatus(lead, "signed_up")}
+                          >
+                            {pendingActionId === `signed_up-${lead.id}` ? "Saving..." : "Mark Signed Up"}
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-danger px-3 py-2 text-xs"
+                            disabled={isPending}
+                            onClick={() => setConfirm({ lead })}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -240,29 +304,99 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
       )}
 
       {editor ? (
-        <Modal title={editor.lead ? "Edit Lead" : "Add Lead"} onCancel={() => setEditor(null)}>
+        <Modal
+          title={
+            editor.leadType === "website_creation"
+              ? editor.lead
+                ? "Website Lead Details"
+                : "Submit Website Lead"
+              : editor.lead
+              ? "Edit SaaS Lead"
+              : "Add SaaS Lead"
+          }
+          onCancel={() => setEditor(null)}
+        >
+          {editor.leadType === "website_creation" ? (
+            <div className="mb-4 rounded-xl border border-[rgba(183,121,31,0.22)] bg-[rgba(183,121,31,0.08)] p-4 text-sm font-semibold leading-6 text-[var(--color-warning)]">
+              Website creation leads are submitted to admin for review. Sales reps can find and submit these leads, but do not sell, price, quote, invoice, or close website creation services.
+            </div>
+          ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm font-bold">
               Business name
-              <input className="us-input" value={editor.businessName} onChange={(event) => setEditor({ ...editor, businessName: event.target.value })} />
+              <input className="us-input" value={editor.businessName} disabled={Boolean(editor.lead && editor.leadType === "website_creation")} onChange={(event) => setEditor({ ...editor, businessName: event.target.value })} />
             </label>
             <label className="grid gap-2 text-sm font-bold">
-              Owner name
-              <input className="us-input" value={editor.ownerName} onChange={(event) => setEditor({ ...editor, ownerName: event.target.value })} />
+              Owner/contact name
+              <input className="us-input" value={editor.ownerName} disabled={Boolean(editor.lead && editor.leadType === "website_creation")} onChange={(event) => setEditor({ ...editor, ownerName: event.target.value })} />
             </label>
             <label className="grid gap-2 text-sm font-bold">
               Phone
-              <input className="us-input" value={editor.phone} onChange={(event) => setEditor({ ...editor, phone: event.target.value })} />
+              <input className="us-input" value={editor.phone} disabled={Boolean(editor.lead && editor.leadType === "website_creation")} onChange={(event) => setEditor({ ...editor, phone: event.target.value })} />
             </label>
             <label className="grid gap-2 text-sm font-bold">
               Email
-              <input className="us-input" type="email" value={editor.email} onChange={(event) => setEditor({ ...editor, email: event.target.value })} />
+              <input className="us-input" type="email" value={editor.email} disabled={Boolean(editor.lead && editor.leadType === "website_creation")} onChange={(event) => setEditor({ ...editor, email: event.target.value })} />
             </label>
-            {editor.lead ? (
+            <label className="grid gap-2 text-sm font-bold">
+              Address
+              <input className="us-input" value={editor.address} disabled={Boolean(editor.lead && editor.leadType === "website_creation")} onChange={(event) => setEditor({ ...editor, address: event.target.value })} />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold">
+                City
+                <input className="us-input" value={editor.city} disabled={Boolean(editor.lead && editor.leadType === "website_creation")} onChange={(event) => setEditor({ ...editor, city: event.target.value })} />
+              </label>
+              <label className="grid gap-2 text-sm font-bold">
+                State
+                <input className="us-input" value={editor.state} disabled={Boolean(editor.lead && editor.leadType === "website_creation")} onChange={(event) => setEditor({ ...editor, state: event.target.value })} />
+              </label>
+            </div>
+            <label className="grid gap-2 text-sm font-bold">
+              Industry
+              <input className="us-input" value={editor.industry} disabled={Boolean(editor.lead && editor.leadType === "website_creation")} onChange={(event) => setEditor({ ...editor, industry: event.target.value })} />
+            </label>
+            {editor.leadType === "saas" ? (
+              <label className="grid gap-2 text-sm font-bold">
+                Service type
+                <input className="us-input" value={editor.serviceType} onChange={(event) => setEditor({ ...editor, serviceType: event.target.value })} />
+              </label>
+            ) : null}
+            {editor.leadType === "website_creation" ? (
+              <>
+                <label className="grid gap-2 text-sm font-bold">
+                  Do they currently have a website?
+                  <select className="us-input" value={editor.hasExistingWebsite} disabled={Boolean(editor.lead)} onChange={(event) => setEditor({ ...editor, hasExistingWebsite: event.target.value })}>
+                    <option value="no">No / not sure</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold">
+                  Current website URL
+                  <input className="us-input" value={editor.websiteUrl} disabled={Boolean(editor.lead)} onChange={(event) => setEditor({ ...editor, websiteUrl: event.target.value })} />
+                </label>
+                <label className="grid gap-2 text-sm font-bold sm:col-span-2">
+                  Notes about why they may need a website
+                  <textarea className="us-textarea min-h-28" value={editor.websiteLeadNotes} disabled={Boolean(editor.lead)} onChange={(event) => setEditor({ ...editor, websiteLeadNotes: event.target.value })} />
+                </label>
+              </>
+            ) : null}
+            {editor.lead && editor.leadType === "saas" ? (
               <label className="grid gap-2 text-sm font-bold">
                 Status
                 <select className="us-input" value={editor.status} onChange={(event) => setEditor({ ...editor, status: event.target.value })}>
-                  {STATUS_OPTIONS.map((status) => (
+                  {SAAS_STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>
+                      {statusLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : editor.lead && editor.leadType === "website_creation" ? (
+              <label className="grid gap-2 text-sm font-bold">
+                Status
+                <select className="us-input" value={editor.status} disabled>
+                  {WEBSITE_STATUS_OPTIONS.map((status) => (
                     <option key={status} value={status}>
                       {statusLabel(status)}
                     </option>
@@ -270,14 +404,22 @@ export default function SalesLeadsClient({ leads }: { leads: SalesLeadRow[] }) {
                 </select>
               </label>
             ) : null}
+            {editor.leadType === "saas" ? (
+              <label className="grid gap-2 text-sm font-bold sm:col-span-2">
+                Notes
+                <textarea className="us-textarea min-h-24" value={editor.notes} onChange={(event) => setEditor({ ...editor, notes: event.target.value })} />
+              </label>
+            ) : null}
           </div>
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button type="button" className="us-btn-secondary px-4 py-2" onClick={() => setEditor(null)}>
               Cancel
             </button>
-            <button type="button" className="us-btn-primary px-4 py-2" disabled={isPending} onClick={submitEditor}>
-              {isPending ? "Saving..." : "Save Lead"}
-            </button>
+            {editor.lead && editor.leadType === "website_creation" ? null : (
+              <button type="button" className="us-btn-primary px-4 py-2" disabled={isPending} onClick={submitEditor}>
+                {isPending ? "Saving..." : editor.leadType === "website_creation" ? "Submit Website Lead" : "Save Lead"}
+              </button>
+            )}
           </div>
         </Modal>
       ) : null}

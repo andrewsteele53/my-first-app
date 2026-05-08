@@ -98,8 +98,7 @@ export default async function SalesPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("sales_leads")
-      .select("id, sales_rep_id, business_name, owner_name, phone, email, status, signed_up, signed_up_at, created_at")
-      .eq("sales_rep_id", user.id)
+      .select("id, sales_rep_id, created_by, assigned_to, business_name, owner_name, phone, email, address, city, state, industry, service_type, lead_type, status, notes, website_url, has_existing_website, website_lead_notes, signed_up, signed_up_at, created_at, updated_at")
       .order("created_at", { ascending: false }),
   ]);
 
@@ -136,8 +135,10 @@ export default async function SalesPage() {
   const activePaidSubscribers = subscribers.filter((subscriber) =>
     isActivePaidSubscription(subscriber.subscription_status)
   );
-  const contactedLeads = leads.filter((lead) => lead.status === "contacted");
-  const interestedLeads = leads.filter((lead) => lead.status === "interested");
+  const saasLeads = leads.filter((lead) => lead.lead_type !== "website_creation");
+  const websiteLeads = leads.filter((lead) => lead.lead_type === "website_creation");
+  const contactedLeads = saasLeads.filter((lead) => lead.status === "contacted");
+  const followUpLeads = saasLeads.filter((lead) => lead.status === "follow_up");
   const signedUpLeads = leads.filter((lead) => lead.signed_up === true);
   const estimatedCommissionOwed = signedUpLeads.length * COMMISSION_PER_ACTIVE_SUBSCRIBER;
   const paidPayouts = payouts.filter((payout) => payout.status === "paid");
@@ -189,8 +190,10 @@ export default async function SalesPage() {
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Total Leads" value={String(leads.length)} />
+          <MetricCard label="SaaS Leads" value={String(saasLeads.length)} />
+          <MetricCard label="Website Leads Submitted" value={String(websiteLeads.length)} />
           <MetricCard label="Contacted" value={String(contactedLeads.length)} />
-          <MetricCard label="Interested" value={String(interestedLeads.length)} />
+          <MetricCard label="Follow Up" value={String(followUpLeads.length)} />
           <MetricCard label="Signed Up / Closed Deals" value={String(signedUpLeads.length)} />
           <MetricCard label="Estimated Commission Owed" value={formatMoney(estimatedCommissionOwed)} />
           <MetricCard label="Paid / Unpaid History" value={`${formatMoney(paidTotal)} / ${formatMoney(unpaidTotal)}`} />

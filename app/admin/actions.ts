@@ -68,11 +68,28 @@ function cleanJobApplicationStatus(value: FormDataEntryValue | null) {
 
 function cleanSalesLeadStatus(value: FormDataEntryValue | null) {
   const status = clean(value);
-  if (status === "new" || status === "contacted" || status === "interested" || status === "signed_up") {
+  if (
+    status === "new" ||
+    status === "contacted" ||
+    status === "follow_up" ||
+    status === "demo_scheduled" ||
+    status === "signed_up" ||
+    status === "not_interested" ||
+    status === "website_lead_submitted" ||
+    status === "admin_reviewing" ||
+    status === "admin_contacted" ||
+    status === "website_sold"
+  ) {
     return status;
   }
 
   throw new Error("Choose a valid lead status.");
+}
+
+function cleanLeadType(value: FormDataEntryValue | null) {
+  const leadType = clean(value);
+  if (leadType === "saas" || leadType === "website_creation") return leadType;
+  throw new Error("Choose a valid lead type.");
 }
 
 function cleanWebsitePreviewStatus(value: FormDataEntryValue | null) {
@@ -1466,6 +1483,8 @@ export async function updateSalesLeadAdminAction(formData: FormData): Promise<Ad
   const leadId = clean(formData.get("lead_id"));
   const businessName = clean(formData.get("business_name"));
   const status = cleanSalesLeadStatus(formData.get("status"));
+  const leadType = cleanLeadType(formData.get("lead_type"));
+  const assignedTo = clean(formData.get("assigned_to")) || null;
 
   if (!leadId) {
     throw new Error("Choose a lead to update.");
@@ -1482,6 +1501,18 @@ export async function updateSalesLeadAdminAction(formData: FormData): Promise<Ad
       owner_name: clean(formData.get("owner_name")) || null,
       phone: clean(formData.get("phone")) || null,
       email: clean(formData.get("email")) || null,
+      address: clean(formData.get("address")) || null,
+      city: clean(formData.get("city")) || null,
+      state: clean(formData.get("state")) || null,
+      industry: clean(formData.get("industry")) || null,
+      service_type: clean(formData.get("service_type")) || null,
+      lead_type: leadType,
+      assigned_to: assignedTo,
+      sales_rep_id: assignedTo,
+      notes: clean(formData.get("notes")) || null,
+      website_url: clean(formData.get("website_url")) || null,
+      has_existing_website: clean(formData.get("has_existing_website")) === "yes",
+      website_lead_notes: clean(formData.get("website_lead_notes")) || null,
       status,
       signed_up: status === "signed_up",
       signed_up_at: status === "signed_up" ? new Date().toISOString() : null,
@@ -1495,6 +1526,75 @@ export async function updateSalesLeadAdminAction(formData: FormData): Promise<Ad
   revalidatePath("/admin");
   revalidatePath("/sales");
   return success("Lead updated.");
+}
+
+export async function createSalesLeadAdminAction(formData: FormData): Promise<AdminActionResult> {
+  const { supabase, user } = await requireAdminContext();
+  const businessName = clean(formData.get("business_name"));
+  const leadType = cleanLeadType(formData.get("lead_type"));
+  const status = cleanSalesLeadStatus(formData.get("status"));
+  const assignedTo = clean(formData.get("assigned_to")) || null;
+
+  if (!businessName) {
+    throw new Error("Business name is required.");
+  }
+
+  const { error } = await supabase.from("sales_leads").insert({
+    business_name: businessName,
+    owner_name: clean(formData.get("owner_name")) || null,
+    phone: clean(formData.get("phone")) || null,
+    email: clean(formData.get("email")) || null,
+    address: clean(formData.get("address")) || null,
+    city: clean(formData.get("city")) || null,
+    state: clean(formData.get("state")) || null,
+    industry: clean(formData.get("industry")) || null,
+    service_type: clean(formData.get("service_type")) || null,
+    lead_type: leadType,
+    status,
+    created_by: user.id,
+    assigned_to: assignedTo,
+    sales_rep_id: assignedTo,
+    notes: clean(formData.get("notes")) || null,
+    website_url: clean(formData.get("website_url")) || null,
+    has_existing_website: clean(formData.get("has_existing_website")) === "yes",
+    website_lead_notes: clean(formData.get("website_lead_notes")) || null,
+    signed_up: status === "signed_up",
+    signed_up_at: status === "signed_up" ? new Date().toISOString() : null,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/sales");
+  return success("Lead created.");
+}
+
+export async function assignSalesLeadAdminAction(formData: FormData): Promise<AdminActionResult> {
+  const { supabase } = await requireAdminContext();
+  const leadId = clean(formData.get("lead_id"));
+  const assignedTo = clean(formData.get("assigned_to")) || null;
+
+  if (!leadId) {
+    throw new Error("Choose a lead to assign.");
+  }
+
+  const { error } = await supabase
+    .from("sales_leads")
+    .update({
+      assigned_to: assignedTo,
+      sales_rep_id: assignedTo,
+    })
+    .eq("id", leadId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/sales");
+  return success(assignedTo ? "Lead assigned." : "Lead unassigned.");
 }
 
 export async function deleteSalesLeadAdminAction(formData: FormData): Promise<AdminActionResult> {

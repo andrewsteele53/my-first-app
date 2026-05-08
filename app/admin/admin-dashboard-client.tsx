@@ -7,7 +7,9 @@ import {
   approveJobApplicationAsPendingTeamMemberAction,
   approveJobApplicationAsSalesRepAction,
   approveTeamApplicationAsSalesAction,
+  assignSalesLeadAdminAction,
   assignSubscriberAction,
+  createSalesLeadAdminAction,
   createManualPayoutAction,
   createJobListingAction,
   createTeamApplicationAction,
@@ -51,6 +53,9 @@ const WEBSITE_PREVIEW_STATUSES = [
   { value: "paid", label: "Paid" },
   { value: "closed", label: "Closed" },
 ];
+const SAAS_LEAD_STATUSES = ["new", "contacted", "follow_up", "demo_scheduled", "signed_up", "not_interested"];
+const WEBSITE_LEAD_STATUSES = ["website_lead_submitted", "admin_reviewing", "admin_contacted", "website_sold", "not_interested"];
+type LeadFilter = "all" | "saas" | "website_creation" | "unassigned" | "assigned";
 
 export type ProfileRow = {
   id: string;
@@ -86,14 +91,27 @@ export type SalesAssignmentRow = {
 export type SalesLeadRow = {
   id: string;
   sales_rep_id: string | null;
+  created_by: string | null;
+  assigned_to: string | null;
   business_name: string;
   owner_name: string | null;
   phone: string | null;
   email: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  industry: string | null;
+  service_type: string | null;
+  lead_type: "saas" | "website_creation" | null;
   status: string | null;
+  notes: string | null;
+  website_url: string | null;
+  has_existing_website: boolean | null;
+  website_lead_notes: string | null;
   signed_up: boolean | null;
   signed_up_at: string | null;
   created_at: string | null;
+  updated_at: string | null;
 };
 
 export type WebsitePreviewRequestRow = {
@@ -215,12 +233,23 @@ type EditJobApplicationState = {
 };
 
 type EditSalesLeadState = {
-  lead: SalesLeadRow;
+  lead?: SalesLeadRow;
   businessName: string;
   ownerName: string;
   phone: string;
   email: string;
+  address: string;
+  city: string;
+  state: string;
+  industry: string;
+  serviceType: string;
+  leadType: "saas" | "website_creation";
+  assignedTo: string;
   status: string;
+  notes: string;
+  websiteUrl: string;
+  hasExistingWebsite: string;
+  websiteLeadNotes: string;
 };
 
 type ConfirmState =
@@ -327,6 +356,7 @@ export default function AdminDashboardClient({
   const [editSalesLead, setEditSalesLead] = useState<EditSalesLeadState | null>(null);
   const [selectedWebsitePreviewRequest, setSelectedWebsitePreviewRequest] = useState<WebsitePreviewRequestRow | null>(null);
   const [websitePreviewAdminNotes, setWebsitePreviewAdminNotes] = useState("");
+  const [salesLeadFilter, setSalesLeadFilter] = useState<LeadFilter>("all");
   const [jobApplicationStatusFilter, setJobApplicationStatusFilter] = useState("all");
   const [jobApplicationJobFilter, setJobApplicationJobFilter] = useState("all");
   const [selectedPerformanceRepId, setSelectedPerformanceRepId] = useState<string | null>(null);
@@ -373,9 +403,9 @@ export default function AdminDashboardClient({
     const repPayouts = payouts.filter((payout) => payout.sales_rep_id === rep.id);
     const unpaidPayouts = repPayouts.filter((payout) => payout.status !== "paid");
     const paidPayouts = repPayouts.filter((payout) => payout.status === "paid");
-    const repLeads = salesLeads.filter((lead) => lead.sales_rep_id === rep.user_id);
+    const repLeads = salesLeads.filter((lead) => lead.sales_rep_id === rep.user_id || lead.assigned_to === rep.user_id || lead.created_by === rep.user_id);
     const contactedLeads = repLeads.filter((lead) => lead.status === "contacted");
-    const interestedLeads = repLeads.filter((lead) => lead.status === "interested");
+    const interestedLeads = repLeads.filter((lead) => lead.status === "follow_up" || lead.status === "demo_scheduled");
     const signedUpLeads = repLeads.filter((lead) => lead.signed_up === true);
 
     return {
@@ -407,6 +437,13 @@ export default function AdminDashboardClient({
     const jobMatches =
       jobApplicationJobFilter === "all" || application.job_listing_id === jobApplicationJobFilter;
     return statusMatches && jobMatches;
+  });
+  const filteredSalesLeads = salesLeads.filter((lead) => {
+    if (salesLeadFilter === "saas") return lead.lead_type !== "website_creation";
+    if (salesLeadFilter === "website_creation") return lead.lead_type === "website_creation";
+    if (salesLeadFilter === "unassigned") return !lead.assigned_to && !lead.sales_rep_id;
+    if (salesLeadFilter === "assigned") return Boolean(lead.assigned_to || lead.sales_rep_id);
+    return true;
   });
 
   function runAction(
@@ -668,6 +705,27 @@ export default function AdminDashboardClient({
     );
   }
 
+  function openNewSalesLead(leadType: "saas" | "website_creation" = "saas") {
+    setEditSalesLead({
+      businessName: "",
+      ownerName: "",
+      phone: "",
+      email: "",
+      address: "",
+      city: "",
+      state: "",
+      industry: "",
+      serviceType: "",
+      leadType,
+      assignedTo: "",
+      status: leadType === "website_creation" ? "website_lead_submitted" : "new",
+      notes: "",
+      websiteUrl: "",
+      hasExistingWebsite: "no",
+      websiteLeadNotes: "",
+    });
+  }
+
   function openSalesLeadEditor(lead: SalesLeadRow) {
     setEditSalesLead({
       lead,
@@ -675,26 +733,63 @@ export default function AdminDashboardClient({
       ownerName: lead.owner_name || "",
       phone: lead.phone || "",
       email: lead.email || "",
+      address: lead.address || "",
+      city: lead.city || "",
+      state: lead.state || "",
+      industry: lead.industry || "",
+      serviceType: lead.service_type || "",
+      leadType: lead.lead_type || "saas",
+      assignedTo: lead.assigned_to || lead.sales_rep_id || "",
       status: lead.status || "new",
+      notes: lead.notes || "",
+      websiteUrl: lead.website_url || "",
+      hasExistingWebsite: lead.has_existing_website ? "yes" : "no",
+      websiteLeadNotes: lead.website_lead_notes || "",
     });
   }
 
   function submitSalesLeadEdit() {
     if (!editSalesLead) return;
+    const data = formData({
+      business_name: editSalesLead.businessName,
+      owner_name: editSalesLead.ownerName,
+      phone: editSalesLead.phone,
+      email: editSalesLead.email,
+      address: editSalesLead.address,
+      city: editSalesLead.city,
+      state: editSalesLead.state,
+      industry: editSalesLead.industry,
+      service_type: editSalesLead.serviceType,
+      lead_type: editSalesLead.leadType,
+      assigned_to: editSalesLead.assignedTo,
+      status: editSalesLead.status,
+      notes: editSalesLead.notes,
+      website_url: editSalesLead.websiteUrl,
+      has_existing_website: editSalesLead.hasExistingWebsite,
+      website_lead_notes: editSalesLead.websiteLeadNotes,
+    });
+
+    if (!editSalesLead.lead) {
+      runAction(
+        () => createSalesLeadAdminAction(data),
+        "create-sales-lead",
+        () => setEditSalesLead(null)
+      );
+      return;
+    }
+
+    data.set("lead_id", editSalesLead.lead.id);
     runAction(
-      () =>
-        updateSalesLeadAdminAction(
-          formData({
-            lead_id: editSalesLead.lead.id,
-            business_name: editSalesLead.businessName,
-            owner_name: editSalesLead.ownerName,
-            phone: editSalesLead.phone,
-            email: editSalesLead.email,
-            status: editSalesLead.status,
-          })
-        ),
+      () => updateSalesLeadAdminAction(data),
       `edit-sales-lead-${editSalesLead.lead.id}`,
       () => setEditSalesLead(null)
+    );
+  }
+
+  function assignSalesLead(lead: SalesLeadRow, assignedTo: string) {
+    runAction(
+      () => assignSalesLeadAdminAction(formData({ lead_id: lead.id, assigned_to: assignedTo })),
+      `assign-sales-lead-${lead.id}`
     );
   }
 
@@ -1360,6 +1455,140 @@ export default function AdminDashboardClient({
       </section>
 
       <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="us-kicker">Sales Leads</p>
+            <h2 className="mt-2 text-2xl font-extrabold">Lead management</h2>
+            <p className="mt-2 max-w-3xl text-sm text-[var(--color-text-secondary)]">
+              Create, assign, and review SaaS leads and website creation leads. Website creation leads are handled by admin only.
+            </p>
+          </div>
+          <button type="button" className="us-btn-primary px-4 py-2 text-sm" onClick={() => openNewSalesLead()}>
+            Create Lead
+          </button>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {[
+            ["all", "All Leads"],
+            ["saas", "SaaS Leads"],
+            ["website_creation", "Website Creation Leads"],
+            ["unassigned", "Unassigned"],
+            ["assigned", "Assigned"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={salesLeadFilter === value ? "us-btn-primary px-4 py-2 text-xs" : "us-btn-secondary px-4 py-2 text-xs"}
+              onClick={() => setSalesLeadFilter(value as LeadFilter)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {filteredSalesLeads.length === 0 ? (
+          <p className="mt-6 rounded-[1rem] border border-[var(--color-border-muted)] bg-[var(--color-section)] p-4 text-sm font-semibold text-[var(--color-text-secondary)]">
+            No leads match the current filter.
+          </p>
+        ) : (
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[1180px] text-left text-sm">
+              <thead className="border-b border-[var(--color-border-muted)] text-xs uppercase tracking-[0.14em] text-[var(--color-text-secondary)]">
+                <tr>
+                  <th className="py-3 pr-4">Lead</th>
+                  <th className="py-3 pr-4">Type</th>
+                  <th className="py-3 pr-4">Status</th>
+                  <th className="py-3 pr-4">Assigned Rep</th>
+                  <th className="py-3 pr-4">Contact</th>
+                  <th className="py-3 pr-4">Created</th>
+                  <th className="py-3 pr-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSalesLeads.map((lead) => {
+                  const assignedRep = lead.assigned_to ? salesRepByUserId.get(lead.assigned_to) : undefined;
+                  const assignedProfile = lead.assigned_to ? profileById.get(lead.assigned_to) : undefined;
+
+                  return (
+                    <tr key={lead.id} className="border-b border-[var(--color-border-muted)] align-top">
+                      <td className="py-4 pr-4">
+                        <p className="font-bold">{lead.business_name}</p>
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">{lead.owner_name || "No contact name"}</p>
+                        {lead.lead_type === "website_creation" ? (
+                          <p className="mt-2 max-w-sm rounded-lg border border-[rgba(183,121,31,0.2)] bg-[rgba(183,121,31,0.08)] px-3 py-2 text-xs font-semibold text-[var(--color-warning)]">
+                            Website creation leads are handled by admin only. Sales reps can submit these leads but do not sell website creation services.
+                          </p>
+                        ) : null}
+                      </td>
+                      <td className="py-4 pr-4">
+                        <span className="inline-flex rounded-full border border-[var(--color-border-muted)] bg-[var(--color-section)] px-3 py-1 text-xs font-bold">
+                          {lead.lead_type === "website_creation" ? "Website Lead" : "SaaS Lead"}
+                        </span>
+                      </td>
+                      <td className="py-4 pr-4">{statusBadge(lead.status)}</td>
+                      <td className="py-4 pr-4">
+                        <select
+                          className="us-input min-w-44 text-xs"
+                          value={lead.assigned_to || ""}
+                          disabled={isPending}
+                          onChange={(event) => assignSalesLead(lead, event.target.value)}
+                        >
+                          <option value="">Unassigned</option>
+                          {activeSalesReps.map((rep) => {
+                            const repProfile = rep.user_id ? profileById.get(rep.user_id) : undefined;
+                            return rep.user_id ? (
+                              <option key={rep.id} value={rep.user_id}>
+                                {rep.display_name || getProfileName(repProfile)}
+                              </option>
+                            ) : null;
+                          })}
+                        </select>
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                          {assignedRep?.display_name || getProfileName(assignedProfile)}
+                        </p>
+                      </td>
+                      <td className="py-4 pr-4">
+                        <p>{lead.phone || "-"}</p>
+                        <p className="mt-1 break-all text-xs text-[var(--color-text-secondary)]">{lead.email || "-"}</p>
+                      </td>
+                      <td className="py-4 pr-4">{formatDate(lead.created_at)}</td>
+                      <td className="py-4 pr-4">
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" className="us-btn-secondary px-3 py-2 text-xs" onClick={() => openSalesLeadEditor(lead)}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="us-btn-danger px-3 py-2 text-xs"
+                            onClick={() =>
+                              setConfirm({
+                                title: "Delete Sales Lead",
+                                message: `Delete the lead for ${lead.business_name}? This cannot be undone.`,
+                                confirmLabel: "Delete",
+                                danger: true,
+                                onConfirm: () =>
+                                  runAction(
+                                    () => deleteSalesLeadAdminAction(formData({ lead_id: lead.id })),
+                                    `delete-sales-lead-${lead.id}`
+                                  ),
+                              })
+                            }
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-[1.6rem] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card-soft)]">
         <p className="us-kicker">Sales Rep Performance</p>
         <h2 className="mt-2 text-2xl font-extrabold">Lead and commission stats</h2>
         {repSummaries.length === 0 ? (
@@ -1375,7 +1604,7 @@ export default function AdminDashboardClient({
                   <th className="py-3 pr-4">Active</th>
                   <th className="py-3 pr-4">Total Leads</th>
                   <th className="py-3 pr-4">Contacted</th>
-                  <th className="py-3 pr-4">Interested</th>
+                  <th className="py-3 pr-4">Follow-up / Demo</th>
                   <th className="py-3 pr-4">Signed Up</th>
                   <th className="py-3 pr-4">Estimated Owed</th>
                   <th className="py-3 pr-4">Paid / Unpaid</th>
@@ -2095,7 +2324,12 @@ export default function AdminDashboardClient({
       ) : null}
 
       {editSalesLead ? (
-        <Modal title="Edit Sales Lead" onCancel={() => setEditSalesLead(null)}>
+        <Modal title={editSalesLead.lead ? "Edit Sales Lead" : "Create Sales Lead"} onCancel={() => setEditSalesLead(null)} size="xl">
+          {editSalesLead.leadType === "website_creation" ? (
+            <div className="mb-4 rounded-xl border border-[rgba(183,121,31,0.22)] bg-[rgba(183,121,31,0.08)] p-4 text-sm font-semibold leading-6 text-[var(--color-warning)]">
+              Website creation leads are handled by admin only. Sales reps can submit these leads but do not sell website creation services.
+            </div>
+          ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm font-bold">
               Business name
@@ -2114,13 +2348,90 @@ export default function AdminDashboardClient({
               <input className="us-input" type="email" value={editSalesLead.email} onChange={(event) => setEditSalesLead({ ...editSalesLead, email: event.target.value })} />
             </label>
             <label className="grid gap-2 text-sm font-bold">
+              Address
+              <input className="us-input" value={editSalesLead.address} onChange={(event) => setEditSalesLead({ ...editSalesLead, address: event.target.value })} />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold">
+                City
+                <input className="us-input" value={editSalesLead.city} onChange={(event) => setEditSalesLead({ ...editSalesLead, city: event.target.value })} />
+              </label>
+              <label className="grid gap-2 text-sm font-bold">
+                State
+                <input className="us-input" value={editSalesLead.state} onChange={(event) => setEditSalesLead({ ...editSalesLead, state: event.target.value })} />
+              </label>
+            </div>
+            <label className="grid gap-2 text-sm font-bold">
+              Industry
+              <input className="us-input" value={editSalesLead.industry} onChange={(event) => setEditSalesLead({ ...editSalesLead, industry: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Service type
+              <input className="us-input" value={editSalesLead.serviceType} onChange={(event) => setEditSalesLead({ ...editSalesLead, serviceType: event.target.value })} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Lead type
+              <select
+                className="us-input"
+                value={editSalesLead.leadType}
+                onChange={(event) =>
+                  setEditSalesLead({
+                    ...editSalesLead,
+                    leadType: event.target.value as "saas" | "website_creation",
+                    status: event.target.value === "website_creation" ? "website_lead_submitted" : "new",
+                  })
+                }
+              >
+                <option value="saas">SaaS Lead</option>
+                <option value="website_creation">Website Creation Lead</option>
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
+              Assigned sales rep
+              <select className="us-input" value={editSalesLead.assignedTo} onChange={(event) => setEditSalesLead({ ...editSalesLead, assignedTo: event.target.value })}>
+                <option value="">Unassigned</option>
+                {activeSalesReps.map((rep) => {
+                  const repProfile = rep.user_id ? profileById.get(rep.user_id) : undefined;
+                  return rep.user_id ? (
+                    <option key={rep.id} value={rep.user_id}>
+                      {rep.display_name || getProfileName(repProfile)}
+                    </option>
+                  ) : null;
+                })}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold">
               Status
               <select className="us-input" value={editSalesLead.status} onChange={(event) => setEditSalesLead({ ...editSalesLead, status: event.target.value })}>
-                <option value="new">new</option>
-                <option value="contacted">contacted</option>
-                <option value="interested">interested</option>
-                <option value="signed_up">signed up</option>
+                {(editSalesLead.leadType === "website_creation" ? WEBSITE_LEAD_STATUSES : SAAS_LEAD_STATUSES).map((status) => (
+                  <option key={status} value={status}>
+                    {status.replace(/_/g, " ")}
+                  </option>
+                ))}
               </select>
+            </label>
+            {editSalesLead.leadType === "website_creation" ? (
+              <>
+                <label className="grid gap-2 text-sm font-bold">
+                  Existing website?
+                  <select className="us-input" value={editSalesLead.hasExistingWebsite} onChange={(event) => setEditSalesLead({ ...editSalesLead, hasExistingWebsite: event.target.value })}>
+                    <option value="no">No / not sure</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold">
+                  Website URL
+                  <input className="us-input" value={editSalesLead.websiteUrl} onChange={(event) => setEditSalesLead({ ...editSalesLead, websiteUrl: event.target.value })} />
+                </label>
+                <label className="grid gap-2 text-sm font-bold sm:col-span-2">
+                  Website lead notes
+                  <textarea className="us-textarea min-h-24" value={editSalesLead.websiteLeadNotes} onChange={(event) => setEditSalesLead({ ...editSalesLead, websiteLeadNotes: event.target.value })} />
+                </label>
+              </>
+            ) : null}
+            <label className="grid gap-2 text-sm font-bold sm:col-span-2">
+              Notes
+              <textarea className="us-textarea min-h-24" value={editSalesLead.notes} onChange={(event) => setEditSalesLead({ ...editSalesLead, notes: event.target.value })} />
             </label>
           </div>
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

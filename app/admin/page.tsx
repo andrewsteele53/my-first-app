@@ -54,7 +54,7 @@ export default async function AdminPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("sales_leads")
-      .select("id, sales_rep_id, business_name, owner_name, phone, email, status, signed_up, signed_up_at, created_at")
+      .select("id, sales_rep_id, created_by, assigned_to, business_name, owner_name, phone, email, address, city, state, industry, service_type, lead_type, status, notes, website_url, has_existing_website, website_lead_notes, signed_up, signed_up_at, created_at, updated_at")
       .order("created_at", { ascending: false }),
     supabase
       .from("website_preview_requests")
