@@ -129,6 +129,21 @@ export default async function AdminPage() {
 
         {errors ? <div className="us-notice-danger text-sm">{errors}</div> : null}
 
+        <section className="rounded-[1.6rem] border border-[rgba(46,125,90,0.18)] bg-[linear-gradient(135deg,#ffffff_0%,#f4fbf7_100%)] p-6 shadow-[var(--shadow-card-soft)]">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="us-kicker">Admin Builder</p>
+              <h2 className="mt-2 text-2xl font-extrabold text-[var(--color-text)]">AI Website Builder</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)]">
+                Generate modern professional websites for service businesses.
+              </p>
+            </div>
+            <Link href="/admin/website-builder" className="us-btn-primary px-5 py-3 text-sm">
+              Open Builder
+            </Link>
+          </div>
+        </section>
+
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Total Users" value={String(totalUsers)} />
           <MetricCard label="Active Paid Subscribers" value={String(activePaidSubscribers.length)} />
